@@ -78,7 +78,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   const seenTopLevelNumberedSections = new Set<number>();
   const consumedTitle = titleLine ? consumeTitleLines(lines, titleLine) : undefined;
   const consumedNumberedHeadingContinuationIndexes = new Set<number>();
-  let index = 0;
+  let index = consumedTitle?.startIndex ?? 0;
   while (index < lines.length) {
     if (consumedTitle && index === consumedTitle.startIndex) {
       bodyLines.push(`<h1>${escapeHtml(consumedTitle.text)}</h1>`);

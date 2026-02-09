@@ -127,6 +127,13 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).not.toContain("<h1>Thrombosis Research</h1>");
   });
 
+  it("drops pre-title cover-page disclaimer text from covid.pdf", () => {
+    expect(covidHtml).not.toContain(
+      "<p>Since January 2020 Elsevier has created a COVID - 19 resource centre with</p>",
+    );
+    expect(covidHtml).not.toContain("<p>Contents lists available at ScienceDirect</p>");
+  });
+
   it("merges wrapped covid paper title lines around the detected title line into one h1", () => {
     expect(covidHtml).toContain(
       "<h1>Incidence and mortality due to thromboembolic events during the COVID-19 pandemic: Multi-sourced population-based health records cohort study</h1>",
