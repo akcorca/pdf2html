@@ -18,6 +18,11 @@ const DEFAULT_TITLE_MIN_FONT_SIZE_RATIO = 1.5;
 const NEGATIVE_COORD_TITLE_MIN_FONT_SIZE_DELTA = 2;
 const NEGATIVE_COORD_TITLE_MIN_FONT_SIZE_RATIO = 1.2;
 const TITLE_MIN_RELATIVE_VERTICAL_POSITION = 0.45;
+const TOP_MATTER_TITLE_LOOKBACK_LINES = 8;
+const MIN_AUTHOR_LINE_COMMA_COUNT = 2;
+const MIN_AUTHOR_NAME_TOKEN_COUNT = 4;
+const MIN_TOP_MATTER_TITLE_WORD_COUNT = 3;
+const MAX_TOP_MATTER_TITLE_COMMA_COUNT = 1;
 
 interface ConvertPdfToHtmlInput {
   inputPdfPath: string;
@@ -451,13 +456,113 @@ function findTitleLine(lines: TextLine[]): TextLine | undefined {
   });
 
   if (candidates.length === 0) {
-    return undefined;
+    return findTopMatterTitleFallback(firstPageLines);
   }
 
   return candidates.sort(
     (left, right) =>
       scoreTitleCandidate(right, bodyFontSize) - scoreTitleCandidate(left, bodyFontSize),
   )[0];
+}
+
+function findTopMatterTitleFallback(firstPageLines: TextLine[]): TextLine | undefined {
+  const linesByVisualOrder = [...firstPageLines].sort((left, right) => {
+    if (left.y !== right.y) {
+      return right.y - left.y;
+    }
+    return left.x - right.x;
+  });
+  const authorLineIndex = linesByVisualOrder.findIndex((line) => isLikelyAuthorLine(line.text));
+  if (authorLineIndex <= 0) {
+    return undefined;
+  }
+
+  const authorLine = linesByVisualOrder[authorLineIndex];
+  const minIndex = Math.max(0, authorLineIndex - TOP_MATTER_TITLE_LOOKBACK_LINES);
+  const titleBlock: TextLine[] = [];
+
+  for (let index = authorLineIndex - 1; index >= minIndex; index -= 1) {
+    const line = linesByVisualOrder[index];
+    if (!isLikelyTopMatterTitleLine(line.text)) {
+      if (titleBlock.length > 0) {
+        break;
+      }
+      continue;
+    }
+
+    const maxXOffset = line.pageWidth * 0.08;
+    if (Math.abs(line.x - authorLine.x) > maxXOffset) {
+      if (titleBlock.length > 0) {
+        break;
+      }
+      continue;
+    }
+
+    titleBlock.push(line);
+  }
+
+  if (titleBlock.length === 0) {
+    return undefined;
+  }
+
+  return titleBlock[titleBlock.length - 1];
+}
+
+function isLikelyAuthorLine(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  if (normalized.length < 20) {
+    return false;
+  }
+  if (containsDocumentMetadata(normalized)) {
+    return false;
+  }
+
+  const commaCount = (normalized.match(/,/g) ?? []).length;
+  if (commaCount < MIN_AUTHOR_LINE_COMMA_COUNT) {
+    return false;
+  }
+
+  const capitalizedTokens =
+    normalized.match(/\b[A-Z][a-z]+(?:[-'][A-Z]?[a-z]+)?\b/g) ?? [];
+  return capitalizedTokens.length >= MIN_AUTHOR_NAME_TOKEN_COUNT;
+}
+
+function isLikelyTopMatterTitleLine(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  if (normalized.length < 20 || normalized.length > 140) {
+    return false;
+  }
+  if (containsDocumentMetadata(normalized)) {
+    return false;
+  }
+  if (/[.!?]$/.test(normalized)) {
+    return false;
+  }
+  if (!/[A-Za-z]/.test(normalized)) {
+    return false;
+  }
+
+  const wordCount = normalized.split(" ").filter((part) => part.length > 0).length;
+  if (wordCount < MIN_TOP_MATTER_TITLE_WORD_COUNT) {
+    return false;
+  }
+
+  const commaCount = (normalized.match(/,/g) ?? []).length;
+  if (commaCount > MAX_TOP_MATTER_TITLE_COMMA_COUNT) {
+    return false;
+  }
+  if (/^[A-Z0-9\- ]+$/.test(normalized)) {
+    return false;
+  }
+
+  const alphaOnly = normalized.replace(/[^A-Za-z]/g, "");
+  const uppercaseRatio =
+    alphaOnly.length > 0 ? alphaOnly.replace(/[^A-Z]/g, "").length / alphaOnly.length : 0;
+  return uppercaseRatio <= 0.9;
+}
+
+function containsDocumentMetadata(text: string): boolean {
+  return /(?:https?:\/\/|www\.|@|doi\b|wileyonlinelibrary\.com)/i.test(text);
 }
 
 function estimateBodyFontSize(lines: TextLine[]): number {

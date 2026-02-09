@@ -8,17 +8,20 @@ const attentionPdfPath = resolve("data/attention.pdf");
 const cleanPdfPath = resolve("data/clean.pdf");
 const covidPdfPath = resolve("data/covid.pdf");
 const respectPdfPath = resolve("data/respect.pdf");
+const tftPdfPath = resolve("data/tft.pdf");
 const outputDirPath = resolve("data/work/test");
 const outputHtmlPath = join(outputDirPath, "attention.html");
 const cleanOutputHtmlPath = join(outputDirPath, "clean.html");
 const covidOutputHtmlPath = join(outputDirPath, "covid.html");
 const respectOutputHtmlPath = join(outputDirPath, "respect.html");
+const tftOutputHtmlPath = join(outputDirPath, "tft.html");
 
 describe("convertPdfToHtml", () => {
   let html = "";
   let cleanHtml = "";
   let covidHtml = "";
   let respectHtml = "";
+  let tftHtml = "";
 
   beforeAll(async () => {
     await mkdir(outputDirPath, { recursive: true });
@@ -38,10 +41,15 @@ describe("convertPdfToHtml", () => {
       inputPdfPath: respectPdfPath,
       outputHtmlPath: respectOutputHtmlPath,
     });
+    await convertPdfToHtml({
+      inputPdfPath: tftPdfPath,
+      outputHtmlPath: tftOutputHtmlPath,
+    });
     html = await readFile(outputHtmlPath, "utf8");
     cleanHtml = await readFile(cleanOutputHtmlPath, "utf8");
     covidHtml = await readFile(covidOutputHtmlPath, "utf8");
     respectHtml = await readFile(respectOutputHtmlPath, "utf8");
+    tftHtml = await readFile(tftOutputHtmlPath, "utf8");
   });
 
   it("extracts the paper title as an h1 heading", () => {
@@ -65,6 +73,10 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).toContain(
       "<h1>the Influence of Prompt Politeness on LLM Performance</h1>",
     );
+  });
+
+  it("extracts tft paper title as an h1 heading when font metadata is unreliable", () => {
+    expect(tftHtml).toContain("<h1>Multifunctional Organic-Semiconductor Interfacial</h1>");
   });
 });
 
