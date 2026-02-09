@@ -69,6 +69,13 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).not.toMatch(/<p>Thrombosis Research 202 \(2021\) 17–23\b/);
   });
 
+  it("extracts covid paper title as an h1 heading even when page 1 is a cover/disclaimer page", () => {
+    expect(covidHtml).toMatch(
+      /<h1>(?:Incidence and mortality due to thromboembolic events during the|COVID-19 pandemic: Multi-sourced population-based health records)<\/h1>/,
+    );
+    expect(covidHtml).not.toContain("<h1>Thrombosis Research</h1>");
+  });
+
   it("extracts respect paper title as an h1 heading", () => {
     expect(respectHtml).toContain(
       "<h1>Should We Respect LLMs? A Cross-Lingual Study on</h1>",

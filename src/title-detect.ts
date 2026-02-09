@@ -20,25 +20,53 @@ import {
   normalizeSpacing,
 } from "./text-lines.ts";
 
-export function findTitleLine(lines: TextLine[]): TextLine | undefined {
-  const firstPageLines = lines.filter((line) => line.pageIndex === 0);
-  if (firstPageLines.length === 0) return undefined;
+const TITLE_SEARCH_PAGE_LIMIT = 3;
 
+export function findTitleLine(lines: TextLine[]): TextLine | undefined {
+  if (lines.length === 0) return undefined;
   const bodyFontSize = estimateBodyFontSize(lines);
+  const linesByPage = groupLinesByPage(lines);
+  const pageIndexes = [...linesByPage.keys()].sort((left, right) => left - right);
+  for (const pageIndex of pageIndexes.slice(0, TITLE_SEARCH_PAGE_LIMIT)) {
+    const pageLines = linesByPage.get(pageIndex);
+    if (!pageLines || pageLines.length === 0) continue;
+    const titleLine = findTitleLineOnPage(pageLines, bodyFontSize);
+    if (titleLine) return titleLine;
+  }
+  return undefined;
+}
+
+function findTitleLineOnPage(
+  pageLines: TextLine[],
+  bodyFontSize: number,
+): TextLine | undefined {
   const minTitleFontSize = Math.max(
     bodyFontSize + TITLE_MIN_FONT_SIZE_DELTA,
     bodyFontSize * TITLE_MIN_FONT_SIZE_RATIO,
   );
-  const extents = computePageVerticalExtents(firstPageLines);
-  const candidates = firstPageLines.filter((line) =>
-    isTitleCandidate(line, minTitleFontSize, extents, firstPageLines),
+  const extents = computePageVerticalExtents(pageLines);
+  const candidates = pageLines.filter((line) =>
+    isTitleCandidate(line, minTitleFontSize, extents, pageLines),
   );
 
-  if (candidates.length === 0) return findTopMatterTitleFallback(firstPageLines);
+  if (candidates.length === 0) return findTopMatterTitleFallback(pageLines);
 
   return candidates.sort(
     (a, b) => scoreTitleCandidate(b, bodyFontSize) - scoreTitleCandidate(a, bodyFontSize),
   )[0];
+}
+
+function groupLinesByPage(lines: TextLine[]): Map<number, TextLine[]> {
+  const grouped = new Map<number, TextLine[]>();
+  for (const line of lines) {
+    const existing = grouped.get(line.pageIndex);
+    if (existing) {
+      existing.push(line);
+    } else {
+      grouped.set(line.pageIndex, [line]);
+    }
+  }
+  return grouped;
 }
 
 function isTitleCandidate(
@@ -50,6 +78,8 @@ function isTitleCandidate(
   if (line.fontSize < minFontSize) return false;
   if (line.text.length < 8) return false;
   if (/[.!?]$/.test(line.text)) return false;
+  const wordCount = line.text.split(/\s+/).filter((part) => part.length > 0).length;
+  if (wordCount < MIN_TOP_MATTER_TITLE_WORD_COUNT) return false;
   const relativeY = getRelativeVerticalPosition(line, extents);
   if (relativeY < TITLE_MIN_RELATIVE_VERTICAL_POSITION) return false;
   if (line.estimatedWidth > line.pageWidth * TITLE_MAX_WIDTH_RATIO) return false;
