@@ -1,27 +1,11 @@
 import type { TextLine } from "./pdf-types.ts";
-import {
-  MAX_NUMBERED_HEADING_DIGIT_RATIO,
-  MAX_NUMBERED_HEADING_LENGTH,
-  MAX_NUMBERED_HEADING_WORDS,
-  MAX_TOP_LEVEL_SECTION_NUMBER,
-  MIN_NUMBERED_HEADING_LENGTH,
-} from "./pdf-types.ts";
 import { estimateBodyFontSize, normalizeSpacing } from "./text-lines.ts";
 import { containsDocumentMetadata, findTitleLine } from "./title-detect.ts";
+import { detectNamedSectionHeadingLevel, detectNumberedHeadingLevel } from "./heading-detect.ts";
 
-const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
-  ["abstract", 2],
-  ["acknowledgment", 2],
-  ["acknowledgments", 2],
-  ["conclusion", 2],
-  ["conclusions", 2],
-  ["discussion", 2],
-  ["references", 2],
-]);
 const INLINE_ACKNOWLEDGEMENTS_HEADING_PATTERN =
   /^(acknowledg(?:e)?ments?)(?:(?:\s*[:\-–]\s*)|\s+)(.+)$/iu;
 const INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH = 8;
-const TRAILING_TABULAR_SCORE_PATTERN = /\b\d{1,2}\.\d{1,2}$/;
 const BULLET_LIST_ITEM_PATTERN = /^([•◦▪●○■□◆◇‣⁃∙·])\s+(.+)$/u;
 const MIN_LIST_CONTINUATION_INDENT = 6;
 const TITLE_CONTINUATION_MAX_FONT_DELTA = 0.6;
@@ -64,15 +48,20 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   const hasDottedSubsectionHeadings = lines.some((line) =>
     DOTTED_SUBSECTION_HEADING_PATTERN.test(normalizeSpacing(line.text)),
   );
+  const consumedTitle = titleLine ? consumeTitleLines(lines, titleLine) : undefined;
   let index = 0;
   while (index < lines.length) {
-    const currentLine = lines[index];
-    if (currentLine === titleLine) {
-      const consumedTitle = consumeTitleLines(lines, index, titleLine);
+    if (consumedTitle && index === consumedTitle.startIndex) {
       bodyLines.push(`<h1>${escapeHtml(consumedTitle.text)}</h1>`);
       index = consumedTitle.nextIndex;
       continue;
     }
+    if (consumedTitle && index > consumedTitle.startIndex && index < consumedTitle.nextIndex) {
+      index += 1;
+      continue;
+    }
+
+    const currentLine = lines[index];
 
     const headingTag = renderHeadingTag(currentLine, bodyFontSize, hasDottedSubsectionHeadings);
     if (headingTag !== undefined) {
@@ -129,56 +118,95 @@ function renderHeadingTag(
 
 function consumeTitleLines(
   lines: TextLine[],
-  startIndex: number,
   titleLine: TextLine,
-): { text: string; nextIndex: number } {
-  const parts = [titleLine.text];
-  let index = startIndex + 1;
-  let previousLine = titleLine;
-
-  while (index < lines.length && isTitleContinuationLine(lines[index], previousLine, titleLine)) {
-    parts.push(lines[index].text);
-    previousLine = lines[index];
-    index += 1;
+): { startIndex: number; text: string; nextIndex: number } {
+  const titleIndex = lines.indexOf(titleLine);
+  if (titleIndex < 0) {
+    return { startIndex: 0, text: titleLine.text, nextIndex: 1 };
   }
 
-  return { text: normalizeSpacing(parts.join(" ")), nextIndex: index };
+  const parts = [titleLine.text];
+  let startIndex = titleIndex;
+  let previousUpperLine = titleLine;
+  while (
+    startIndex > 0 &&
+    isTitleContinuationLine(lines[startIndex - 1], previousUpperLine, titleLine, "before")
+  ) {
+    startIndex -= 1;
+    parts.unshift(lines[startIndex].text);
+    previousUpperLine = lines[startIndex];
+  }
+
+  let nextIndex = titleIndex + 1;
+  let previousLowerLine = titleLine;
+  while (
+    nextIndex < lines.length &&
+    isTitleContinuationLine(lines[nextIndex], previousLowerLine, titleLine, "after")
+  ) {
+    parts.push(lines[nextIndex].text);
+    previousLowerLine = lines[nextIndex];
+    nextIndex += 1;
+  }
+
+  return { startIndex, text: normalizeSpacing(parts.join(" ")), nextIndex };
 }
 
 function isTitleContinuationLine(
   line: TextLine,
   previousTitleLine: TextLine,
   titleLine: TextLine,
+  direction: "before" | "after",
 ): boolean {
   if (line.pageIndex !== titleLine.pageIndex) return false;
   const text = normalizeSpacing(line.text);
+  if (!isEligibleTitleContinuationText(text)) return false;
+  const yDelta = getTitleContinuationVerticalDelta(line, previousTitleLine, text, direction);
+  if (yDelta === undefined) return false;
+  if (!isWithinTitleContinuationSpacing(line, titleLine, yDelta)) return false;
+  return isTitleContinuationAligned(line, titleLine);
+}
+
+function isEligibleTitleContinuationText(text: string): boolean {
   if (text.length === 0) return false;
   if (containsDocumentMetadata(text)) return false;
   const words = text.split(" ").filter((token) => token.length > 0);
-  if (
-    words.length < TITLE_CONTINUATION_MIN_WORD_COUNT &&
-    !isLikelyShortTitleContinuation(words)
-  ) {
-    return false;
-  }
-  if (
-    detectNumberedHeadingLevel(text) !== undefined ||
-    detectNamedSectionHeadingLevel(text) !== undefined
-  ) {
-    return false;
-  }
-  if (/[.!?:]$/.test(previousTitleLine.text.trim())) return false;
-  if (line.y >= previousTitleLine.y) return false;
+  const hasEnoughWords =
+    words.length >= TITLE_CONTINUATION_MIN_WORD_COUNT || isLikelyShortTitleContinuation(words);
+  if (!hasEnoughWords) return false;
+  return (
+    detectNumberedHeadingLevel(text) === undefined &&
+    detectNamedSectionHeadingLevel(text) === undefined
+  );
+}
 
+function getTitleContinuationVerticalDelta(
+  line: TextLine,
+  previousTitleLine: TextLine,
+  text: string,
+  direction: "before" | "after",
+): number | undefined {
+  if (direction === "after" && /[.!?:]$/.test(previousTitleLine.text.trim())) return undefined;
+  if (direction === "before" && /[.!?]$/.test(text)) return undefined;
+  const yDelta = line.y - previousTitleLine.y;
+  if (direction === "after" && yDelta >= 0) return undefined;
+  if (direction === "before" && yDelta <= 0) return undefined;
+  return yDelta;
+}
+
+function isWithinTitleContinuationSpacing(
+  line: TextLine,
+  titleLine: TextLine,
+  yDelta: number,
+): boolean {
   const maxGap = Math.max(
     titleLine.fontSize * TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
     titleLine.fontSize + 10,
   );
-  if (previousTitleLine.y - line.y > maxGap) return false;
-  if (Math.abs(line.fontSize - titleLine.fontSize) > TITLE_CONTINUATION_MAX_FONT_DELTA) {
-    return false;
-  }
+  if (Math.abs(yDelta) > maxGap) return false;
+  return Math.abs(line.fontSize - titleLine.fontSize) <= TITLE_CONTINUATION_MAX_FONT_DELTA;
+}
 
+function isTitleContinuationAligned(line: TextLine, titleLine: TextLine): boolean {
   const titleCenter = getLineCenter(titleLine);
   const lineCenter = getLineCenter(line);
   const maxCenterOffset = titleLine.pageWidth * TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO;
@@ -191,7 +219,10 @@ function isTitleContinuationLine(
 
 function isLikelyShortTitleContinuation(words: string[]): boolean {
   if (words.length < 1 || words.length > 2) return false;
-  return words.every((word) => /^[A-Z][A-Za-z0-9'-]*$/.test(word));
+  return (
+    words.every((word) => /^[A-Za-z][A-Za-z0-9'-]*$/.test(word)) &&
+    words.some((word) => word.replace(/[^A-Za-z]/g, "").length >= 4)
+  );
 }
 
 function getLineCenter(line: TextLine): number {
@@ -264,40 +295,6 @@ function isBulletListContinuation(
   return line.x >= itemStartLine.x + MIN_LIST_CONTINUATION_INDENT;
 }
 
-export function detectNumberedHeadingLevel(text: string): number | undefined {
-  const normalized = normalizeSpacing(text);
-  if (
-    normalized.length < MIN_NUMBERED_HEADING_LENGTH ||
-    normalized.length > MAX_NUMBERED_HEADING_LENGTH
-  ) {
-    return undefined;
-  }
-  if (containsDocumentMetadata(normalized)) return undefined;
-
-  const match = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u.exec(normalized);
-  if (!match) return undefined;
-
-  const sectionNumber = match[1].replace(/\.$/, "");
-  const topLevel = Number.parseInt(sectionNumber.split(".")[0], 10);
-  if (!Number.isFinite(topLevel) || topLevel < 1 || topLevel > MAX_TOP_LEVEL_SECTION_NUMBER) {
-    return undefined;
-  }
-
-  const headingText = match[2].trim();
-  if (!isValidHeadingText(headingText)) return undefined;
-
-  const depth = sectionNumber.split(".").length;
-  return Math.min(depth + 1, 6);
-}
-
-export function detectNamedSectionHeadingLevel(text: string): number | undefined {
-  const normalized = normalizeSpacing(text);
-  if (normalized.length < 4 || normalized.length > 40) return undefined;
-  if (containsDocumentMetadata(normalized)) return undefined;
-  if (!/^[A-Za-z][A-Za-z\s-]*[A-Za-z]$/u.test(normalized)) return undefined;
-  return NAMED_SECTION_HEADING_LEVELS.get(normalized.toLowerCase());
-}
-
 function parseInlineAcknowledgementsHeading(
   text: string,
 ): { heading: string; body: string; level: number } | undefined {
@@ -310,44 +307,4 @@ function parseInlineAcknowledgementsHeading(
   if (bodyText.length < INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH) return undefined;
   if (!/[A-Za-z]/.test(bodyText)) return undefined;
   return { heading: headingText, body: bodyText, level: 2 };
-}
-
-function isValidHeadingText(text: string): boolean {
-  if (text.length < 2) return false;
-  if (text.includes(",")) return false;
-  if (isLikelyScoredTableRow(text)) return false;
-  if (/[.!?]$/.test(text)) return false;
-  if (!/^[A-Z]/.test(text)) return false;
-  if (!/[A-Za-z]/.test(text)) return false;
-  if (isLikelyFlowLabelText(text)) return false;
-  const wordCount = text.split(/\s+/).filter((p) => p.length > 0).length;
-  if (wordCount > MAX_NUMBERED_HEADING_WORDS) return false;
-  const hasMeaningful = text
-    .split(/[^A-Za-z-]+/)
-    .some((w) => w.replace(/[^A-Za-z]/g, "").length >= 4);
-  if (!hasMeaningful) return false;
-  const alphanumeric = text.replace(/[^A-Za-z0-9]/g, "");
-  const digitRatio = text.replace(/[^0-9]/g, "").length / Math.max(alphanumeric.length, 1);
-  return digitRatio <= MAX_NUMBERED_HEADING_DIGIT_RATIO;
-}
-
-function isLikelyScoredTableRow(text: string): boolean {
-  if (!TRAILING_TABULAR_SCORE_PATTERN.test(text)) return false;
-  const tokens = text.split(/\s+/).filter((part) => part.length > 0);
-  if (tokens.length < 4) return false;
-  const scoreToken = tokens[tokens.length - 1];
-  const score = Number.parseFloat(scoreToken);
-  if (!Number.isFinite(score) || score < 0 || score > 10) return false;
-  const alphaLength = text.replace(/[^A-Za-z]/g, "").length;
-  return alphaLength >= 12;
-}
-
-function isLikelyFlowLabelText(text: string): boolean {
-  const tokens = text.split(/\s+/).filter((p) => p.length > 0);
-  if (tokens.length !== 3) return false;
-  if (!/^\d{1,2}$/.test(tokens[1])) return false;
-  const left = tokens[0].replace(/[^A-Za-z]/g, "");
-  const right = tokens[2].replace(/[^A-Za-z]/g, "");
-  if (left.length < 4 || right.length < 4) return false;
-  return left.toLowerCase() === right.toLowerCase();
 }

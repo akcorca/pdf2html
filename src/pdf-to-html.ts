@@ -18,11 +18,8 @@ import {
 } from "./text-lines.ts";
 import { findRepeatedEdgeTexts, findLikelyPageNumberLines } from "./page-filter.ts";
 import { findTitleLine, scoreTitleCandidate } from "./title-detect.ts";
-import {
-  detectNamedSectionHeadingLevel,
-  detectNumberedHeadingLevel,
-  escapeHtml,
-} from "./html-render.ts";
+import { escapeHtml } from "./html-render.ts";
+import { detectNamedSectionHeadingLevel, detectNumberedHeadingLevel } from "./heading-detect.ts";
 
 export async function convertPdfToHtml(
   input: ConvertPdfToHtmlInput,

@@ -89,10 +89,18 @@ describe("convertPdfToHtml", () => {
   });
 
   it("extracts covid paper title as an h1 heading even when page 1 is a cover/disclaimer page", () => {
-    expect(covidHtml).toMatch(
-      /<h1>(?:Incidence and mortality due to thromboembolic events during the|COVID-19 pandemic: Multi-sourced population-based health records)<\/h1>/,
-    );
+    expect(covidHtml).toMatch(/<h1>[^<]*COVID-19 pandemic[^<]*<\/h1>/);
     expect(covidHtml).not.toContain("<h1>Thrombosis Research</h1>");
+  });
+
+  it("merges wrapped covid paper title lines around the detected title line into one h1", () => {
+    expect(covidHtml).toContain(
+      "<h1>Incidence and mortality due to thromboembolic events during the COVID-19 pandemic: Multi-sourced population-based health records cohort study</h1>",
+    );
+    expect(covidHtml).not.toContain(
+      "<p>Incidence and mortality due to thromboembolic events during the</p>",
+    );
+    expect(covidHtml).not.toContain("<p>cohort study</p>");
   });
 
   it("renders dotted covid numbered section headings as semantic headings", () => {
