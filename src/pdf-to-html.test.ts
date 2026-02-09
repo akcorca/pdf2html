@@ -5,11 +5,14 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { convertPdfToHtml, pdfToHtmlInternals } from "./pdf-to-html.ts";
 
 const attentionPdfPath = resolve("data/attention.pdf");
+const cleanPdfPath = resolve("data/clean.pdf");
 const outputDirPath = resolve("data/work/test");
 const outputHtmlPath = join(outputDirPath, "attention.html");
+const cleanOutputHtmlPath = join(outputDirPath, "clean.html");
 
 describe("convertPdfToHtml", () => {
   let html = "";
+  let cleanHtml = "";
 
   beforeAll(async () => {
     await mkdir(outputDirPath, { recursive: true });
@@ -17,7 +20,12 @@ describe("convertPdfToHtml", () => {
       inputPdfPath: attentionPdfPath,
       outputHtmlPath,
     });
+    await convertPdfToHtml({
+      inputPdfPath: cleanPdfPath,
+      outputHtmlPath: cleanOutputHtmlPath,
+    });
     html = await readFile(outputHtmlPath, "utf8");
+    cleanHtml = await readFile(cleanOutputHtmlPath, "utf8");
   });
 
   it("extracts the paper title as an h1 heading", () => {
@@ -26,6 +34,10 @@ describe("convertPdfToHtml", () => {
 
   it("does not use the arXiv side metadata as the document h1", () => {
     expect(html).not.toContain("<h1>arXiv:1706.03762v7 [cs.CL] 2 Aug 2023</h1>");
+  });
+
+  it("ignores extremely out-of-page text artifacts for clean.pdf", () => {
+    expect(cleanHtml).not.toContain("Name Admission Date Address Abby Fri Jan 1st");
   });
 });
 

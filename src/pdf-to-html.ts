@@ -6,6 +6,7 @@ import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
 const LINE_Y_BUCKET_SIZE = 2;
+const MAX_REASONABLE_Y_MULTIPLIER = 2.5;
 
 interface ConvertPdfToHtmlInput {
   inputPdfPath: string;
@@ -127,6 +128,10 @@ function collectTextLines(document: ExtractedDocument): TextLine[] {
     const buckets = new Map<number, ExtractedFragment[]>();
 
     for (const fragment of page.fragments) {
+      if (fragment.y > page.height * MAX_REASONABLE_Y_MULTIPLIER) {
+        continue;
+      }
+
       const bucket = Math.round(fragment.y / LINE_Y_BUCKET_SIZE) * LINE_Y_BUCKET_SIZE;
       const existing = buckets.get(bucket);
       if (existing) {
