@@ -56,6 +56,16 @@ const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.05;
 const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.12;
 const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[A-Za-z0-9("'"'[]/u;
 const BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN = /^\[\d+\]/;
+const INLINE_MATH_BRIDGE_MAX_LOOKAHEAD = 4;
+const INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH = 24;
+const INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT = 8;
+const INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO = 0.55;
+const INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO = 0.55;
+const INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}\[\],.;:√∞]+$/u;
+const INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN = /^[A-Za-z]$/;
+const INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN = /^\d{1,4}$/;
+const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}\[\],.;:√∞]+$/u;
+const INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN = /[.!?]["')\]]?$/;
 
 interface HeadingCandidate {
   kind: "named" | "numbered";
@@ -974,6 +984,19 @@ function consumeBodyParagraph(
 
   while (nextIndex < lines.length) {
     const candidate = lines[nextIndex];
+    const bridgedContinuationIndex = findBodyParagraphContinuationAfterInlineMathArtifacts(
+      lines,
+      nextIndex,
+      previousLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    );
+    if (bridgedContinuationIndex !== undefined) {
+      nextIndex = bridgedContinuationIndex;
+      continue;
+    }
     if (!isBodyParagraphContinuationLine(
       candidate,
       previousLine,
@@ -1054,6 +1077,82 @@ function consumeTrailingSameRowSentenceContinuation(
     line: continuation,
     nextIndex: continuationIndex + 1,
   };
+}
+
+function findBodyParagraphContinuationAfterInlineMathArtifacts(
+  lines: TextLine[],
+  artifactStartIndex: number,
+  previousLine: TextLine,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): number | undefined {
+  const previousText = normalizeSpacing(previousLine.text);
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return undefined;
+
+  let scanIndex = artifactStartIndex;
+  const maxScanIndex = Math.min(lines.length, artifactStartIndex + INLINE_MATH_BRIDGE_MAX_LOOKAHEAD);
+  while (scanIndex < maxScanIndex) {
+    const artifact = lines[scanIndex];
+    if (!isInlineMathArtifactBridgeLine(artifact, previousLine)) return undefined;
+
+    const continuationIndex = scanIndex + 1;
+    const continuationLine = lines[continuationIndex];
+    if (!continuationLine) return undefined;
+    if (continuationLine.pageIndex !== previousLine.pageIndex) return undefined;
+
+    if (
+      isBodyParagraphContinuationLine(
+        continuationLine,
+        previousLine,
+        startLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
+      return continuationIndex;
+    }
+    scanIndex += 1;
+  }
+
+  return undefined;
+}
+
+function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine): boolean {
+  if (line.pageIndex !== previousLine.pageIndex) return false;
+
+  const verticalGap = previousLine.y - line.y;
+  const maxVerticalGap = Math.max(
+    previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO,
+    3,
+  );
+  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+  if (line.estimatedWidth > previousLine.estimatedWidth * INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO) {
+    return false;
+  }
+
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0 || normalized.length > INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH) return false;
+  if (!INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN.test(normalized)) return false;
+
+  const tokens = normalized.split(/\s+/).filter((token) => token.length > 0);
+  if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT) return false;
+
+  const hasNumericOrSymbol = tokens.some(
+    (token) =>
+      INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
+      INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token),
+  );
+  if (!hasNumericOrSymbol) return false;
+
+  return tokens.every(
+    (token) =>
+      INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
+      INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token) ||
+      INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN.test(token),
+  );
 }
 
 function isBodyParagraphContinuationLine(

@@ -30,4 +30,11 @@ describe("attention abstract same-row merge", () => {
       "<p>Experiments on two machine translation tasks show these models to</p>",
     );
   });
+
+  it("keeps body paragraph flow when inline formula indices are detached into tiny lines", () => {
+    expect(attentionHtml).toContain(
+      "This inherently sequential nature precludes parallelization within training examples, which becomes critical at longer",
+    );
+    expect(attentionHtml).not.toContain("<p>t t − 1</p>");
+  });
 });
