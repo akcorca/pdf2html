@@ -83,6 +83,13 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).not.toContain("<h1>Thrombosis Research</h1>");
   });
 
+  it("separates covid section-heading lines from opposite-column spill text", () => {
+    expect(covidHtml).toContain("<p>1. Introduction</p>");
+    expect(covidHtml).not.toContain(
+      "<p>1. Introduction embolism [PE] and deep venous thrombosis [DVT]). Patients with acute</p>",
+    );
+  });
+
   it("extracts respect paper title as an h1 heading", () => {
     expect(respectHtml).toContain(
       "<h1>Should We Respect LLMs? A Cross-Lingual Study on</h1>",

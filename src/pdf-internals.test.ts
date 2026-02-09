@@ -60,6 +60,31 @@ describe("pdfToHtmlInternals", () => {
     expect(pdfToHtmlInternals.estimateLineWidth([frag("very-long-fragment", 0)])).toBeGreaterThan(80);
   });
 
+  it("splits heading-prefixed rows even when a page is not globally multi-column", () => {
+    const lines = pdfToHtmlInternals.collectTextLines({
+      pages: [
+        {
+          pageIndex: 0,
+          width: 600,
+          height: 800,
+          fragments: [
+            frag({ text: "Regular body text near top", x: 40, y: 760 }),
+            frag({ text: "1.", x: 40, y: 700 }),
+            frag({ text: "Introduction", x: 52, y: 700 }),
+            frag({ text: "right column carryover text", x: 320, y: 700 }),
+            frag({ text: "Another body paragraph line", x: 40, y: 640 }),
+          ],
+        },
+      ],
+    });
+
+    expect(lines.some((line) => line.text === "1. Introduction")).toBe(true);
+    expect(lines.some((line) => line.text === "right column carryover text")).toBe(true);
+    expect(
+      lines.some((line) => line.text === "1. Introduction right column carryover text"),
+    ).toBe(false);
+  });
+
   it("normalizes spacing and escapes html characters", () => {
     expect(pdfToHtmlInternals.normalizeSpacing("a   b\n c")).toBe("a b c");
     expect(pdfToHtmlInternals.escapeHtml("<a&b>")).toBe("&lt;a&amp;b&gt;");
@@ -160,6 +185,16 @@ function line(overrides: Partial<TextLine> = {}): TextLine {
   return {
     pageIndex: 0, pageHeight: 792, pageWidth: 612,
     estimatedWidth: 100, x: 120, y: 500, fontSize: 10, text: "line",
+    ...overrides,
+  };
+}
+
+function frag(overrides: Partial<ExtractedFragment>): ExtractedFragment {
+  return {
+    text: "fragment",
+    x: 0,
+    y: 0,
+    fontSize: 10,
     ...overrides,
   };
 }

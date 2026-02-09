@@ -19,6 +19,9 @@ import {
   STANDALONE_PAGE_NUMBER_PATTERN,
 } from "./pdf-types.ts";
 
+const NUMBERED_SECTION_MARKER_PATTERN = /^\d+(?:\.\d+){0,4}\.?$/;
+const MAX_NUMBERED_SECTION_PREFIX_WORDS = 8;
+
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
   for (const page of document.pages) {
@@ -38,7 +41,11 @@ function collectPageLines(page: ExtractedPage): TextLine[] {
 
   for (const [bucket, bucketFragments] of buckets) {
     const sorted = [...bucketFragments].sort((left, right) => left.x - right.x);
-    const groups = splitByColumn ? splitFragmentsByColumnBreaks(sorted, page.width) : [sorted];
+    const breakIndexes = findColumnBreakIndexes(sorted, page.width);
+    const groups =
+      splitByColumn || shouldForceSplitHeadingPrefixedRow(sorted, breakIndexes)
+        ? splitFragmentsByColumnBreaks(sorted, page.width, breakIndexes)
+        : [sorted];
 
     for (const fragments of groups) {
       const text = normalizeSpacing(fragments.map((f) => f.text).join(" "));
@@ -94,8 +101,9 @@ function isLikelyMultiColumnPage(
 function splitFragmentsByColumnBreaks(
   fragments: ExtractedFragment[],
   pageWidth: number,
+  precomputedBreakIndexes?: number[],
 ): ExtractedFragment[][] {
-  const breakIndexes = findColumnBreakIndexes(fragments, pageWidth);
+  const breakIndexes = precomputedBreakIndexes ?? findColumnBreakIndexes(fragments, pageWidth);
   if (breakIndexes.length === 0) return [fragments];
   const groups: ExtractedFragment[][] = [];
   let start = 0;
@@ -105,6 +113,22 @@ function splitFragmentsByColumnBreaks(
   }
   groups.push(fragments.slice(start));
   return groups.filter((g) => g.length > 0);
+}
+
+function shouldForceSplitHeadingPrefixedRow(
+  fragments: ExtractedFragment[],
+  breakIndexes: number[],
+): boolean {
+  if (breakIndexes.length === 0) return false;
+  const firstColumnFragments = fragments.slice(0, breakIndexes[0] + 1);
+  const firstColumnText = normalizeSpacing(firstColumnFragments.map((f) => f.text).join(" "));
+  if (firstColumnText.length === 0) return false;
+  const tokens = firstColumnText.split(" ").filter((token) => token.length > 0);
+  if (tokens.length < 2 || tokens.length > MAX_NUMBERED_SECTION_PREFIX_WORDS) return false;
+  if (!NUMBERED_SECTION_MARKER_PATTERN.test(tokens[0])) return false;
+  const headingTokens = tokens.slice(1);
+  if (!headingTokens.some((token) => /[A-Za-z]/.test(token))) return false;
+  return headingTokens.every((token) => /^[A-Za-z][A-Za-z-]*$/.test(token));
 }
 
 function findColumnBreakIndexes(fragments: ExtractedFragment[], pageWidth: number): number[] {
