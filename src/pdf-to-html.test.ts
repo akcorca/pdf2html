@@ -228,4 +228,12 @@ describe("convertPdfToHtml", () => {
       "<p>opment of new semiconductors and innovative processing must be overcome for further applications in low-cost, large-</p>",
     );
   });
+
+  it("keeps left-column abstract text before right-column abstract text in tft.pdf", () => {
+    const leftColumnLine = "<p>The stabilization and control of the electrical properties in solution-processed</p>";
+    const rightColumnLine = "<p>various semiconductors, sputter-deposited</p>";
+    expect(tftHtml).toContain(leftColumnLine);
+    expect(tftHtml).toContain(rightColumnLine);
+    expect(tftHtml.indexOf(leftColumnLine)).toBeLessThan(tftHtml.indexOf(rightColumnLine));
+  });
 });

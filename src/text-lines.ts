@@ -27,6 +27,12 @@ const MULTI_COLUMN_SPANNING_LINE_WIDTH_RATIO = 0.62;
 const MULTI_COLUMN_HEADING_REORDER_PATTERN = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u;
 const MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH = 90;
 const MAX_MULTI_COLUMN_HEADING_WORDS = 16;
+const MULTI_COLUMN_NEAR_ROW_MAX_Y_DELTA_FONT_RATIO = 2.1;
+const MULTI_COLUMN_NEAR_ROW_MIN_TEXT_CHARS = 10;
+const MULTI_COLUMN_NEAR_ROW_TOP_Y_RATIO = 0.8;
+const MULTI_COLUMN_NEAR_ROW_BOTTOM_Y_RATIO = 0.1;
+const MULTI_COLUMN_NEAR_ROW_LEFT_MAX_RATIO = 0.42;
+const MULTI_COLUMN_NEAR_ROW_RIGHT_MIN_RATIO = 0.58;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
@@ -92,12 +98,46 @@ function compareLinesForReadingOrder(
 }
 
 function compareMultiColumnLineOrder(left: TextLine, right: TextLine): number {
-  if (!isLikelyColumnHeadingLine(left.text) || !isLikelyColumnHeadingLine(right.text)) return 0;
-  const leftColumn = classifyMultiColumnLine(left);
-  const rightColumn = classifyMultiColumnLine(right);
+  if (isLikelyColumnHeadingLine(left.text) && isLikelyColumnHeadingLine(right.text)) {
+    const leftColumn = classifyMultiColumnLine(left);
+    const rightColumn = classifyMultiColumnLine(right);
+    if (leftColumn === "spanning" || rightColumn === "spanning") return 0;
+    if (leftColumn === rightColumn) return 0;
+    return leftColumn === "left" ? -1 : 1;
+  }
+
+  if (!isLikelyNearRowBodyPair(left, right)) return 0;
+  const leftColumn = classifyNearRowBodyColumn(left);
+  const rightColumn = classifyNearRowBodyColumn(right);
   if (leftColumn === "spanning" || rightColumn === "spanning") return 0;
   if (leftColumn === rightColumn) return 0;
   return leftColumn === "left" ? -1 : 1;
+}
+
+function isLikelyNearRowBodyPair(left: TextLine, right: TextLine): boolean {
+  if (!isLikelyNearRowBodyLine(left) || !isLikelyNearRowBodyLine(right)) return false;
+  const maxYDelta =
+    Math.max(left.fontSize, right.fontSize) * MULTI_COLUMN_NEAR_ROW_MAX_Y_DELTA_FONT_RATIO;
+  return Math.abs(left.y - right.y) <= maxYDelta;
+}
+
+function isLikelyNearRowBodyLine(line: TextLine): boolean {
+  if (line.pageHeight <= 0) return false;
+  const normalized = normalizeSpacing(line.text);
+  if (countSubstantiveChars(normalized) < MULTI_COLUMN_NEAR_ROW_MIN_TEXT_CHARS) return false;
+  if (/(?:https?:\/\/|www\.)/iu.test(normalized)) return false;
+  const relativeY = line.y / line.pageHeight;
+  if (relativeY >= MULTI_COLUMN_NEAR_ROW_TOP_Y_RATIO) return false;
+  if (relativeY <= MULTI_COLUMN_NEAR_ROW_BOTTOM_Y_RATIO) return false;
+  return true;
+}
+
+function classifyNearRowBodyColumn(line: TextLine): "left" | "right" | "spanning" {
+  const pageWidth = Math.max(line.pageWidth, 1);
+  const relativeX = line.x / pageWidth;
+  if (relativeX <= MULTI_COLUMN_NEAR_ROW_LEFT_MAX_RATIO) return "left";
+  if (relativeX >= MULTI_COLUMN_NEAR_ROW_RIGHT_MIN_RATIO) return "right";
+  return "spanning";
 }
 
 function isLikelyColumnHeadingLine(text: string): boolean {
