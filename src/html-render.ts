@@ -973,6 +973,7 @@ function isValidHttpUrl(value: string): boolean {
   }
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: code-block extraction requires ordered heuristic checks.
 function renderNumberedCodeBlock(
   lines: TextLine[],
   startIndex: number,
