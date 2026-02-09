@@ -1,3 +1,4 @@
+// biome-ignore lint/nursery/noExcessiveLinesPerFile: fixture-based end-to-end assertions are intentionally centralized.
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -99,6 +100,15 @@ describe("convertPdfToHtml", () => {
   it("removes standalone symbol-only artifact lines from clean.pdf", () => {
     expect(cleanHtml).not.toContain("<p>!</p>");
     expect(cleanHtml).not.toContain("<p>)</p>");
+  });
+
+  it("merges hyphen-wrapped abstract lines in clean.pdf even in narrow two-column text blocks", () => {
+    expect(cleanHtml).not.toContain(
+      "<p>While tools like Pandas offer robust functionalities, their complex-</p>",
+    );
+    expect(cleanHtml).toContain(
+      "<p>While tools like Pandas offer robust functionalities, their complex-ity and the manual effort required for customizing code to diverse</p>",
+    );
   });
 
   it("keeps clean.pdf numbered section headings in left-to-right column reading order", () => {

@@ -11,16 +11,12 @@
 <p>{dqi, zhengjie, jnwang}@sfu.ca</p>
 <h2>ABSTRACT</h2>
 <p>Data standardization is a crucial part of the data science life cycle.</p>
-<p>While tools like Pandas offer robust functionalities, their complex-</p>
-<p>ity and the manual effort required for customizing code to diverse</p>
+<p>While tools like Pandas offer robust functionalities, their complex-ity and the manual effort required for customizing code to diverse</p>
 <p>column types pose significant challenges. Although large language</p>
 <p>models (LLMs) like ChatGPT have shown promise in automating</p>
-<p>this process through natural language understanding and code gen-</p>
-<p>eration, it still demands expert-level programming knowledge and</p>
-<p>continuous interaction for prompt refinement. To solve these chal-</p>
-<p>lenges, our key idea is to propose a Python library with declarative,</p>
-<p>unified APIs for standardizing different column types, simplify-</p>
-<p>ing the LLM’s code generation with concise API calls. We first</p>
+<p>this process through natural language understanding and code gen-eration, it still demands expert-level programming knowledge and</p>
+<p>continuous interaction for prompt refinement. To solve these chal-lenges, our key idea is to propose a Python library with declarative,</p>
+<p>unified APIs for standardizing different column types, simplify-ing the LLM’s code generation with concise API calls. We first</p>
 <p>propose Dataprep.Clean , a component of the Dataprep Python</p>
 <p>Figure 1: An example of automatic data standardization pro-</p>
 <p>Library, significantly reduces the coding complexity by enabling</p>
@@ -323,10 +319,10 @@
 <p>Í Í</p>
 <p>𝑚 𝑛</p>
 <p>ory and then completes the data standardization process. The Chat 1 ( 𝑇 = 𝑇 )</p>
-<p>Manager delivers messages in its memory to the</p>
-<p>Column-type An- 𝑑 ( 𝑇 ,𝑇 gt ) = (1)</p>
+<p>Manager delivers messages in its memory to the Column-type An-</p>
 <p>𝑐𝑙𝑒𝑎𝑛 𝑔𝑡</p>
 <p>𝑖 = 1 𝑗 = 1 𝑖 𝑗 𝑖 𝑗</p>
+<p>𝑑 ( 𝑇 ,𝑇 gt ) = (1)</p>
 <p>clean</p>
 <p>𝑚</p>
 <p>notator ( ① in Figure 2). Then, The Column-type Annotator receives</p>
@@ -391,9 +387,9 @@
 <p>the standardized table matches their requirements. If so, users can</p>
 <p>GPT-4o 22.0 19.76</p>
 <p>download the standardized table directly. Otherwise, users can input</p>
-<p>Cocoon 21.5 636.62 their extra requirements with natural language, and</p>
+<p>Cocoon 21.5 636.62</p>
+<p>their extra requirements with natural language, and CleanAgent</p>
 <p>CleanAgent 42.5 29.57</p>
-<p>CleanAgent</p>
 <p>will start a new data standardization process accordingly.</p>
 <h2>5 USER INTERFACE OF CLEANAGENT</h2>
 <h2>6 CONCLUSION</h2>
@@ -433,13 +429,13 @@
 <p>//pandas.pydata.org/ Accessed: 2024-01-25.</p>
 <p>Classify the columns of a given table with only one of the</p>
 <p>[4] Theodoros Rekatsinas, Xu Chu, Ihab F. Ilyas, and Christopher Ré. 2017. HoloClean:</p>
-<p>Holistic Data Repairs with Probabilistic Inference.</p>
-<p>Proc. VLDB Endow. 10, 11 (2017), following classes that are seperated with comma: {candi-</p>
+<p>Holistic Data Repairs with Probabilistic Inference. Proc. VLDB Endow. 10, 11 (2017),</p>
+<p>following classes that are seperated with comma: {candi-</p>
 <p>1190–1201. https://doi.org/10.14778/3137628.3137631</p>
 <p>date_column_types}.</p>
 <p>[5] Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Shaokun Zhang, Erkang</p>
-<p>Zhu, Beibin Li, Li Jiang, Xiaoyun Zhang, and Chi Wang. 2023.</p>
-<p>AutoGen: (1) Look at the input given to you and make a table</p>
+<p>Zhu, Beibin Li, Li Jiang, Xiaoyun Zhang, and Chi Wang. 2023. AutoGen:</p>
+<p>(1) Look at the input given to you and make a table</p>
 <p>Enabling Next-Gen LLM Applications via Multi-Agent Conversation Frame-</p>
 <p>out of it.</p>
 <p>work. CoRR abs/2308.08155 (2023). https://doi.org/10.48550/ARXIV.2308.08155</p>
