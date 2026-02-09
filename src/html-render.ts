@@ -275,10 +275,10 @@ function shouldSkipConsumedBodyLineIndex(
   consumedTitle: Pick<ConsumedTitleLineBlock, "startIndex" | "nextIndex"> | undefined,
   consumedBodyLineIndexes: Set<number>,
 ): boolean {
-  if (consumedTitle && index > consumedTitle.startIndex && index < consumedTitle.nextIndex) {
-    return true;
-  }
-  return consumedBodyLineIndexes.has(index);
+  return (
+    (consumedTitle && index > consumedTitle.startIndex && index < consumedTitle.nextIndex) ||
+    consumedBodyLineIndexes.has(index)
+  );
 }
 
 function addConsumedIndexes(
@@ -992,41 +992,28 @@ function consumeStandaloneUrl(
   expectedPageLine?: TextLine,
 ): { url: string; trailingPunctuation: string; nextIndex: number } | undefined {
   const urlLine = lines[startIndex];
-  if (!urlLine) return undefined;
-  if (!isSameExpectedPage(urlLine, expectedPageLine)) return undefined;
+  if (!urlLine || !isSamePage(urlLine, expectedPageLine)) return undefined;
   const baseUrl = parseStandaloneUrlLine(urlLine.text);
   if (baseUrl === undefined) return undefined;
 
-  return mergeStandaloneUrlContinuation(lines, startIndex, urlLine, expectedPageLine, baseUrl);
-}
-
-function isSameExpectedPage(line: TextLine, expectedPageLine?: TextLine): boolean {
-  if (expectedPageLine === undefined) return true;
-  return line.pageIndex === expectedPageLine.pageIndex;
-}
-
-function mergeStandaloneUrlContinuation(
-  lines: TextLine[],
-  startIndex: number,
-  urlLine: TextLine,
-  expectedPageLine: TextLine | undefined,
-  baseUrl: { url: string; trailingPunctuation: string },
-): { url: string; trailingPunctuation: string; nextIndex: number } {
-  let url = baseUrl.url;
-  let trailingPunctuation = baseUrl.trailingPunctuation;
-  let nextIndex = startIndex + 1;
   const merged = parseStandaloneUrlContinuationCandidate(
-    lines[nextIndex],
-    url,
+    lines[startIndex + 1],
+    baseUrl.url,
     urlLine,
     expectedPageLine,
   );
-  if (merged !== undefined) {
-    url = merged.url;
-    trailingPunctuation = merged.trailingPunctuation;
-    nextIndex += 1;
+  if (merged === undefined) {
+    return {
+      url: baseUrl.url,
+      trailingPunctuation: baseUrl.trailingPunctuation,
+      nextIndex: startIndex + 1,
+    };
   }
-  return { url, trailingPunctuation, nextIndex };
+  return { ...merged, nextIndex: startIndex + 2 };
+}
+
+function isSamePage(line: TextLine, referenceLine: TextLine | undefined): boolean {
+  return referenceLine === undefined || line.pageIndex === referenceLine.pageIndex;
 }
 
 function parseStandaloneUrlContinuationCandidate(
@@ -1036,8 +1023,8 @@ function parseStandaloneUrlContinuationCandidate(
   expectedPageLine: TextLine | undefined,
 ): { url: string; trailingPunctuation: string } | undefined {
   if (!baseUrl.endsWith("/") || line === undefined) return undefined;
-  if (!isSameExpectedPage(line, expectedPageLine)) return undefined;
-  if (line.pageIndex !== urlLine.pageIndex) return undefined;
+  if (!isSamePage(line, expectedPageLine)) return undefined;
+  if (!isSamePage(line, urlLine)) return undefined;
 
   const continuation = parseUrlContinuationLine(line.text);
   if (continuation === undefined) return undefined;
