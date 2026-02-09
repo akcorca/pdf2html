@@ -82,23 +82,19 @@ function applyReadingOrderReorders(
   lines: TextLine[],
   multiColumnPageIndexes: Set<number>,
 ): TextLine[] {
-  const reorderSteps: Array<(currentLines: TextLine[]) => TextLine[]> = [
-    reorderMisorderedTopLevelHeadings,
-    (currentLines) => reorderLeftColumnTopLevelHeadings(currentLines, multiColumnPageIndexes),
-    (currentLines) => reorderMisorderedNumberedHeadings(currentLines, multiColumnPageIndexes),
-    reorderRightColumnHeadingsAfterLeftBodyContinuations,
-    (currentLines) =>
-      reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
-        currentLines,
-        multiColumnPageIndexes,
-      ),
-    (currentLines) =>
-      reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
-        currentLines,
-        multiColumnPageIndexes,
-      ),
-  ];
-  return reorderSteps.reduce((currentLines, reorder) => reorder(currentLines), lines);
+  let reordered = reorderMisorderedTopLevelHeadings(lines);
+  reordered = reorderLeftColumnTopLevelHeadings(reordered, multiColumnPageIndexes);
+  reordered = reorderMisorderedNumberedHeadings(reordered, multiColumnPageIndexes);
+  reordered = reorderRightColumnHeadingsAfterLeftBodyContinuations(reordered);
+  reordered = reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
+    reordered,
+    multiColumnPageIndexes,
+  );
+  reordered = reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
+    reordered,
+    multiColumnPageIndexes,
+  );
+  return reordered;
 }
 
 function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColumn: boolean } {
@@ -359,6 +355,16 @@ function isRightColumnHeadingEligibleForLeftContinuationDeferral(
   return isLikelyColumnHeadingLine(heading.text);
 }
 
+function computeVerticalDeltaThreshold(
+  leftFontSize: number,
+  rightFontSize: number,
+  maxDeltaFontRatio: number,
+  minAbsolutePadding: number,
+): number {
+  const maxFontSize = Math.max(leftFontSize, rightFontSize);
+  return Math.max(maxFontSize * maxDeltaFontRatio, maxFontSize + minAbsolutePadding);
+}
+
 function isLeftBodyLineBeforeDeferredRightHeading(
   candidate: TextLine | undefined,
   heading: TextLine,
@@ -373,10 +379,11 @@ function isLeftBodyLineBeforeDeferredRightHeading(
   if (RIGHT_HEADING_LEFT_BODY_END_PUNCTUATION_PATTERN.test(normalized)) return false;
 
   const verticalDelta = Math.abs(candidate.y - heading.y);
-  const maxVerticalDelta = Math.max(
-    Math.max(candidate.fontSize, heading.fontSize) *
-      RIGHT_HEADING_LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
-    Math.max(candidate.fontSize, heading.fontSize) + 10,
+  const maxVerticalDelta = computeVerticalDeltaThreshold(
+    candidate.fontSize,
+    heading.fontSize,
+    RIGHT_HEADING_LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+    10,
   );
   return verticalDelta <= maxVerticalDelta;
 }
@@ -429,10 +436,11 @@ function isLeftBodyContinuationAfterDeferredRightHeading(
   if (!RIGHT_HEADING_LEFT_BODY_CONTINUATION_START_PATTERN.test(normalized)) return false;
 
   const verticalDelta = previousLeftLine.y - candidate.y;
-  const maxVerticalDelta = Math.max(
-    Math.max(previousLeftLine.fontSize, candidate.fontSize) *
-      RIGHT_HEADING_LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
-    Math.max(previousLeftLine.fontSize, candidate.fontSize) + 10,
+  const maxVerticalDelta = computeVerticalDeltaThreshold(
+    previousLeftLine.fontSize,
+    candidate.fontSize,
+    RIGHT_HEADING_LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+    10,
   );
   if (verticalDelta <= 0 || verticalDelta > maxVerticalDelta) return false;
 
@@ -877,7 +885,7 @@ function splitFragmentsByMidpoint(
   const rightColumn: ExtractedFragment[] = [];
 
   for (const fragment of fragments) {
-    const estimatedCenter = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+    const estimatedCenter = estimateFragmentCenterX(fragment);
     if (estimatedCenter < splitX) {
       leftColumn.push(fragment);
     } else {
@@ -910,6 +918,10 @@ interface FragmentGroupSideSummary {
   hasLeft: boolean;
   hasRight: boolean;
   hasMixed: boolean;
+}
+
+function estimateFragmentCenterX(fragment: ExtractedFragment): number {
+  return fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
 }
 
 function shouldPreferMidpointSplit(
@@ -958,7 +970,7 @@ function classifyFragmentGroupSide(group: ExtractedFragment[], pageWidth: number
   let hasLeft = false;
   let hasRight = false;
   for (const fragment of group) {
-    const center = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+    const center = estimateFragmentCenterX(fragment);
     if (center < splitX) {
       hasLeft = true;
     } else {
@@ -974,7 +986,7 @@ function estimateMidpointSideStartGap(fragments: ExtractedFragment[], pageWidth:
   let leftMaxX = Number.NEGATIVE_INFINITY;
   let rightMinX = Number.POSITIVE_INFINITY;
   for (const fragment of fragments) {
-    const center = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+    const center = estimateFragmentCenterX(fragment);
     if (center < splitX) {
       leftMaxX = Math.max(leftMaxX, fragment.x);
     } else {
@@ -1060,12 +1072,12 @@ function findBridgedColumnBreakIndex(
 }
 
 function isLikelyLeftColumnBreakAnchor(fragment: ExtractedFragment, pageWidth: number): boolean {
-  const center = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+  const center = estimateFragmentCenterX(fragment);
   return center < pageWidth * MULTI_COLUMN_SPLIT_RATIO;
 }
 
 function isLikelyRightColumnBreakAnchor(fragment: ExtractedFragment, pageWidth: number): boolean {
-  const center = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+  const center = estimateFragmentCenterX(fragment);
   return center > pageWidth * MULTI_COLUMN_SPLIT_RATIO;
 }
 
