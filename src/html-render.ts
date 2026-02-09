@@ -944,6 +944,7 @@ function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): 
   return result;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: paragraph merge heuristics are evaluated in one pass.
 function consumeBodyParagraph(
   lines: TextLine[],
   startIndex: number,
@@ -993,11 +994,66 @@ function consumeBodyParagraph(
     const isFullWidth = candidate.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO;
     previousLine = candidate;
     nextIndex += 1;
-    if (!isFullWidth) break;
+    if (!isFullWidth) {
+      const sameRowContinuation = consumeTrailingSameRowSentenceContinuation(
+        lines,
+        nextIndex,
+        candidate,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      );
+      if (sameRowContinuation !== undefined) {
+        parts.push(sameRowContinuation.text);
+        previousLine = sameRowContinuation.line;
+        nextIndex = sameRowContinuation.nextIndex;
+        continue;
+      }
+      break;
+    }
   }
 
   if (parts.length <= 1 && nextIndex === startIndex + 1) return undefined;
   return { text: normalizeSpacing(parts.join(" ")), nextIndex };
+}
+
+function consumeTrailingSameRowSentenceContinuation(
+  lines: TextLine[],
+  continuationIndex: number,
+  shortLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): { text: string; line: TextLine; nextIndex: number } | undefined {
+  const continuation = lines[continuationIndex];
+  if (!continuation) return undefined;
+  if (
+    !isSameRowSentenceSplitStartLine(
+      shortLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
+    return undefined;
+  }
+  if (
+    !isSameRowSentenceSplitContinuationLine(
+      continuation,
+      shortLine,
+      shortLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
+    return undefined;
+  }
+  return {
+    text: normalizeSpacing(continuation.text),
+    line: continuation,
+    nextIndex: continuationIndex + 1,
+  };
 }
 
 function isBodyParagraphContinuationLine(

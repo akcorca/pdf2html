@@ -375,7 +375,10 @@ describe("convertPdfToHtml", () => {
       "<p>The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder.",
     );
     expect(html).toContain(
-      "dispensing with recurrence and convolutions entirely.</p>",
+      "dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks",
+    );
+    expect(html).not.toContain(
+      "<p>Experiments on two machine translation tasks show these models to</p>",
     );
   });
 

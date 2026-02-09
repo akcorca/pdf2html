@@ -20,11 +20,14 @@ describe("attention abstract same-row merge", () => {
 
   it("merges abstract sentences into body paragraphs", () => {
     expect(attentionHtml).toContain(
-      "dispensing with recurrence and convolutions entirely.</p>",
+      "dispensing with recurrence and convolutions entirely. Experiments on two machine translation tasks",
     );
     expect(attentionHtml).not.toContain("<p>entirely.</p>");
     expect(attentionHtml).toContain(
-      "<p>Experiments on two machine translation tasks show these models to",
+      "Experiments on two machine translation tasks show these models to be superior in quality",
+    );
+    expect(attentionHtml).not.toContain(
+      "<p>Experiments on two machine translation tasks show these models to</p>",
     );
   });
 });
