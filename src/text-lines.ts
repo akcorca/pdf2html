@@ -34,8 +34,9 @@ const MULTI_COLUMN_NEAR_ROW_BOTTOM_Y_RATIO = 0.1;
 const MULTI_COLUMN_NEAR_ROW_LEFT_MAX_RATIO = 0.42;
 const MULTI_COLUMN_NEAR_ROW_RIGHT_MIN_RATIO = 0.58;
 const MISORDERED_TOP_LEVEL_HEADING_LOOKAHEAD = 18;
+const MISORDERED_NUMBERED_HEADING_LOOKAHEAD = 18;
 const MISORDERED_TOP_LEVEL_HEADING_MAX_Y_DELTA_FONT_RATIO = 3.2;
-const MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO = 8.4;
+const MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO = 12;
 const MAX_REORDER_HEADING_DIGIT_RATIO = 0.34;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
@@ -153,7 +154,6 @@ function reorderMisorderedNumberedHeadings(
     );
     if (promotionIndex === undefined) continue;
     promoteLine(reordered, promotionIndex, index);
-    index += 1;
   }
   return reordered;
 }
@@ -168,17 +168,22 @@ function findTopLevelHeadingPromotionIndex(
   const currentHeadingNumber = getTopLevelHeadingNumber(current.text);
   if (currentHeadingNumber === undefined) return undefined;
 
-  return findPromotionIndexWithinLookahead(lines, currentIndex, (candidate) => {
-    const candidateHeadingNumber = getTopLevelHeadingNumber(candidate.text);
-    if (candidateHeadingNumber === undefined) return false;
-    if (candidateHeadingNumber + 1 !== currentHeadingNumber) return false;
-    if (classifyMultiColumnLine(candidate) !== "left") return false;
-    return isWithinVerticalHeadingRange(
-      current,
-      candidate,
-      MISORDERED_TOP_LEVEL_HEADING_MAX_Y_DELTA_FONT_RATIO,
-    );
-  });
+  return findPromotionIndexWithinLookahead(
+    lines,
+    currentIndex,
+    MISORDERED_TOP_LEVEL_HEADING_LOOKAHEAD,
+    (candidate) => {
+      const candidateHeadingNumber = getTopLevelHeadingNumber(candidate.text);
+      if (candidateHeadingNumber === undefined) return false;
+      if (candidateHeadingNumber + 1 !== currentHeadingNumber) return false;
+      if (classifyMultiColumnLine(candidate) !== "left") return false;
+      return isWithinVerticalHeadingRange(
+        current,
+        candidate,
+        MISORDERED_TOP_LEVEL_HEADING_MAX_Y_DELTA_FONT_RATIO,
+      );
+    },
+  );
 }
 
 function findNumberedHeadingPromotionIndex(
@@ -191,26 +196,32 @@ function findNumberedHeadingPromotionIndex(
   const currentPath = parseNumberedHeadingPathForReorder(current.text);
   if (!currentPath) return undefined;
 
-  return findPromotionIndexWithinLookahead(lines, currentIndex, (candidate) => {
-    if (classifyMultiColumnLine(candidate) !== "left") return false;
-    const candidatePath = parseNumberedHeadingPathForReorder(candidate.text);
-    if (!candidatePath) return false;
-    if (!shouldPromoteNumberedHeadingCandidate(candidatePath, currentPath)) return false;
-    return isWithinVerticalHeadingRange(
-      current,
-      candidate,
-      MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO,
-    );
-  });
+  return findPromotionIndexWithinLookahead(
+    lines,
+    currentIndex,
+    MISORDERED_NUMBERED_HEADING_LOOKAHEAD,
+    (candidate) => {
+      if (classifyMultiColumnLine(candidate) !== "left") return false;
+      const candidatePath = parseNumberedHeadingPathForReorder(candidate.text);
+      if (!candidatePath) return false;
+      if (!shouldPromoteNumberedHeadingCandidate(candidatePath, currentPath)) return false;
+      return isWithinVerticalHeadingRange(
+        current,
+        candidate,
+        MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO,
+      );
+    },
+  );
 }
 
 function findPromotionIndexWithinLookahead(
   lines: TextLine[],
   currentIndex: number,
+  lookahead: number,
   shouldPromote: (candidate: TextLine) => boolean,
 ): number | undefined {
   const current = lines[currentIndex];
-  const scanEnd = Math.min(lines.length, currentIndex + MISORDERED_TOP_LEVEL_HEADING_LOOKAHEAD);
+  const scanEnd = Math.min(lines.length, currentIndex + lookahead);
   for (let scanIndex = currentIndex + 1; scanIndex < scanEnd; scanIndex += 1) {
     const candidate = lines[scanIndex];
     if (candidate.pageIndex !== current.pageIndex) break;

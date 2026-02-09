@@ -207,6 +207,14 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml.indexOf(section53)).toBeLessThan(respectHtml.indexOf(section532));
   });
 
+  it("keeps 5.3 subsection headings in numeric order for respect.pdf", () => {
+    const section531 = "<h4>5.3.1 English</h4>";
+    const section532 = "<h4>5.3.2 Chinese</h4>";
+    expect(respectHtml).toContain(section531);
+    expect(respectHtml).toContain(section532);
+    expect(respectHtml.indexOf(section531)).toBeLessThan(respectHtml.indexOf(section532));
+  });
+
   it("moves numeric footnote URLs in respect.pdf to the end of the document", () => {
     const referencesHeading = "<h2>References</h2>";
     const footnoteUrl = "https://openai.com/product";
