@@ -345,6 +345,17 @@ describe("convertPdfToHtml", () => {
     expect(html.indexOf(footnoteText)).toBeGreaterThan(html.indexOf(referencesHeading));
   });
 
+  it("attaches standalone attention footnote markers to the following footnote text", () => {
+    expect(html).toContain(
+      "<p>∗ Equal contribution. Listing order is random. Jakob proposed replacing RNNs with self-attention",
+    );
+    expect(html).toContain("<p>† Work performed while at Google Brain.</p>");
+    expect(html).toContain("<p>‡ Work performed while at Google Research.</p>");
+    expect(html).not.toContain("<p>∗</p>");
+    expect(html).not.toContain("<p>†</p>");
+    expect(html).not.toContain("<p>‡</p>");
+  });
+
   it("removes standalone symbolic affiliation marker lines in attention.pdf title block", () => {
     expect(html).not.toContain("<p>∗ ∗ ∗ ∗</p>");
     expect(html).not.toContain("<p>∗ ∗ † ∗</p>");

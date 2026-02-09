@@ -42,7 +42,7 @@ export function movePageFootnotesToDocumentEnd(lines: TextLine[]): TextLine[] {
     }
     bodyLines.push(line);
   }
-  return [...bodyLines, ...footnoteLines];
+  return [...bodyLines, ...mergeStandaloneFootnoteMarkerLines(footnoteLines, bodyFontSize)];
 }
 
 function findFootnoteRangesOnPage(
@@ -131,4 +131,45 @@ function getValidFootnoteBlockText(
   const text = normalizeSpacing(line.text);
   if (text.length === 0) return undefined;
   return text;
+}
+
+function mergeStandaloneFootnoteMarkerLines(
+  footnoteLines: TextLine[],
+  bodyFontSize: number,
+): TextLine[] {
+  if (footnoteLines.length < 2) return footnoteLines;
+  const merged: TextLine[] = [];
+  let index = 0;
+
+  while (index < footnoteLines.length) {
+    const markerLine = footnoteLines[index];
+    const textLine = footnoteLines[index + 1];
+    if (
+      textLine !== undefined &&
+      markerLine.pageIndex === textLine.pageIndex &&
+      isFootnoteMarkerOnlyText(normalizeSpacing(markerLine.text)) &&
+      isLikelyFootnoteTextLine(textLine, bodyFontSize)
+    ) {
+      merged.push({
+        ...textLine,
+        x: Math.min(markerLine.x, textLine.x),
+        estimatedWidth: Math.max(
+          textLine.estimatedWidth,
+          markerLine.estimatedWidth + textLine.estimatedWidth,
+        ),
+        text: `${normalizeSpacing(markerLine.text)} ${normalizeSpacing(textLine.text)}`,
+      });
+      index += 2;
+      continue;
+    }
+
+    merged.push(markerLine);
+    index += 1;
+  }
+
+  return merged;
+}
+
+function isFootnoteMarkerOnlyText(text: string): boolean {
+  return FOOTNOTE_SYMBOL_MARKER_ONLY_PATTERN.test(text);
 }
