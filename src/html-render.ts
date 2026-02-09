@@ -9,11 +9,22 @@ import {
 import { normalizeSpacing } from "./text-lines.ts";
 import { containsDocumentMetadata, findTitleLine } from "./title-detect.ts";
 
+const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
+  ["abstract", 2],
+  ["acknowledgment", 2],
+  ["acknowledgments", 2],
+  ["conclusion", 2],
+  ["conclusions", 2],
+  ["discussion", 2],
+  ["references", 2],
+]);
+
 export function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
   const bodyLines = lines.map((line) => {
     if (line === titleLine) return `<h1>${escapeHtml(line.text)}</h1>`;
-    const headingLevel = detectNumberedHeadingLevel(line.text);
+    const headingLevel =
+      detectNumberedHeadingLevel(line.text) ?? detectNamedSectionHeadingLevel(line.text);
     if (headingLevel !== undefined) {
       return `<h${headingLevel}>${escapeHtml(line.text)}</h${headingLevel}>`;
     }
@@ -63,6 +74,14 @@ export function detectNumberedHeadingLevel(text: string): number | undefined {
 
   const depth = match[1].split(".").length;
   return Math.min(depth + 1, 6);
+}
+
+export function detectNamedSectionHeadingLevel(text: string): number | undefined {
+  const normalized = normalizeSpacing(text);
+  if (normalized.length < 4 || normalized.length > 40) return undefined;
+  if (containsDocumentMetadata(normalized)) return undefined;
+  if (!/^[A-Za-z][A-Za-z\s-]*[A-Za-z]$/u.test(normalized)) return undefined;
+  return NAMED_SECTION_HEADING_LEVELS.get(normalized.toLowerCase());
 }
 
 function isValidHeadingText(text: string): boolean {

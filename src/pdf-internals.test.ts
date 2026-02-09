@@ -84,6 +84,13 @@ describe("pdfToHtmlInternals", () => {
     expect(pdfToHtmlInternals.detectNumberedHeadingLevel("2015 See et al. 2017 2021 , Lin Liangetal. , 2022")).toBeUndefined();
   });
 
+  it("detects heading levels for common unnumbered section headings", () => {
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Abstract")).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("References")).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Conclusion")).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("In this work, we show")).toBeUndefined();
+  });
+
   it("filters repeated edge headers and standalone page numbers", () => {
     const filtered = pdfToHtmlInternals.filterPageArtifacts([
       line({ pageIndex: 0, y: 790, text: "Journal Header" }),

@@ -83,6 +83,10 @@ describe("convertPdfToHtml", () => {
     expect(html).toContain("<h2>1 Introduction</h2>");
   });
 
+  it("renders abstract heading in attention.pdf as semantic heading", () => {
+    expect(html).toContain("<h2>Abstract</h2>");
+  });
+
   it("removes repeated running-label header lines from tft.pdf", () => {
     expect(tftHtml).not.toContain("<p>COMMUNICATION</p>");
   });

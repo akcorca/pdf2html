@@ -17,7 +17,11 @@ import {
 } from "./text-lines.ts";
 import { findRepeatedEdgeTexts, findLikelyPageNumberLines } from "./page-filter.ts";
 import { findTitleLine, scoreTitleCandidate } from "./title-detect.ts";
-import { detectNumberedHeadingLevel, escapeHtml } from "./html-render.ts";
+import {
+  detectNamedSectionHeadingLevel,
+  detectNumberedHeadingLevel,
+  escapeHtml,
+} from "./html-render.ts";
 
 export async function convertPdfToHtml(
   input: ConvertPdfToHtmlInput,
@@ -51,4 +55,5 @@ export const pdfToHtmlInternals = {
   normalizeSpacing,
   escapeHtml,
   detectNumberedHeadingLevel,
+  detectNamedSectionHeadingLevel,
 };
