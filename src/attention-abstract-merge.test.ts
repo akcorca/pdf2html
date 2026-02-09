@@ -49,4 +49,13 @@ describe("attention abstract same-row merge", () => {
       "<p>[10], consuming the previously generated symbols as additional input when generating the next.</p>",
     );
   });
+
+  it("bridges detached inline math-subscript tokens between body lines", () => {
+    expect(attentionHtml).toContain(
+      "with d = 1024 on the Wall Street Journal (WSJ) portion of the Penn Treebank [ 25 ], about 40K training sentences.",
+    );
+    expect(attentionHtml).not.toMatch(
+      /portion of the<\/p>\s*<p>model<\/p>\s*<p>Penn Treebank \[ 25 \], about 40K training sentences\./,
+    );
+  });
 });

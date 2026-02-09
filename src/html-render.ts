@@ -66,9 +66,13 @@ const INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO = 0.55;
 const INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO = 0.55;
 const INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}\[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN = /^[A-Za-z]$/;
+const INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN = /^[a-z]{1,6}$/u;
 const INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN = /^\d{1,4}$/;
 const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}\[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN = /[.!?]["')\]]?$/;
+const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_TOKEN_COUNT = 3;
+const INLINE_MATH_BRIDGE_SUBSCRIPT_MIN_TOKEN_LENGTH = 3;
+const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO = 0.88;
 const NUMBERED_CODE_BLOCK_LINE_PATTERN = /^(\d{1,3})\s+(.+)$/;
 const NUMBERED_CODE_BLOCK_MAX_LOOKAHEAD = 48;
 const NUMBERED_CODE_BLOCK_MIN_LINES = 4;
@@ -1443,7 +1447,9 @@ function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine):
       INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
       INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token),
   );
-  if (!hasNumericOrSymbol) return false;
+  if (!hasNumericOrSymbol) {
+    return isLowercaseSubscriptBridgeTokenLine(tokens, line, previousLine);
+  }
 
   return tokens.every(
     (token) =>
@@ -1451,6 +1457,23 @@ function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine):
       INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token) ||
       INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN.test(token),
   );
+}
+
+function isLowercaseSubscriptBridgeTokenLine(
+  tokens: string[],
+  line: TextLine,
+  previousLine: TextLine,
+): boolean {
+  if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_TOKEN_COUNT) {
+    return false;
+  }
+  if (line.fontSize > previousLine.fontSize * INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO) {
+    return false;
+  }
+  if (!tokens.some((token) => token.length >= INLINE_MATH_BRIDGE_SUBSCRIPT_MIN_TOKEN_LENGTH)) {
+    return false;
+  }
+  return tokens.every((token) => INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN.test(token));
 }
 
 function isBodyParagraphContinuationLine(
