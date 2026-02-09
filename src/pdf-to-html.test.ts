@@ -143,6 +143,11 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).not.toContain("<p>1 def standardize_address ( addr ):</p>");
   });
 
+  it("collapses duplicate sentence-prefix artifacts in clean.pdf lines", () => {
+    expect(cleanHtml).not.toContain("<p>Implementation. Implementation. CleanAgent is implemented</p>");
+    expect(cleanHtml).toContain("<p>Implementation. CleanAgent is implemented</p>");
+  });
+
   it("removes repeated running headers and standalone page number lines", () => {
     expect(covidHtml).not.toContain("<p>Thrombosis Research 202 (2021) 17–23</p>");
     expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);

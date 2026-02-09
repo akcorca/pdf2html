@@ -57,6 +57,7 @@ const RIGHT_HEADING_LEFT_BODY_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"']/u
 const RIGHT_HEADING_LEFT_BODY_END_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
 const MAX_COLUMN_BREAK_BRIDGE_LOOKAHEAD = 2;
 const COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS = 1;
+const DUPLICATED_SENTENCE_PREFIX_PATTERN = /^([A-Z][^.!?]{1,80}[.!?])\s+\1(\s+.+)$/u;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
@@ -118,7 +119,9 @@ function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColu
       : [sorted];
 
     for (const fragments of groups) {
-      const text = normalizeSpacing(fragments.map((f) => f.text).join(" "));
+      const text = collapseDuplicatedSentencePrefix(
+        normalizeSpacing(fragments.map((f) => f.text).join(" ")),
+      );
       if (text.length === 0) continue;
 
       lines.push({
@@ -1107,6 +1110,14 @@ function isLikelyColumnBreak(
 
 function countSubstantiveChars(text: string): number {
   return text.replace(/[^\p{L}\p{N}]+/gu, "").length;
+}
+
+function collapseDuplicatedSentencePrefix(text: string): string {
+  const match = text.match(DUPLICATED_SENTENCE_PREFIX_PATTERN);
+  if (!match) return text;
+  const sentence = match[1] ?? "";
+  const suffix = match[2] ?? "";
+  return normalizeSpacing(`${sentence}${suffix}`);
 }
 
 export function normalizeSpacing(text: string): string {
