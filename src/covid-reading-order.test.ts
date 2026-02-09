@@ -58,4 +58,17 @@ describe("covid numbered heading order", () => {
   it("does not merge opposite-column lines into a single paragraph around the introduction transition", () => {
     expect(covidHtml).not.toContain("major cardio - on acute CV events");
   });
+
+  it("keeps the 2.3 left-column narrative contiguous before right-column statistical detail starts", () => {
+    const leftNarrativeFragment =
+      "patterns of change in admissions with different phenotypes of TE, as well as the causes and place of TE-related deaths antecedent, compared with during the";
+    const rightColumnParagraphStart =
+      "<p>Baseline characteristics were described using numbers and percent-ages for categorical data.";
+
+    expect(covidHtml).toContain(leftNarrativeFragment);
+    expect(covidHtml).toContain(rightColumnParagraphStart);
+    expect(covidHtml.indexOf(leftNarrativeFragment)).toBeLessThan(
+      covidHtml.indexOf(rightColumnParagraphStart),
+    );
+  });
 });

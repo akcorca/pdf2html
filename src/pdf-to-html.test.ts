@@ -151,6 +151,16 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml.indexOf(section1)).toBeLessThan(cleanHtml.indexOf(example2));
   });
 
+  it("keeps left-column sentence continuation before switching to the right-column paragraph in clean.pdf", () => {
+    const leftColumnContinuation = "different date formats. The goal of data standardization is to unify";
+    const rightColumnParagraphStart = "If the input table 𝑇 has other column types such as email and";
+    expect(cleanHtml).toContain(leftColumnContinuation);
+    expect(cleanHtml).toContain(rightColumnParagraphStart);
+    expect(cleanHtml.indexOf(leftColumnContinuation)).toBeLessThan(
+      cleanHtml.indexOf(rightColumnParagraphStart),
+    );
+  });
+
   it("renders numbered code examples in clean.pdf as semantic pre/code blocks", () => {
     expect(cleanHtml).toMatch(
       /<pre><code>1 def standardize_address \( addr \):[\s\S]*9 return f\"\{ street \}, \{ state \}, \{ zipcode \}\"<\/code><\/pre>/,
@@ -343,6 +353,16 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).toContain(
       '<p>2 <a href="https://huggingface.co/meta-llama/Llama-2-70b-chat">https://huggingface.co/meta-llama/Llama-2-70b-chat</a></p>',
     );
+  });
+
+  it("merges hyphen-wrapped standalone URLs into one hyperlink in respect.pdf", () => {
+    expect(respectHtml).toContain(
+      '<a href="https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf">https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf</a>',
+    );
+    expect(respectHtml).not.toContain(
+      '<a href="https://huggingface.co/tokyotech-llm/Swallow-70b-">https://huggingface.co/tokyotech-llm/Swallow-70b-</a>',
+    );
+    expect(respectHtml).not.toContain("<p>instruct-hf</p>");
   });
 
   it("renders comma-containing numbered headings as semantic headings in respect.pdf", () => {

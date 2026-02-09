@@ -31,40 +31,23 @@ squeeze ()
 <p>and decision-making.</p>
 <p>Example 1. We illustrate the data standardization task in Figure 1.</p>
 <p>Given the input table 𝑇 , it is obvious that data in the “Admission</p>
-<p>Date” column and the “Address” column are in different formats, and the data in the cells of the “Admission Date” column includes two</p>
-<p>If the input table 𝑇 has other column types such as email and</p>
-<p>different date formats. The goal of data standardization is to unify</p>
-<p>IP addresses, data scientists also need to write standardization code</p>
-<p>the data format in each column in 𝑇 , to get the standardized table</p>
-<p>tailored for the new types, which is time-consuming.</p>
+<p>Date” column and the “Address” column are in different formats, and the data in the cells of the “Admission Date” column includes two different date formats. The goal of data standardization is to unify the data format in each column in 𝑇 , to get the standardized table</p>
+<p>If the input table 𝑇 has other column types such as email and IP addresses, data scientists also need to write standardization code tailored for the new types, which is time-consuming.</p>
 <p>𝑇 satisfying the data scientist’s requirements. In Figure 1, the data</p>
 <p>Recently, the emerging LLMs have shown the potential to rev-</p>
 <p>scientist inputs their requirement to standardize “Admission Date”</p>
 <p>olutionize this process. By leveraging their natural language un-</p>
-<p>with the “MM/DD/YYYY HH:MM:SS” format. In the resulting 𝑇 , data</p>
-<p>derstanding and code generation ability, these models could signif-</p>
-<p>in the cells of the “Admission Date” column follows only one date</p>
-<p>icantly aid data scientists by autonomously generating standard-</p>
-<p>format, i.e., the “MM/DD/YYYY HH:MM:SS” format.</p>
-<p>ization code in response to conversational prompts. However, this</p>
+<p>with the “MM/DD/YYYY HH:MM:SS” format. In the resulting 𝑇 , data in the cells of the “Admission Date” column follows only one date format, i.e., the “MM/DD/YYYY HH:MM:SS” format.</p>
+<p>derstanding and code generation ability, these models could signif-icantly aid data scientists by autonomously generating standard-ization code in response to conversational prompts. However, this</p>
 <p>Previously, data scientists heavily relied on libraries such as</p>
 <p>method still necessitates detailed prompt crafting and often in-</p>
 <p>Pandas [ 3 ] for data standardization tasks. Even though Pandas</p>
 <p>volves multi-turn dialogues [ 1 ] for different column types in the</p>
-<p>is a powerful tool, achieving data standardization often requires</p>
-<p>table one by one, which limits the efficiency and practicality of</p>
-<p>writing hundreds or thousands of lines of code. The standardization</p>
-<p>adopting LLMs in the standardization process.</p>
-<p>process for a single column involves identifying the column type,</p>
-<p>To overcome these limitations, our key idea is to introduce a</p>
-<p>applying intricate methods such as regular expressions to each</p>
-<p>Python library involving declarative and unified APIs specifically</p>
-<p>cell for validation, and converting each cell into desired formats.</p>
-<p>designed for standardizing different column types. This idea lowers</p>
-<p>Moreover, a table may contain multiple columns, each possibly of</p>
-<p>the burden of the LLM, as it now only needs to convert natural lan-</p>
-<p>a different type, requiring bespoke standardization code for each</p>
-<p>guage (NL) instructions into succinct, declarative API calls instead</p>
+<p>is a powerful tool, achieving data standardization often requires writing hundreds or thousands of lines of code. The standardization process for a single column involves identifying the column type, applying intricate methods such as regular expressions to each cell for validation, and converting each cell into desired formats.</p>
+<p>table one by one, which limits the efficiency and practicality of adopting LLMs in the standardization process.</p>
+<p>To overcome these limitations, our key idea is to introduce a Python library involving declarative and unified APIs specifically designed for standardizing different column types. This idea lowers</p>
+<p>Moreover, a table may contain multiple columns, each possibly of a different type, requiring bespoke standardization code for each</p>
+<p>the burden of the LLM, as it now only needs to convert natural lan-guage (NL) instructions into succinct, declarative API calls instead</p>
 <p>column type.</p>
 <p>of lengthy, procedural code. Such an approach simplifies the LLM’s</p>
 <p>code generation process for data standardization, requiring just a few lines of code.</p>
@@ -101,12 +84,8 @@ squeeze ()
 <p>eral tokens {’Thu’,’Sep’,’25’,’10’,’36’,’28’,’2003’} from</p>
 <p>ization type, such as date, address, and phone, etc. These unified</p>
 <p>the first record by using space and colon as separators. Each differ-</p>
-<p>APIs offer enhanced expressiveness compared to raw Pandas code,</p>
-<p>ent type has its splitting strategy, which may not always be splitting</p>
-<p>reducing the complexity of standardizing specific column types and</p>
-<p>the string into tokens. For example, the data scientist will split the</p>
-<p>allowing one to standardize a column with only one line of code.</p>
-<p>email string into the username part and the domain part.</p>
+<p>APIs offer enhanced expressiveness compared to raw Pandas code, reducing the complexity of standardizing specific column types and allowing one to standardize a column with only one line of code.</p>
+<p>ent type has its splitting strategy, which may not always be splitting the string into tokens. For example, the data scientist will split the email string into the username part and the domain part.</p>
 <p>To solve C2 , we propose the CleanAgent framework which</p>
 <p>(2) Validate. Standardization can only be performed on valid</p>
 <p>automates data standardization with Dataprep.Clean and LLM-</p>
@@ -118,32 +97,25 @@ squeeze ()
 <p>string is invalid, and the data scientist will transform it to a default value like NaN . Intuitively, a valid string indicates that each part</p>
 <p>need to input the table being standardized and their requirements,</p>
 <p>of this string after splitting is valid. Usually, the data scientist will</p>
-<p>CleanAgent will complete the data standardization process au-</p>
-<p>recognize and validate each part by their domain knowledge, some</p>
-<p>tomatically with three steps: annotating the type of each column,</p>
-<p>corpus or some rules. If every split part is valid, the string is also</p>
-<p>generating concise Python code for standardization, and executing</p>
-<p>valid. For instance, the token ’Sep’ can be recognized as a valid</p>
+<p>CleanAgent will complete the data standardization process au-tomatically with three steps: annotating the type of each column, generating concise Python code for standardization, and executing</p>
+<p>recognize and validate each part by their domain knowledge, some corpus or some rules. If every split part is valid, the string is also valid. For instance, the token ’Sep’ can be recognized as a valid</p>
 <p>the generated Python code.</p>
 <p>representation of a month, and ’2003’ can be recognized as a valid</p>
 <p>Example 3. Continuing with Example 1. Given an input table 𝑇</p>
 <p>year.</p>
 <p>which needs to be standardized and the data scientists’ requirements,</p>
 <p>(3) Transform. The last step of standardization is to transform</p>
-<p>the CleanAgent first recognizes that the “Admission Date” column</p>
-<p>each split part and combine them into the target format. In our</p>
-<p>belongs to the date type, and the “Address” column belongs to the</p>
-<p>example, because the target format is</p>
-<p>address type. According to the column-type annotation results, the CleanAgent generates and executes Python code for standardization</p>
+<p>the CleanAgent first recognizes that the “Admission Date” column belongs to the date type, and the “Address” column belongs to the address type. According to the column-type annotation results, the</p>
+<p>each split part and combine them into the target format. In our example, because the target format is</p>
+<p>CleanAgent generates and executes Python code for standardization</p>
 <p>"YYYY-MM-DD hh:mm:ss" ,</p>
 <p>the month Sep is transformed into number 09 and recombined with other parts to the target "2003-09-25 10:36:28" .</p>
 <p>by calling the “clean_date” and “clean_address” functions, then returns</p>
 <p>′ The Design of Unified APIs. The goal of our API design is to</p>
 <p>the standardized table 𝑇 .</p>
 <p>enable data scientists to complete all the common steps of stan-</p>
-<p>We also built a web interface for CleanAgent . It allows the</p>
+<p>We also built a web interface for CleanAgent . It allows the users to choose sample data and communicate with</p>
 <p>dardizing one column with a single function call. Simplicity and</p>
-<p>users to choose sample data and communicate with</p>
 <p>CleanAgent</p>
 <p>consistency are considered the principles of API design. The ob-</p>
 <p>for standardization. We provide the demonstration video, which</p>
@@ -215,14 +187,11 @@ squeeze ()
 <h2>3 CLEANAGENT WORKFLOW</h2>
 <h2>4 EXPERIMENTS</h2>
 <p>Dataset. In our experiment, we employ the Flights dataset from [ 4 ], as it contains highly irregular datetime formats across four at-tributes: scheduled_dept, actual_dept, scheduled_arrival,</p>
-<p>In this section, we first introduce the basic structure of LLM-based</p>
-<p>and actual_arrival . The datetime values in these columns ex-</p>
-<p>agents. Then, we describe the CleanAgent workflow constructed</p>
-<p>hibit a wide variety of inconsistent formats, such as</p>
+<p>In this section, we first introduce the basic structure of LLM-based agents. Then, we describe the CleanAgent workflow constructed</p>
+<p>and actual_arrival . The datetime values in these columns ex-hibit a wide variety of inconsistent formats, such as</p>
 <p>"2011-12-08</p>
-<p>by four agents. The automatic data standardization process can be</p>
+<p>by four agents. The automatic data standardization process can be completed by the cooperation of the four agents in</p>
 <p>3:50:00 PM", "2:30pDec 27", "06:45 AM Sun 25-Dec-2011" ,</p>
-<p>completed by the cooperation of the four agents in</p>
 <p>CleanAgent .</p>
 <p>etc. This makes the dataset particularly suitable for evaluating the</p>
 <p>Basic Structure of LLM-based Agents.</p>
@@ -236,42 +205,21 @@ squeeze ()
 <p>rectly generated by prompting powerful chat models such as GPT-</p>
 <p>messages, (3) a system message defining the role of the agent, and (4)</p>
 <p>4o. (2) Cocoon [8] . Cocoon is a one-shot data cleaning system that</p>
-<p>a set of external tools which can be called by the LLM-based agent</p>
-<p>decomposes complex cleaning tasks into manageable components</p>
-<p>to complete specific tasks, such as web searching, code execution,</p>
-<p>within a workflow designed to mimic human cleaning processes,</p>
+<p>a set of external tools which can be called by the LLM-based agent to complete specific tasks, such as web searching, code execution,</p>
+<p>decomposes complex cleaning tasks into manageable components within a workflow designed to mimic human cleaning processes,</p>
 <p>etc.</p>
 <p>leveraging large language models. It supports a variety of data</p>
 <p>Detailed Workflow. The detailed workflow of CleanAgent is</p>
-<p>cleaning tasks, including missing value imputation, outlier detec-</p>
-<p>shown in Figure 2. The CleanAgent is composed of four agents,</p>
-<p>tion, and functional dependency violation. In this paper, however,</p>
-<p>including a Chat Manager , a Column-type Annotator , a Python Pro-</p>
-<p>we focus on evaluating Cocoon’s ability for data standardization.</p>
-<p>grammer , and a Code Executor . They can communicate with each</p>
-<p>Note that there are other LLM-based data cleaning approaches,</p>
-<p>other and automatically complete the data standardization process</p>
-<p>such as RetClean [ 2 ] . However, RetClean primarily adopts a retrieval-</p>
-<p>by cooperation. Each agent has its own memory to store the his-</p>
-<p>based strategy such as RAG to enhance the ability of LLMs for data</p>
-<p>torical conversational messages between it and other agents. Note</p>
-<p>cleaning, which supplements the LLM with user-provided data</p>
-<p>that the memory of the Chat Manager is uniquely comprehensive,</p>
-<p>sources. This paradigm is not suitable for our scenario.</p>
-<p>encompassing the entire historical conversational messages from</p>
-<p>Ground Truth Generation. We find that GPT-4o can reliably</p>
-<p>all agents within the CleanAgent system. This extensive memory</p>
-<p>convert individual datetime strings into a target format (e.g., YYYY-</p>
+<p>shown in Figure 2. The CleanAgent is composed of four agents, including a Chat Manager , a Column-type Annotator , a Python Pro-grammer , and a Code Executor . They can communicate with each other and automatically complete the data standardization process</p>
+<p>cleaning tasks, including missing value imputation, outlier detection, and functional dependency violation. In this paper, however, we focus on evaluating Cocoon’s ability for data standardization. Note that there are other LLM-based data cleaning approaches, such as RetClean [ 2 ] . However, RetClean primarily adopts a retrieval-</p>
+<p>by cooperation. Each agent has its own memory to store the his-torical conversational messages between it and other agents. Note that the memory of the Chat Manager is uniquely comprehensive, encompassing the entire historical conversational messages from all agents within the CleanAgent system. This extensive memory</p>
+<p>based strategy such as RAG to enhance the ability of LLMs for data cleaning, which supplements the LLM with user-provided data sources. This paradigm is not suitable for our scenario. Ground Truth Generation. We find that GPT-4o can reliably convert individual datetime strings into a target format (e.g., YYYY-</p>
 <p>enables every agent in the CleanAgent to generate responses that</p>
 <p>MM-DD HH:MM:SS). Thus, we use it to generate cell-level ground</p>
 <p>are informed by the complete historical messages.</p>
 <p>truth values and compile them into a complete table.</p>
-<p>The input of CleanAgent includes a table 𝑇 that needs to be</p>
-<p>Metrics. We use the average cell-level matching rate across all</p>
-<p>standardized. Data scientists can also input extra requirements such</p>
-<p>columns as our evaluation metric. For a given table 𝑇 , the cell-level</p>
-<p>as “the format of the date type column should be MM/DD/YYYY”.</p>
-<p>matching rate is computed as:</p>
+<p>The input of CleanAgent includes a table 𝑇 that needs to be standardized. Data scientists can also input extra requirements such as “the format of the date type column should be MM/DD/YYYY”.</p>
+<p>Metrics. We use the average cell-level matching rate across all columns as our evaluation metric. For a given table 𝑇 , the cell-level matching rate is computed as:</p>
 <p>By receiving the input table and data scientists’ extra requirements, CleanAgent stores this information into the Chat Manager’s mem-</p>
 <p>Í Í</p>
 <p>𝑚 𝑛</p>
@@ -298,33 +246,22 @@ squeeze ()
 <p>in Python 3.10.6. Cocoon is run using its official Colab notebook</p>
 <p>file (number of rows and number of columns). If the users can click</p>
 <p>2</p>
-<p>from the GitHub repo . All methods use the gpt-4o-2024-08-06</p>
-<p>the “Start Standardization” button to start the data standardization</p>
-<p>model. Experiments are conducted on a MacBook Pro with an M1</p>
-<p>process by want CleanAgent .</p>
+<p>from the GitHub repo . All methods use the gpt-4o-2024-08-06 model. Experiments are conducted on a MacBook Pro with an M1</p>
+<p>the “Start Standardization” button to start the data standardization process by want CleanAgent .</p>
 <p>chip, 16GB RAM, running macOS Sequoia 15.5.</p>
 <p>After clicking the “Start Standardization” button, as area ②</p>
-<p>Results. Table 1 presents the comparison of different systems in</p>
+<p>Results. Table 1 presents the comparison of different systems in terms of cell-level matching rate and latency.</p>
 <p>shows, the User_Proxy generates three detailed steps to complete</p>
-<p>terms of cell-level matching rate and latency.</p>
 <p>CleanAgent achieves the data standardization task. Firstly, the</p>
 <p>a 42.5% cell-level matching rate, approximately 2 × higher than that</p>
 <p>Column-type Annotator</p>
 <p>receives messages from the Chat Manager , annotates and out-</p>
 <p>of GPT-4o and Cocoon. These results demonstrate that Clean-</p>
 <p>puts the type of each column, as area ③ shows. Then, the Python</p>
-<p>Agent ’s type-specific standardization API enhances the LLM’s</p>
-<p>Programmer picks up standardization functions from Dataprep.Clean</p>
-<p>ability to generate more precise and concise standardization code.</p>
-<p>based on the type of each column, and write proper Python code</p>
-<p>In addition to higher accuracy, CleanAgent also exhibits lower</p>
-<p>using the standardization functions, as area ④ shows. Thirdly, the</p>
-<p>latency compared to Cocoon. This is because Cocoon generates a</p>
-<p>Code Executor executes the Python code by the Python Programmer</p>
-<p>one-shot SQL query for all columns without the ability to target</p>
-<p>and collects the execution messages, as area ⑤ shows. If the Code</p>
-<p>specific ones, leading to unnecessary overhead.</p>
-<p>Executor gets an error message when executing generated Python code, the error message is sent to the</p>
+<p>Agent ’s type-specific standardization API enhances the LLM’s ability to generate more precise and concise standardization code.</p>
+<p>Programmer picks up standardization functions from Dataprep.Clean based on the type of each column, and write proper Python code</p>
+<p>In addition to higher accuracy, CleanAgent also exhibits lower latency compared to Cocoon. This is because Cocoon generates a one-shot SQL query for all columns without the ability to target specific ones, leading to unnecessary overhead.</p>
+<p>using the standardization functions, as area ④ shows. Thirdly, the Code Executor executes the Python code by the Python Programmer and collects the execution messages, as area ⑤ shows. If the Code Executor gets an error message when executing generated Python code, the error message is sent to the</p>
 <p>Table 1: Data standardization performance by comparing</p>
 <p>Chat Manager and becomes</p>
 <p>part of the prompt of the next try. If the</p>
@@ -353,10 +290,8 @@ squeeze ()
 <p>ing users to simply upload their tables without performing any operations. The system then automatically returns the standardized</p>
 <p>dardization process with Dataprep.Clean and LLM-based Agents. We implemented CleanAgent as a web application to visualize</p>
 <p>results of their data.</p>
-<p>Figure 3 shows the user interface of CleanAgent . As area ①</p>
-<p>the conversations among agents. Other tasks in the data science life cycle, such as data cleaning and data visualization, can also be</p>
-<p>shows, users must first upload a CSV file that needs to be cleaned.</p>
-<p>completed by LLM-based agents [ 7 ]. In the future, it is promising that the data science life cycle can be automatically planned and</p>
+<p>Figure 3 shows the user interface of CleanAgent . As area ① shows, users must first upload a CSV file that needs to be cleaned.</p>
+<p>the conversations among agents. Other tasks in the data science life cycle, such as data cleaning and data visualization, can also be completed by LLM-based agents [ 7 ]. In the future, it is promising that the data science life cycle can be automatically planned and</p>
 <p>blob/main/demo/Cocoon_Stage_Demo.ipynb</p>
 <p>completed by LLM-based agents’ cooperation.</p>
 <h2>REFERENCES</h2>

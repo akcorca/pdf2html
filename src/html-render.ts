@@ -29,6 +29,10 @@ const TOP_LEVEL_DOTTED_HEADING_PATTERN = /^\d+\.\s+/;
 const DOTTED_SUBSECTION_HEADING_PATTERN = /^\d+\.\d+(?:\.\d+){0,3}\.\s+/;
 const STANDALONE_URL_LINE_PATTERN = /^(https?:\/\/[^\s]+?)([.,;:!?])?$/iu;
 const URL_CONTINUATION_LINE_PATTERN = /^([A-Za-z0-9._~!$&'()*+,;=:@%/-]+?)([.,;:!?])?$/u;
+const URL_NON_SLASH_CONTINUATION_FRAGMENT_PATTERN = /[-._~%=&]|\d/u;
+const STANDALONE_URL_CONTINUATION_MAX_LOOKAHEAD = 4;
+const STANDALONE_URL_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.08;
+const STANDALONE_URL_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 3.2;
 const FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN = /^\(?\d{1,2}\)?[.)]?$/u;
 const STANDALONE_ACKNOWLEDGEMENTS_HEADING_PATTERN = /^acknowledg(?:e)?ments?$/iu;
 const ACKNOWLEDGEMENTS_CONTINUATION_START_PATTERN = /^[a-z(“‘"']/u;
@@ -261,6 +265,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     const renderedStandaloneLink = renderStandaloneLinkParagraph(lines, index);
     if (renderedStandaloneLink !== undefined) {
       bodyLines.push(renderedStandaloneLink.html);
+      addConsumedIndexes(consumedBodyLineIndexes, renderedStandaloneLink.consumedIndexes, index);
       index = renderedStandaloneLink.nextIndex;
       continue;
     }
@@ -1052,7 +1057,7 @@ function isAcknowledgementsBodyContinuationLine(
 function renderStandaloneLinkParagraph(
   lines: TextLine[],
   startIndex: number,
-): { html: string; nextIndex: number } | undefined {
+): { html: string; nextIndex: number; consumedIndexes: number[] } | undefined {
   const footnoteMarker = parseStandaloneNumericFootnoteMarker(lines[startIndex].text);
   const linkStartIndex = footnoteMarker ? startIndex + 1 : startIndex;
   const standaloneLink = consumeStandaloneUrl(
@@ -1064,7 +1069,10 @@ function renderStandaloneLinkParagraph(
 
   return {
     html: renderStandaloneLinkHtml(standaloneLink, footnoteMarker),
-    nextIndex: standaloneLink.nextIndex,
+    nextIndex: startIndex + 1,
+    consumedIndexes: footnoteMarker
+      ? [linkStartIndex, ...standaloneLink.consumedIndexes]
+      : standaloneLink.consumedIndexes,
   };
 }
 
@@ -1081,14 +1089,15 @@ function consumeStandaloneUrl(
   lines: TextLine[],
   startIndex: number,
   expectedPageLine?: TextLine,
-): { url: string; trailingPunctuation: string; nextIndex: number } | undefined {
+): { url: string; trailingPunctuation: string; consumedIndexes: number[] } | undefined {
   const urlLine = lines[startIndex];
   if (!urlLine || !isSamePage(urlLine, expectedPageLine)) return undefined;
   const baseUrl = parseStandaloneUrlLine(urlLine.text);
   if (baseUrl === undefined) return undefined;
 
-  const merged = parseStandaloneUrlContinuationCandidate(
-    lines[startIndex + 1],
+  const merged = findStandaloneUrlContinuationCandidate(
+    lines,
+    startIndex,
     baseUrl.url,
     urlLine,
     expectedPageLine,
@@ -1096,30 +1105,78 @@ function consumeStandaloneUrl(
   const resolved = merged ?? {
     url: baseUrl.url,
     trailingPunctuation: baseUrl.trailingPunctuation,
+    consumedIndexes: [],
   };
-  return { ...resolved, nextIndex: startIndex + (merged ? 2 : 1) };
+  return resolved;
 }
 
 function isSamePage(line: TextLine, referenceLine: TextLine | undefined): boolean {
   return referenceLine === undefined || line.pageIndex === referenceLine.pageIndex;
 }
 
-function parseStandaloneUrlContinuationCandidate(
-  line: TextLine | undefined,
+type UrlContinuationResult = { url: string; trailingPunctuation: string; consumedIndexes: number[] };
+
+function findStandaloneUrlContinuationCandidate(
+  lines: TextLine[],
+  urlStartIndex: number,
   baseUrl: string,
   urlLine: TextLine,
   expectedPageLine: TextLine | undefined,
-): { url: string; trailingPunctuation: string } | undefined {
-  if (!baseUrl.endsWith("/") || line === undefined) return undefined;
-  if (!isSamePage(line, expectedPageLine)) return undefined;
-  if (!isSamePage(line, urlLine)) return undefined;
+): UrlContinuationResult | undefined {
+  const allowPathWithoutSlash = baseUrl.endsWith("-");
+  if (!baseUrl.endsWith("/") && !allowPathWithoutSlash) return undefined;
 
-  const continuation = parseUrlContinuationLine(line.text);
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    urlLine.fontSize,
+    STANDALONE_URL_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
+  );
+  const maxScanIndex = Math.min(
+    lines.length,
+    urlStartIndex + STANDALONE_URL_CONTINUATION_MAX_LOOKAHEAD + 1,
+  );
+
+  for (let continuationIndex = urlStartIndex + 1; continuationIndex < maxScanIndex; continuationIndex += 1) {
+    const line = lines[continuationIndex];
+    if (!line || !isSamePage(line, expectedPageLine) || !isSamePage(line, urlLine)) break;
+
+    const result = tryMatchUrlContinuationLine(line, urlLine, baseUrl, maxVerticalGap, allowPathWithoutSlash, continuationIndex);
+    if (result === "break") break;
+    if (result !== undefined) return result;
+  }
+
+  return undefined;
+}
+
+function tryMatchUrlContinuationLine(
+  line: TextLine,
+  urlLine: TextLine,
+  baseUrl: string,
+  maxVerticalGap: number,
+  allowPathWithoutSlash: boolean,
+  continuationIndex: number,
+): UrlContinuationResult | "break" | undefined {
+  const verticalGap = urlLine.y - line.y;
+  if (verticalGap > maxVerticalGap) return "break";
+  if (verticalGap < 0) return undefined;
+  if (parseStandaloneUrlLine(line.text) !== undefined) return "break";
+
+  const continuation = parseUrlContinuationLine(line.text, { allowPathWithoutSlash });
   if (continuation === undefined) return undefined;
+  if (!continuation.hasSlash && !isStandaloneUrlContinuationAligned(line, urlLine)) return undefined;
 
   const merged = `${baseUrl}${continuation.path}`;
   if (!isValidHttpUrl(merged)) return undefined;
-  return { url: merged, trailingPunctuation: continuation.trailingPunctuation };
+  return {
+    url: merged,
+    trailingPunctuation: continuation.trailingPunctuation,
+    consumedIndexes: [continuationIndex],
+  };
+}
+
+function isStandaloneUrlContinuationAligned(line: TextLine, urlLine: TextLine): boolean {
+  return (
+    Math.abs(line.x - urlLine.x) <= line.pageWidth * STANDALONE_URL_CONTINUATION_MAX_LEFT_OFFSET_RATIO
+  );
 }
 
 function parseStandaloneNumericFootnoteMarker(text: string): string | undefined {
@@ -1141,15 +1198,26 @@ function parseStandaloneUrlLine(
 
 function parseUrlContinuationLine(
   text: string,
-): { path: string; trailingPunctuation: string } | undefined {
+  options?: { allowPathWithoutSlash?: boolean },
+): { path: string; trailingPunctuation: string; hasSlash: boolean } | undefined {
   const normalized = normalizeTrailingPunctuationSpacing(normalizeSpacing(text));
   const match = URL_CONTINUATION_LINE_PATTERN.exec(normalized);
   if (!match) return undefined;
-  if (!match[1].includes("/")) return undefined;
 
-  const path = match[1].replace(/^\/+/, "");
+  const rawPath = match[1];
+  const hasSlash = rawPath.includes("/");
+  if (!hasSlash && !options?.allowPathWithoutSlash) return undefined;
+  if (
+    !hasSlash &&
+    options?.allowPathWithoutSlash &&
+    !URL_NON_SLASH_CONTINUATION_FRAGMENT_PATTERN.test(rawPath)
+  ) {
+    return undefined;
+  }
+
+  const path = rawPath.replace(/^\/+/, "");
   if (path.length === 0) return undefined;
-  return { path, trailingPunctuation: match[2] ?? "" };
+  return { path, trailingPunctuation: match[2] ?? "", hasSlash };
 }
 
 function normalizeTrailingPunctuationSpacing(text: string): string {
