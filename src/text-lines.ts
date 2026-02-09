@@ -38,7 +38,7 @@ const MISORDERED_NUMBERED_HEADING_LOOKAHEAD = 18;
 const MISORDERED_TOP_LEVEL_HEADING_MAX_Y_DELTA_FONT_RATIO = 3.2;
 const MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO = 12;
 const MAX_REORDER_HEADING_DIGIT_RATIO = 0.34;
-const MIN_MIDPOINT_RECOVERY_GAP_RATIO = 0.06;
+const MIN_MIDPOINT_RECOVERY_GAP_RATIO = 0.05;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
@@ -485,7 +485,10 @@ function shouldPreferMidpointSplit(
   if (!midpointSummary.hasLeft || !midpointSummary.hasRight) return false;
 
   const midpointGap = estimateMidpointSideStartGap(fragments, pageWidth);
-  const minimumGap = Math.max(pageWidth * MIN_MIDPOINT_RECOVERY_GAP_RATIO, MIN_COLUMN_BREAK_GAP * 0.3);
+  const minimumGap = Math.max(
+    pageWidth * MIN_MIDPOINT_RECOVERY_GAP_RATIO,
+    MIN_COLUMN_BREAK_GAP * 0.25,
+  );
   return midpointGap >= minimumGap;
 }
 

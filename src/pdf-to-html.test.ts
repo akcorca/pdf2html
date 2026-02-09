@@ -232,6 +232,12 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml.indexOf(section531)).toBeLessThan(respectHtml.indexOf(section532));
   });
 
+  it("does not merge left-column text with right-column continuation in respect.pdf", () => {
+    expect(respectHtml).not.toContain("JMMLU To evaluate LLMs’ multitask lan- rent socio-cultural situation.");
+    expect(respectHtml).toContain("JMMLU To evaluate LLMs’ multitask lan-");
+    expect(respectHtml).toContain("rent socio-cultural situation.");
+  });
+
   it("moves numeric footnote URLs in respect.pdf to the end of the document", () => {
     const referencesHeading = "<h2>References</h2>";
     const footnoteUrl = "https://openai.com/product";
