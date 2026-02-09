@@ -162,6 +162,13 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("merges spaced hyphen-wrapped covid abstract lines into a single paragraph", () => {
+    expect(covidHtml).not.toMatch(/adjusted rela -<\/p>\s*<p>tive risk \[ARR\] 1\.43/);
+    expect(covidHtml).toMatch(
+      /<p>pandemic from 1090 to 1590[^<]*adjusted rela-?tive risk \[ARR\] 1\.43[^<]*<\/p>/,
+    );
+  });
+
   it("removes top-matter alphabetic affiliation markers from covid.pdf", () => {
     expect(covidHtml).not.toContain("<p>a , b , c , * a , d a , b , c e</p>");
     expect(covidHtml).not.toContain("<p>f f , g e , h a , b , c</p>");

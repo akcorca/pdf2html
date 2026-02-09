@@ -32,7 +32,7 @@ const ACKNOWLEDGEMENTS_CONTINUATION_START_PATTERN = /^[a-z(“‘"']/u;
 const ACKNOWLEDGEMENTS_MAX_FONT_DELTA = 0.8;
 const ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO = 0.06;
 const ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO = 2.8;
-const HYPHEN_WRAPPED_LINE_PATTERN = /[A-Za-z]-$/;
+const HYPHEN_WRAPPED_LINE_PATTERN = /[A-Za-z]\s*-$/;
 const HYPHEN_WRAP_CONTINUATION_START_PATTERN = /^[A-Za-z]/;
 const HYPHEN_WRAP_MAX_VERTICAL_GAP_RATIO = 2.8;
 const HYPHEN_WRAP_MAX_LEFT_OFFSET_RATIO = 0.08;
@@ -633,8 +633,8 @@ function isHyphenWrapContinuationLine(
 }
 
 function mergeHyphenWrappedTexts(currentText: string, nextLineText: string): string {
-  const left = currentText.trimEnd();
-  const right = nextLineText.trimStart();
+  const left = currentText.trimEnd().replace(/\s*-\s*$/, "-");
+  const right = nextLineText.trimStart().replace(/^\s*-\s*/, "");
   return normalizeSpacing(`${left}${right}`);
 }
 
