@@ -82,6 +82,7 @@ describe("pdfToHtmlInternals", () => {
     expect(pdfToHtmlInternals.detectNumberedHeadingLevel("35 Baekbeom-ro, Mapo-gu, Seoul 04107, Republic of Korea")).toBeUndefined();
     expect(pdfToHtmlInternals.detectNumberedHeadingLevel("2 V − 1 s − 1 and an")).toBeUndefined();
     expect(pdfToHtmlInternals.detectNumberedHeadingLevel("2015 See et al. 2017 2021 , Lin Liangetal. , 2022")).toBeUndefined();
+    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("7 Could you please (Task Description) ? Please (Answer Format) You do not have to (Answer Restriction) 5.97")).toBeUndefined();
   });
 
   it("detects heading levels for common unnumbered section headings", () => {

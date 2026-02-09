@@ -86,6 +86,10 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).not.toContain("does not nessandrespectmayhavedifferentdefinitionsand");
   });
 
+  it("does not treat scored prompt-table rows as section headings in respect.pdf", () => {
+    expect(respectHtml).not.toMatch(/<h[2-6]>\d+\s+[^<]*\s\d+\.\d{2}<\/h[2-6]>/);
+  });
+
   it("extracts tft paper title as an h1 heading when font metadata is unreliable", () => {
     expect(tftHtml).toContain("<h1>Multifunctional Organic-Semiconductor Interfacial</h1>");
   });

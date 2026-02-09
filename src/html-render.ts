@@ -18,6 +18,7 @@ const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
   ["discussion", 2],
   ["references", 2],
 ]);
+const TRAILING_TABULAR_SCORE_PATTERN = /\b\d{1,2}\.\d{1,2}$/;
 
 export function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
@@ -87,6 +88,7 @@ export function detectNamedSectionHeadingLevel(text: string): number | undefined
 function isValidHeadingText(text: string): boolean {
   if (text.length < 2) return false;
   if (text.includes(",")) return false;
+  if (isLikelyScoredTableRow(text)) return false;
   if (/[.!?]$/.test(text)) return false;
   if (!/^[A-Z]/.test(text)) return false;
   if (!/[A-Za-z]/.test(text)) return false;
@@ -100,6 +102,17 @@ function isValidHeadingText(text: string): boolean {
   const alphanumeric = text.replace(/[^A-Za-z0-9]/g, "");
   const digitRatio = text.replace(/[^0-9]/g, "").length / Math.max(alphanumeric.length, 1);
   return digitRatio <= MAX_NUMBERED_HEADING_DIGIT_RATIO;
+}
+
+function isLikelyScoredTableRow(text: string): boolean {
+  if (!TRAILING_TABULAR_SCORE_PATTERN.test(text)) return false;
+  const tokens = text.split(/\s+/).filter((part) => part.length > 0);
+  if (tokens.length < 4) return false;
+  const scoreToken = tokens[tokens.length - 1];
+  const score = Number.parseFloat(scoreToken);
+  if (!Number.isFinite(score) || score < 0 || score > 10) return false;
+  const alphaLength = text.replace(/[^A-Za-z]/g, "").length;
+  return alphaLength >= 12;
 }
 
 function isLikelyFlowLabelText(text: string): boolean {
