@@ -90,9 +90,12 @@ describe("convertPdfToHtml", () => {
     );
   });
 
-  it("extracts respect paper title as an h1 heading", () => {
+  it("merges wrapped respect paper title lines into a single h1 heading", () => {
     expect(respectHtml).toContain(
-      "<h1>Should We Respect LLMs? A Cross-Lingual Study on</h1>",
+      "<h1>Should We Respect LLMs? A Cross-Lingual Study on the Influence of Prompt Politeness on LLM Performance</h1>",
+    );
+    expect(respectHtml).not.toContain(
+      "<p>the Influence of Prompt Politeness on LLM Performance</p>",
     );
   });
 

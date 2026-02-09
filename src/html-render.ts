@@ -21,6 +21,10 @@ const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
 const TRAILING_TABULAR_SCORE_PATTERN = /\b\d{1,2}\.\d{1,2}$/;
 const BULLET_LIST_ITEM_PATTERN = /^([•◦▪●○■□◆◇‣⁃∙·])\s+(.+)$/u;
 const MIN_LIST_CONTINUATION_INDENT = 6;
+const TITLE_CONTINUATION_MAX_FONT_DELTA = 0.6;
+const TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO = 0.12;
+const TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.2;
+const TITLE_CONTINUATION_MIN_WORD_COUNT = 3;
 
 export function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
@@ -50,7 +54,15 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   const bodyLines: string[] = [];
   let index = 0;
   while (index < lines.length) {
-    const headingTag = renderHeadingTag(lines[index], titleLine);
+    const currentLine = lines[index];
+    if (currentLine === titleLine) {
+      const consumedTitle = consumeTitleLines(lines, index, titleLine);
+      bodyLines.push(`<h1>${escapeHtml(consumedTitle.text)}</h1>`);
+      index = consumedTitle.nextIndex;
+      continue;
+    }
+
+    const headingTag = renderHeadingTag(currentLine);
     if (headingTag !== undefined) {
       bodyLines.push(headingTag);
       index += 1;
@@ -64,18 +76,76 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       continue;
     }
 
-    bodyLines.push(`<p>${escapeHtml(lines[index].text)}</p>`);
+    bodyLines.push(`<p>${escapeHtml(currentLine.text)}</p>`);
     index += 1;
   }
   return bodyLines;
 }
 
-function renderHeadingTag(line: TextLine, titleLine: TextLine | undefined): string | undefined {
-  if (line === titleLine) return `<h1>${escapeHtml(line.text)}</h1>`;
+function renderHeadingTag(line: TextLine): string | undefined {
   const headingLevel =
     detectNumberedHeadingLevel(line.text) ?? detectNamedSectionHeadingLevel(line.text);
   if (headingLevel === undefined) return undefined;
   return `<h${headingLevel}>${escapeHtml(line.text)}</h${headingLevel}>`;
+}
+
+function consumeTitleLines(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine,
+): { text: string; nextIndex: number } {
+  const parts = [titleLine.text];
+  let index = startIndex + 1;
+  let previousLine = titleLine;
+
+  while (index < lines.length && isTitleContinuationLine(lines[index], previousLine, titleLine)) {
+    parts.push(lines[index].text);
+    previousLine = lines[index];
+    index += 1;
+  }
+
+  return { text: normalizeSpacing(parts.join(" ")), nextIndex: index };
+}
+
+function isTitleContinuationLine(
+  line: TextLine,
+  previousTitleLine: TextLine,
+  titleLine: TextLine,
+): boolean {
+  if (line.pageIndex !== titleLine.pageIndex) return false;
+  const text = normalizeSpacing(line.text);
+  if (text.length === 0) return false;
+  if (containsDocumentMetadata(text)) return false;
+  if (!/^[a-z]/.test(text)) return false;
+  if (text.split(" ").filter((token) => token.length > 0).length < TITLE_CONTINUATION_MIN_WORD_COUNT) {
+    return false;
+  }
+  if (
+    detectNumberedHeadingLevel(text) !== undefined ||
+    detectNamedSectionHeadingLevel(text) !== undefined
+  ) {
+    return false;
+  }
+  if (/[.!?:]$/.test(previousTitleLine.text.trim())) return false;
+  if (line.y >= previousTitleLine.y) return false;
+
+  const maxGap = Math.max(
+    titleLine.fontSize * TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
+    titleLine.fontSize + 10,
+  );
+  if (previousTitleLine.y - line.y > maxGap) return false;
+  if (Math.abs(line.fontSize - titleLine.fontSize) > TITLE_CONTINUATION_MAX_FONT_DELTA) {
+    return false;
+  }
+
+  const titleCenter = getLineCenter(titleLine);
+  const lineCenter = getLineCenter(line);
+  const maxCenterOffset = titleLine.pageWidth * TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO;
+  return Math.abs(titleCenter - lineCenter) <= maxCenterOffset;
+}
+
+function getLineCenter(line: TextLine): number {
+  return line.x + line.estimatedWidth / 2;
 }
 
 function renderBulletList(
