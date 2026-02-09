@@ -154,21 +154,23 @@ function isRemovablePageArtifact(
   inlineFigureLabelLines: Set<TextLine>,
   alternatingRunningHeaderLines: Set<TextLine>,
 ): boolean {
-  if (line.text.length === 0) return true;
-  if (isLikelyStandaloneSymbolArtifact(line, bodyFontSize)) return true;
-  if (isLikelyArxivSubmissionStamp(line, bodyFontSize)) return true;
-  if (isLikelyStandaloneDoiMetadataLine(line)) return true;
-  if (isLikelySpecialTokenArtifactLine(line, bodyFontSize)) return true;
-  if (isLikelyPublisherPageCounterFooter(line, pageExtents)) return true;
-  if (isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize)) return true;
-  if (isLikelyTopMatterSymbolicAffiliationLine(line, bodyFontSize)) return true;
-  if (isLikelyFirstPageVenueFooterLine(line, bodyFontSize)) return true;
-  if (alphabeticAffiliationLines.has(line)) return true;
-  if (inlineFigureLabelLines.has(line)) return true;
-  if (alternatingRunningHeaderLines.has(line)) return true;
-  if (repeatedEdgeTexts.has(line.text)) return true;
-  if (pageNumberLines.has(line)) return true;
-  return isStandaloneCitationMarker(line.text);
+  return (
+    line.text.length === 0 ||
+    isLikelyStandaloneSymbolArtifact(line, bodyFontSize) ||
+    isLikelyArxivSubmissionStamp(line, bodyFontSize) ||
+    isLikelyStandaloneDoiMetadataLine(line) ||
+    isLikelySpecialTokenArtifactLine(line, bodyFontSize) ||
+    isLikelyPublisherPageCounterFooter(line, pageExtents) ||
+    isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize) ||
+    isLikelyTopMatterSymbolicAffiliationLine(line, bodyFontSize) ||
+    isLikelyFirstPageVenueFooterLine(line, bodyFontSize) ||
+    alphabeticAffiliationLines.has(line) ||
+    inlineFigureLabelLines.has(line) ||
+    alternatingRunningHeaderLines.has(line) ||
+    repeatedEdgeTexts.has(line.text) ||
+    pageNumberLines.has(line) ||
+    isStandaloneCitationMarker(line.text)
+  );
 }
 
 export function findRepeatedEdgeTexts(
@@ -188,23 +190,31 @@ function collectEdgeTextStats(
   for (const line of lines) {
     const nearRelative = isNearPageEdge(line, pageExtents);
     const nearBroad = nearRelative || isNearPhysicalPageEdge(line);
-    const existing = stats.get(line.text);
-    if (existing) {
-      updateExistingStat(existing, line.pageIndex, nearRelative, nearBroad);
-      continue;
-    }
-    stats.set(line.text, {
-      totalOccurrences: 1,
-      edgeOccurrences: nearRelative ? 1 : 0,
-      pageIndexes: new Set([line.pageIndex]),
-      edgePageIndexes: nearRelative ? new Set([line.pageIndex]) : new Set<number>(),
-      broadEdgePageIndexes: nearBroad ? new Set([line.pageIndex]) : new Set<number>(),
-    });
+    const stat = getOrCreateEdgeTextStat(stats, line.text);
+    addEdgeTextOccurrence(stat, line.pageIndex, nearRelative, nearBroad);
   }
   return stats;
 }
 
-function updateExistingStat(
+function getOrCreateEdgeTextStat(
+  stats: Map<string, RepeatedEdgeTextStat>,
+  text: string,
+): RepeatedEdgeTextStat {
+  const existing = stats.get(text);
+  if (existing) return existing;
+
+  const created: RepeatedEdgeTextStat = {
+    totalOccurrences: 0,
+    edgeOccurrences: 0,
+    pageIndexes: new Set<number>(),
+    edgePageIndexes: new Set<number>(),
+    broadEdgePageIndexes: new Set<number>(),
+  };
+  stats.set(text, created);
+  return created;
+}
+
+function addEdgeTextOccurrence(
   stat: RepeatedEdgeTextStat,
   pageIndex: number,
   nearRelative: boolean,
@@ -387,15 +397,8 @@ function findLikelyAlternatingRunningHeaderLines(
   const totalPages = new Set(lines.map((line) => line.pageIndex)).size;
   if (totalPages < 3) return new Set<TextLine>();
 
-  const linesByText = new Map<string, TextLine[]>();
-  for (const line of lines) {
-    const existing = linesByText.get(line.text);
-    if (existing) existing.push(line);
-    else linesByText.set(line.text, [line]);
-  }
-
   const result = new Set<TextLine>();
-  for (const [text, occurrences] of linesByText) {
+  for (const [text, occurrences] of groupLinesByExactText(lines)) {
     const candidateLines = selectAlternatingRunningHeaderGroupLines(
       text,
       occurrences,
@@ -407,6 +410,16 @@ function findLikelyAlternatingRunningHeaderLines(
     for (const line of candidateLines) result.add(line);
   }
   return result;
+}
+
+function groupLinesByExactText(lines: TextLine[]): Map<string, TextLine[]> {
+  const grouped = new Map<string, TextLine[]>();
+  for (const line of lines) {
+    const existing = grouped.get(line.text);
+    if (existing) existing.push(line);
+    else grouped.set(line.text, [line]);
+  }
+  return grouped;
 }
 
 function selectAlternatingRunningHeaderGroupLines(
