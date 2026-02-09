@@ -101,7 +101,9 @@ describe("pdfToHtmlInternals", () => {
 
   it("detects heading levels for numbered section headings", () => {
     expect(pdfToHtmlInternals.detectNumberedHeadingLevel("1 Introduction")).toBe(2);
+    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("1. Introduction")).toBe(2);
     expect(pdfToHtmlInternals.detectNumberedHeadingLevel("3.2 Attention")).toBe(3);
+    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("2.1. Data collection")).toBe(3);
     expect(pdfToHtmlInternals.detectNumberedHeadingLevel("3.2.1 Scaled Dot-Product Attention")).toBe(4);
     expect(pdfToHtmlInternals.detectNumberedHeadingLevel("1 and 2023 Vilkki")).toBeUndefined();
     expect(pdfToHtmlInternals.detectNumberedHeadingLevel("35 Baekbeom-ro, Mapo-gu, Seoul 04107, Republic of Korea")).toBeUndefined();

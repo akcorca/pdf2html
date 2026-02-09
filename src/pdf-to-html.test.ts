@@ -88,10 +88,11 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).not.toContain("<h1>Thrombosis Research</h1>");
   });
 
-  it("separates covid section-heading lines from opposite-column spill text", () => {
-    expect(covidHtml).toContain("<p>1. Introduction</p>");
+  it("renders dotted covid numbered section headings as semantic headings", () => {
+    expect(covidHtml).toContain("<h2>1. Introduction</h2>");
+    expect(covidHtml).toContain("<h3>2.1. Data collection</h3>");
     expect(covidHtml).not.toContain(
-      "<p>1. Introduction embolism [PE] and deep venous thrombosis [DVT]). Patients with acute</p>",
+      "<h2>1. Introduction embolism [PE] and deep venous thrombosis [DVT]). Patients with acute</h2>",
     );
   });
 

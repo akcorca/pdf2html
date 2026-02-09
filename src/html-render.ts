@@ -27,6 +27,9 @@ const TITLE_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.03;
 const TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.2;
 const TITLE_CONTINUATION_MIN_WORD_COUNT = 3;
 const MIN_NUMBERED_HEADING_FONT_RATIO = 0.85;
+const MIN_TOP_LEVEL_DOTTED_HEADING_FONT_RATIO = 1.05;
+const TOP_LEVEL_DOTTED_HEADING_PATTERN = /^\d+\.\s+/;
+const DOTTED_SUBSECTION_HEADING_PATTERN = /^\d+\.\d+(?:\.\d+){0,3}\.\s+/;
 
 export function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
@@ -55,6 +58,9 @@ export function escapeHtml(value: string): string {
 function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): string[] {
   const bodyLines: string[] = [];
   const bodyFontSize = estimateBodyFontSize(lines);
+  const hasDottedSubsectionHeadings = lines.some((line) =>
+    DOTTED_SUBSECTION_HEADING_PATTERN.test(normalizeSpacing(line.text)),
+  );
   let index = 0;
   while (index < lines.length) {
     const currentLine = lines[index];
@@ -65,7 +71,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       continue;
     }
 
-    const headingTag = renderHeadingTag(currentLine, bodyFontSize);
+    const headingTag = renderHeadingTag(currentLine, bodyFontSize, hasDottedSubsectionHeadings);
     if (headingTag !== undefined) {
       bodyLines.push(headingTag);
       index += 1;
@@ -85,14 +91,27 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   return bodyLines;
 }
 
-function renderHeadingTag(line: TextLine, bodyFontSize: number): string | undefined {
-  const numberedHeadingLevel = detectNumberedHeadingLevel(line.text);
+function renderHeadingTag(
+  line: TextLine,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): string | undefined {
+  const normalized = normalizeSpacing(line.text);
+  if (
+    TOP_LEVEL_DOTTED_HEADING_PATTERN.test(normalized) &&
+    !hasDottedSubsectionHeadings &&
+    line.fontSize < bodyFontSize * MIN_TOP_LEVEL_DOTTED_HEADING_FONT_RATIO
+  ) {
+    return undefined;
+  }
+
+  const numberedHeadingLevel = detectNumberedHeadingLevel(normalized);
   if (numberedHeadingLevel !== undefined) {
     if (line.fontSize < bodyFontSize * MIN_NUMBERED_HEADING_FONT_RATIO) return undefined;
     return `<h${numberedHeadingLevel}>${escapeHtml(line.text)}</h${numberedHeadingLevel}>`;
   }
 
-  const namedHeadingLevel = detectNamedSectionHeadingLevel(line.text);
+  const namedHeadingLevel = detectNamedSectionHeadingLevel(normalized);
   if (namedHeadingLevel === undefined) return undefined;
   return `<h${namedHeadingLevel}>${escapeHtml(line.text)}</h${namedHeadingLevel}>`;
 }
@@ -244,10 +263,11 @@ export function detectNumberedHeadingLevel(text: string): number | undefined {
   }
   if (containsDocumentMetadata(normalized)) return undefined;
 
-  const match = /^(\d+(?:\.\d+){0,4})\s+(.+)$/u.exec(normalized);
+  const match = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u.exec(normalized);
   if (!match) return undefined;
 
-  const topLevel = Number.parseInt(match[1].split(".")[0], 10);
+  const sectionNumber = match[1].replace(/\.$/, "");
+  const topLevel = Number.parseInt(sectionNumber.split(".")[0], 10);
   if (!Number.isFinite(topLevel) || topLevel < 1 || topLevel > MAX_TOP_LEVEL_SECTION_NUMBER) {
     return undefined;
   }
@@ -255,7 +275,7 @@ export function detectNumberedHeadingLevel(text: string): number | undefined {
   const headingText = match[2].trim();
   if (!isValidHeadingText(headingText)) return undefined;
 
-  const depth = match[1].split(".").length;
+  const depth = sectionNumber.split(".").length;
   return Math.min(depth + 1, 6);
 }
 
