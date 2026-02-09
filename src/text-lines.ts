@@ -46,6 +46,10 @@ const MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE = 10;
 const MIN_COLUMN_MAJOR_VERTICAL_SPAN_RATIO = 0.2;
 const ADJACENT_RIGHT_BODY_HEADING_LOOKBACK = 6;
 const ADJACENT_RIGHT_BODY_HEADING_MAX_Y_DELTA_FONT_RATIO = 2.8;
+const LEFT_HEADING_BODY_CONTINUATION_LOOKAHEAD = 16;
+const LEFT_HEADING_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO = 3.6;
+const LEFT_HEADING_RIGHT_BODY_START_PATTERN = /^[a-z]/u;
+const LEFT_HEADING_RIGHT_BODY_END_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
@@ -73,8 +77,12 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
     reorderedWithLeftHeadingPromotion,
     multiColumnPageIndexes,
   );
-  return reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
+  const reorderedHeadingPairs = reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
     reorderedNumberedHeadings,
+    multiColumnPageIndexes,
+  );
+  return reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
+    reorderedHeadingPairs,
     multiColumnPageIndexes,
   );
 }
@@ -272,6 +280,67 @@ function reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
     index += continuationCount;
   }
   return reordered;
+}
+
+function reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
+  lines: TextLine[],
+  multiColumnPageIndexes: Set<number>,
+): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 0; index < reordered.length - 1; index += 1) {
+    const heading = reordered[index];
+    if (!multiColumnPageIndexes.has(heading.pageIndex)) continue;
+    if (!isLikelyColumnHeadingLine(heading.text)) continue;
+    if (classifyMultiColumnLine(heading) !== "left") continue;
+    if (!/[a-z]/u.test(normalizeSpacing(heading.text))) continue;
+
+    const rightBodyCandidate = reordered[index + 1];
+    if (!rightBodyCandidate) continue;
+    if (rightBodyCandidate.pageIndex !== heading.pageIndex) continue;
+    if (classifyMultiColumnLine(rightBodyCandidate) !== "right") continue;
+    if (!isLikelyNearRowBodyLine(rightBodyCandidate)) continue;
+    if (isLikelyColumnHeadingLine(rightBodyCandidate.text)) continue;
+
+    const rightBodyText = normalizeSpacing(rightBodyCandidate.text);
+    if (!LEFT_HEADING_RIGHT_BODY_START_PATTERN.test(rightBodyText)) continue;
+    if (LEFT_HEADING_RIGHT_BODY_END_PUNCTUATION_PATTERN.test(rightBodyText)) continue;
+
+    const leftContinuationIndex = findLeftBodyContinuationAfterHeading(
+      reordered,
+      index,
+      heading,
+    );
+    if (leftContinuationIndex === undefined) continue;
+
+    promoteLine(reordered, leftContinuationIndex, index + 1);
+    index += 1;
+  }
+  return reordered;
+}
+
+function findLeftBodyContinuationAfterHeading(
+  lines: TextLine[],
+  headingIndex: number,
+  heading: TextLine,
+): number | undefined {
+  const maxScanIndex = Math.min(lines.length, headingIndex + LEFT_HEADING_BODY_CONTINUATION_LOOKAHEAD + 1);
+  for (let scanIndex = headingIndex + 2; scanIndex < maxScanIndex; scanIndex += 1) {
+    const candidate = lines[scanIndex];
+    if (candidate.pageIndex !== heading.pageIndex) break;
+    if (classifyMultiColumnLine(candidate) !== "left") continue;
+    if (!isLikelyNearRowBodyLine(candidate)) continue;
+    if (isLikelyColumnHeadingLine(candidate.text)) break;
+    if (!/^[A-Z]/u.test(normalizeSpacing(candidate.text))) continue;
+
+    const verticalDelta = heading.y - candidate.y;
+    const maxVerticalDelta = Math.max(
+      heading.fontSize * LEFT_HEADING_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+      heading.fontSize + 16,
+    );
+    if (verticalDelta <= 0 || verticalDelta > maxVerticalDelta) continue;
+    return scanIndex;
+  }
+  return undefined;
 }
 
 function findLeftContinuationInsertionIndexForHeadingPair(

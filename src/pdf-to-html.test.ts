@@ -267,6 +267,17 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("keeps left-column introduction body before right-column continuation in respect.pdf", () => {
+    const leftColumnBodyStart = "In natural language processing, large language";
+    const rightColumnContinuationStart = "to a deterioration in model performance, including";
+
+    expect(respectHtml).toContain(leftColumnBodyStart);
+    expect(respectHtml).toContain(rightColumnContinuationStart);
+    expect(respectHtml.indexOf(leftColumnBodyStart)).toBeLessThan(
+      respectHtml.indexOf(rightColumnContinuationStart),
+    );
+  });
+
   it("moves numeric footnote URLs in respect.pdf to the end of the document", () => {
     const referencesHeading = "<h2>References</h2>";
     const footnoteUrl = "https://openai.com/product";
