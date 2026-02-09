@@ -6,13 +6,16 @@ import { convertPdfToHtml, pdfToHtmlInternals } from "./pdf-to-html.ts";
 
 const attentionPdfPath = resolve("data/attention.pdf");
 const cleanPdfPath = resolve("data/clean.pdf");
+const covidPdfPath = resolve("data/covid.pdf");
 const outputDirPath = resolve("data/work/test");
 const outputHtmlPath = join(outputDirPath, "attention.html");
 const cleanOutputHtmlPath = join(outputDirPath, "clean.html");
+const covidOutputHtmlPath = join(outputDirPath, "covid.html");
 
 describe("convertPdfToHtml", () => {
   let html = "";
   let cleanHtml = "";
+  let covidHtml = "";
 
   beforeAll(async () => {
     await mkdir(outputDirPath, { recursive: true });
@@ -24,8 +27,13 @@ describe("convertPdfToHtml", () => {
       inputPdfPath: cleanPdfPath,
       outputHtmlPath: cleanOutputHtmlPath,
     });
+    await convertPdfToHtml({
+      inputPdfPath: covidPdfPath,
+      outputHtmlPath: covidOutputHtmlPath,
+    });
     html = await readFile(outputHtmlPath, "utf8");
     cleanHtml = await readFile(cleanOutputHtmlPath, "utf8");
+    covidHtml = await readFile(covidOutputHtmlPath, "utf8");
   });
 
   it("extracts the paper title as an h1 heading", () => {
@@ -38,6 +46,11 @@ describe("convertPdfToHtml", () => {
 
   it("ignores extremely out-of-page text artifacts for clean.pdf", () => {
     expect(cleanHtml).not.toContain("Name Admission Date Address Abby Fri Jan 1st");
+  });
+
+  it("removes repeated running headers and standalone page number lines", () => {
+    expect(covidHtml).not.toContain("<p>Thrombosis Research 202 (2021) 17–23</p>");
+    expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);
   });
 });
 
@@ -162,6 +175,57 @@ describe("pdfToHtmlInternals", () => {
 
     expect(html).toContain("<h1>Attention Is All You Need</h1>");
     expect(html).toContain("<p>a &lt; b &amp; c</p>");
+  });
+
+  it("filters repeated edge headers and standalone page numbers", () => {
+    const filtered = pdfToHtmlInternals.filterPageArtifacts([
+      createLine({ pageIndex: 0, y: 790, text: "Journal Header" }),
+      createLine({ pageIndex: 0, y: 420, text: "Body paragraph one" }),
+      createLine({ pageIndex: 0, y: 10, text: "1" }),
+      createLine({ pageIndex: 1, y: 790, text: "Journal Header" }),
+      createLine({ pageIndex: 1, y: 410, text: "Body paragraph two" }),
+      createLine({ pageIndex: 1, y: 10, text: "2" }),
+      createLine({ pageIndex: 2, y: 790, text: "Journal Header" }),
+      createLine({ pageIndex: 2, y: 400, text: "Body paragraph three" }),
+      createLine({ pageIndex: 2, y: 10, text: "3" }),
+      createLine({ pageIndex: 3, y: 790, text: "Journal Header" }),
+      createLine({ pageIndex: 3, y: 390, text: "Body paragraph four" }),
+      createLine({ pageIndex: 3, y: 10, text: "4" }),
+    ]);
+
+    expect(filtered.map((line) => line.text)).toEqual([
+      "Body paragraph one",
+      "Body paragraph two",
+      "Body paragraph three",
+      "Body paragraph four",
+    ]);
+  });
+
+  it("keeps repeated body text that is not near page edges", () => {
+    const filtered = pdfToHtmlInternals.filterPageArtifacts([
+      createLine({ pageIndex: 0, y: 760, text: "Header" }),
+      createLine({ pageIndex: 0, y: 420, text: "Repeated body phrase" }),
+      createLine({ pageIndex: 0, y: 20, text: "1" }),
+      createLine({ pageIndex: 1, y: 760, text: "Header" }),
+      createLine({ pageIndex: 1, y: 430, text: "Repeated body phrase" }),
+      createLine({ pageIndex: 1, y: 20, text: "2" }),
+    ]);
+
+    expect(filtered.map((line) => line.text)).toContain("Repeated body phrase");
+  });
+
+  it("keeps sparse edge numbers when they do not form a page-number sequence", () => {
+    const filtered = pdfToHtmlInternals.filterPageArtifacts([
+      createLine({ pageIndex: 0, y: 760, text: "Header once" }),
+      createLine({ pageIndex: 0, y: 420, text: "Body paragraph one" }),
+      createLine({ pageIndex: 0, y: 20, text: "1" }),
+      createLine({ pageIndex: 1, y: 750, text: "Header twice" }),
+      createLine({ pageIndex: 1, y: 430, text: "Body paragraph two" }),
+      createLine({ pageIndex: 1, y: 20, text: "2" }),
+    ]);
+
+    expect(filtered.map((line) => line.text)).toContain("1");
+    expect(filtered.map((line) => line.text)).toContain("2");
   });
 });
 

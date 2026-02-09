@@ -7,6 +7,12 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 const LINE_Y_BUCKET_SIZE = 2;
 const MAX_REASONABLE_Y_MULTIPLIER = 2.5;
+const PAGE_EDGE_MARGIN = 0.08;
+const STANDALONE_PAGE_NUMBER_PATTERN = /^\d{1,4}$/;
+const MIN_REPEATED_EDGE_TEXT_PAGES = 4;
+const MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE = 0.6;
+const MIN_PAGE_NUMBER_SEQUENCE_PAGES = 3;
+const MIN_PAGE_NUMBER_SEQUENCE_COVERAGE = 0.5;
 
 interface ConvertPdfToHtmlInput {
   inputPdfPath: string;
@@ -46,6 +52,22 @@ interface TextLine {
   text: string;
 }
 
+interface PageVerticalExtent {
+  minY: number;
+  maxY: number;
+}
+
+interface RepeatedEdgeTextStat {
+  totalOccurrences: number;
+  edgeOccurrences: number;
+  pageIndexes: Set<number>;
+}
+
+interface NumericEdgeLine {
+  line: TextLine;
+  offset: number;
+}
+
 export async function convertPdfToHtml(
   input: ConvertPdfToHtmlInput,
 ): Promise<ConvertPdfToHtmlResult> {
@@ -55,7 +77,7 @@ export async function convertPdfToHtml(
   await assertReadableFile(resolvedInputPdfPath);
 
   const extracted = await extractDocument(resolvedInputPdfPath);
-  const lines = collectTextLines(extracted);
+  const lines = filterPageArtifacts(collectTextLines(extracted));
   const html = renderHtml(lines);
 
   await mkdir(dirname(resolvedOutputHtmlPath), { recursive: true });
@@ -194,6 +216,189 @@ function renderHtml(lines: TextLine[]): string {
   ].join("\n");
 }
 
+function filterPageArtifacts(lines: TextLine[]): TextLine[] {
+  if (lines.length === 0) {
+    return lines;
+  }
+
+  const pageExtents = computePageVerticalExtents(lines);
+  const repeatedEdgeTexts = findRepeatedEdgeTexts(lines, pageExtents);
+  const pageNumberLines = findLikelyPageNumberLines(lines, pageExtents);
+
+  return lines.filter((line) => {
+    if (repeatedEdgeTexts.has(line.text)) {
+      return false;
+    }
+
+    if (pageNumberLines.has(line)) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function computePageVerticalExtents(lines: TextLine[]): Map<number, PageVerticalExtent> {
+  const pageExtents = new Map<number, PageVerticalExtent>();
+
+  for (const line of lines) {
+    const current = pageExtents.get(line.pageIndex);
+    if (!current) {
+      pageExtents.set(line.pageIndex, { minY: line.y, maxY: line.y });
+      continue;
+    }
+
+    current.minY = Math.min(current.minY, line.y);
+    current.maxY = Math.max(current.maxY, line.y);
+  }
+
+  return pageExtents;
+}
+
+function findRepeatedEdgeTexts(
+  lines: TextLine[],
+  pageExtents: Map<number, PageVerticalExtent>,
+): Set<string> {
+  const totalPages = new Set(lines.map((line) => line.pageIndex)).size;
+  const stats = new Map<string, RepeatedEdgeTextStat>();
+
+  for (const line of lines) {
+    const existing = stats.get(line.text);
+    if (existing) {
+      existing.totalOccurrences += 1;
+      existing.pageIndexes.add(line.pageIndex);
+      if (isNearPageEdge(line, pageExtents)) {
+        existing.edgeOccurrences += 1;
+      }
+      continue;
+    }
+
+    stats.set(line.text, {
+      totalOccurrences: 1,
+      edgeOccurrences: isNearPageEdge(line, pageExtents) ? 1 : 0,
+      pageIndexes: new Set([line.pageIndex]),
+    });
+  }
+
+  const repeatedEdgeTexts = new Set<string>();
+  for (const [text, stat] of stats) {
+    if (stat.pageIndexes.size < MIN_REPEATED_EDGE_TEXT_PAGES) {
+      continue;
+    }
+
+    const edgeRatio = stat.edgeOccurrences / stat.totalOccurrences;
+    if (edgeRatio < 0.85) {
+      continue;
+    }
+
+    const pageCoverage = stat.pageIndexes.size / Math.max(totalPages, 1);
+    if (pageCoverage < MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE) {
+      continue;
+    }
+
+    repeatedEdgeTexts.add(text);
+  }
+
+  return repeatedEdgeTexts;
+}
+
+function isNearPageEdge(
+  line: TextLine,
+  pageExtents: Map<number, PageVerticalExtent>,
+  edgeMargin: number = PAGE_EDGE_MARGIN,
+): boolean {
+  const relativeY = getRelativeVerticalPosition(line, pageExtents);
+  return relativeY <= edgeMargin || relativeY >= 1 - edgeMargin;
+}
+
+function getRelativeVerticalPosition(
+  line: TextLine,
+  pageExtents: Map<number, PageVerticalExtent>,
+): number {
+  const extent = pageExtents.get(line.pageIndex);
+  if (!extent) {
+    return 0.5;
+  }
+
+  const span = extent.maxY - extent.minY;
+  if (span <= 0) {
+    return 0.5;
+  }
+
+  return (line.y - extent.minY) / span;
+}
+
+function isStandalonePageNumber(
+  line: TextLine,
+  pageExtents: Map<number, PageVerticalExtent>,
+): boolean {
+  if (!STANDALONE_PAGE_NUMBER_PATTERN.test(line.text)) {
+    return false;
+  }
+
+  return isNearPageEdge(line, pageExtents);
+}
+
+function findLikelyPageNumberLines(
+  lines: TextLine[],
+  pageExtents: Map<number, PageVerticalExtent>,
+): Set<TextLine> {
+  const totalPages = new Set(lines.map((line) => line.pageIndex)).size;
+  const numericEdgeLines: NumericEdgeLine[] = [];
+
+  for (const line of lines) {
+    if (!isStandalonePageNumber(line, pageExtents)) {
+      continue;
+    }
+
+    const value = Number.parseInt(line.text, 10);
+    if (Number.isNaN(value)) {
+      continue;
+    }
+
+    numericEdgeLines.push({
+      line,
+      offset: value - line.pageIndex,
+    });
+  }
+
+  const linesByOffset = new Map<number, NumericEdgeLine[]>();
+  for (const entry of numericEdgeLines) {
+    const existing = linesByOffset.get(entry.offset);
+    if (existing) {
+      existing.push(entry);
+    } else {
+      linesByOffset.set(entry.offset, [entry]);
+    }
+  }
+
+  const selectedOffsets = new Set<number>();
+  for (const [offset, entries] of linesByOffset) {
+    const pageCount = new Set(entries.map((entry) => entry.line.pageIndex)).size;
+    if (pageCount < MIN_PAGE_NUMBER_SEQUENCE_PAGES) {
+      continue;
+    }
+
+    const coverage = pageCount / Math.max(totalPages, 1);
+    if (coverage < MIN_PAGE_NUMBER_SEQUENCE_COVERAGE) {
+      continue;
+    }
+
+    selectedOffsets.add(offset);
+  }
+
+  const pageNumberLines = new Set<TextLine>();
+  for (const entry of numericEdgeLines) {
+    if (!selectedOffsets.has(entry.offset)) {
+      continue;
+    }
+
+    pageNumberLines.add(entry.line);
+  }
+
+  return pageNumberLines;
+}
+
 function findTitleLine(lines: TextLine[]): TextLine | undefined {
   const firstPageLines = lines.filter((line) => line.pageIndex === 0);
   if (firstPageLines.length === 0) {
@@ -309,6 +514,13 @@ function createExtractionError(error: unknown): Error {
 export const pdfToHtmlInternals = {
   collectTextLines,
   renderHtml,
+  filterPageArtifacts,
+  computePageVerticalExtents,
+  findRepeatedEdgeTexts,
+  isNearPageEdge,
+  getRelativeVerticalPosition,
+  isStandalonePageNumber,
+  findLikelyPageNumberLines,
   findTitleLine,
   estimateBodyFontSize,
   scoreTitleCandidate,
