@@ -55,6 +55,8 @@ const RIGHT_HEADING_LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO = 2.8;
 const RIGHT_HEADING_LEFT_BODY_MAX_LEFT_OFFSET_RATIO = 0.06;
 const RIGHT_HEADING_LEFT_BODY_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"']/u;
 const RIGHT_HEADING_LEFT_BODY_END_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
+const MAX_COLUMN_BREAK_BRIDGE_LOOKAHEAD = 2;
+const COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS = 1;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
@@ -107,10 +109,14 @@ function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColu
   for (const [bucket, bucketFragments] of buckets) {
     const sorted = [...bucketFragments].sort((left, right) => left.x - right.x);
     const breakIndexes = findColumnBreakIndexes(sorted, page.width);
+    const bridgedBreakIndexes = findBridgedColumnBreakIndexes(sorted, page.width);
+    const effectiveBreakIndexes = mergeColumnBreakIndexes(breakIndexes, bridgedBreakIndexes);
     const shouldSplitByColumns =
-      splitByColumn || shouldForceSplitHeadingPrefixedRow(sorted, breakIndexes);
+      splitByColumn ||
+      shouldForceSplitHeadingPrefixedRow(sorted, effectiveBreakIndexes) ||
+      bridgedBreakIndexes.length > 0;
     const groups = shouldSplitByColumns
-      ? splitFragmentsByColumnBreaks(sorted, page.width, breakIndexes, {
+      ? splitFragmentsByColumnBreaks(sorted, page.width, effectiveBreakIndexes, {
           allowMidpointFallback: splitByColumn,
         })
       : [sorted];
@@ -1001,6 +1007,75 @@ function findColumnBreakIndexes(fragments: ExtractedFragment[], pageWidth: numbe
     if (isLikelyColumnBreak(fragments[i], fragments[i + 1], pageWidth)) indexes.push(i);
   }
   return indexes;
+}
+
+function findBridgedColumnBreakIndexes(
+  fragments: ExtractedFragment[],
+  pageWidth: number,
+): number[] {
+  const indexes: number[] = [];
+  for (let i = 0; i < fragments.length - 1; i += 1) {
+    const bridgedBreakIndex = findBridgedColumnBreakIndex(fragments, i, pageWidth);
+    if (bridgedBreakIndex === undefined) continue;
+    indexes.push(bridgedBreakIndex);
+    i = bridgedBreakIndex;
+  }
+  return indexes;
+}
+
+function mergeColumnBreakIndexes(
+  directBreakIndexes: number[],
+  bridgedBreakIndexes: number[],
+): number[] {
+  if (bridgedBreakIndexes.length === 0) return directBreakIndexes;
+  const merged = new Set<number>(directBreakIndexes);
+  for (const bridgedIndex of bridgedBreakIndexes) {
+    merged.add(bridgedIndex);
+  }
+  return [...merged].sort((left, right) => left - right);
+}
+
+function findBridgedColumnBreakIndex(
+  fragments: ExtractedFragment[],
+  leftIndex: number,
+  pageWidth: number,
+): number | undefined {
+  const maxBridgeSize = Math.min(MAX_COLUMN_BREAK_BRIDGE_LOOKAHEAD, fragments.length - leftIndex - 2);
+  if (maxBridgeSize < 1) return undefined;
+
+  const left = fragments[leftIndex];
+  for (let bridgeSize = 1; bridgeSize <= maxBridgeSize; bridgeSize += 1) {
+    const rightIndex = leftIndex + bridgeSize + 1;
+    const right = fragments[rightIndex];
+    if (!right) break;
+    if (!isLikelyColumnBreak(left, right, pageWidth)) continue;
+    if (!isLikelyLeftColumnBreakAnchor(left, pageWidth)) continue;
+    if (!isLikelyRightColumnBreakAnchor(right, pageWidth)) continue;
+
+    const bridgeFragments = fragments.slice(leftIndex + 1, rightIndex);
+    const isBridgeValid = bridgeFragments.every(isIgnorableColumnBreakBridgeFragment);
+    if (isBridgeValid) return rightIndex - 1;
+  }
+  return undefined;
+}
+
+function isLikelyLeftColumnBreakAnchor(fragment: ExtractedFragment, pageWidth: number): boolean {
+  const center = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+  return center < pageWidth * MULTI_COLUMN_SPLIT_RATIO;
+}
+
+function isLikelyRightColumnBreakAnchor(fragment: ExtractedFragment, pageWidth: number): boolean {
+  const center = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+  return center > pageWidth * MULTI_COLUMN_SPLIT_RATIO;
+}
+
+function isIgnorableColumnBreakBridgeFragment(fragment: ExtractedFragment): boolean {
+  const normalized = normalizeSpacing(fragment.text);
+  if (normalized.length === 0) return true;
+  if (countSubstantiveChars(normalized) > COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS) {
+    return false;
+  }
+  return /^[^\p{L}\p{N}]+$/u.test(normalized);
 }
 
 function isLikelyColumnBreak(

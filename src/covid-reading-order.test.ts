@@ -43,4 +43,8 @@ describe("covid numbered heading order", () => {
     expect(covidHtml.indexOf(dataCollectionHeading)).toBeLessThan(covidHtml.indexOf(leftBodyContinuation));
     expect(covidHtml.indexOf(leftBodyContinuation)).toBeLessThan(covidHtml.indexOf(deathDataHeading));
   });
+
+  it("does not merge opposite-column lines into a single paragraph around the introduction transition", () => {
+    expect(covidHtml).not.toContain("major cardio - on acute CV events");
+  });
 });
