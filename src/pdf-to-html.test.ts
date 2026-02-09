@@ -7,15 +7,18 @@ import { convertPdfToHtml, pdfToHtmlInternals } from "./pdf-to-html.ts";
 const attentionPdfPath = resolve("data/attention.pdf");
 const cleanPdfPath = resolve("data/clean.pdf");
 const covidPdfPath = resolve("data/covid.pdf");
+const respectPdfPath = resolve("data/respect.pdf");
 const outputDirPath = resolve("data/work/test");
 const outputHtmlPath = join(outputDirPath, "attention.html");
 const cleanOutputHtmlPath = join(outputDirPath, "clean.html");
 const covidOutputHtmlPath = join(outputDirPath, "covid.html");
+const respectOutputHtmlPath = join(outputDirPath, "respect.html");
 
 describe("convertPdfToHtml", () => {
   let html = "";
   let cleanHtml = "";
   let covidHtml = "";
+  let respectHtml = "";
 
   beforeAll(async () => {
     await mkdir(outputDirPath, { recursive: true });
@@ -31,9 +34,14 @@ describe("convertPdfToHtml", () => {
       inputPdfPath: covidPdfPath,
       outputHtmlPath: covidOutputHtmlPath,
     });
+    await convertPdfToHtml({
+      inputPdfPath: respectPdfPath,
+      outputHtmlPath: respectOutputHtmlPath,
+    });
     html = await readFile(outputHtmlPath, "utf8");
     cleanHtml = await readFile(cleanOutputHtmlPath, "utf8");
     covidHtml = await readFile(covidOutputHtmlPath, "utf8");
+    respectHtml = await readFile(respectOutputHtmlPath, "utf8");
   });
 
   it("extracts the paper title as an h1 heading", () => {
@@ -51,6 +59,12 @@ describe("convertPdfToHtml", () => {
   it("removes repeated running headers and standalone page number lines", () => {
     expect(covidHtml).not.toContain("<p>Thrombosis Research 202 (2021) 17–23</p>");
     expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);
+  });
+
+  it("extracts respect paper title as an h1 heading", () => {
+    expect(respectHtml).toContain(
+      "<h1>the Influence of Prompt Politeness on LLM Performance</h1>",
+    );
   });
 });
 
@@ -94,6 +108,49 @@ describe("pdfToHtmlInternals", () => {
     ];
 
     expect(pdfToHtmlInternals.findTitleLine(lines)).toBeUndefined();
+  });
+
+  it("finds a title when page coordinates are negative and size increase is moderate", () => {
+    const titleLine = createLine({
+      text: "Should We Respect LLMs? A Cross-Lingual Study on",
+      y: -18,
+      x: 60,
+      fontSize: 14.3,
+      estimatedWidth: 360,
+    });
+    const lines = [
+      createLine({
+        text: "1 and 2023 Vilkki",
+        y: 0,
+        x: 0,
+        fontSize: 10.9,
+        estimatedWidth: 130,
+      }),
+      titleLine,
+      createLine({
+        text: "the Influence of Prompt Politeness on LLM Performance",
+        y: -34,
+        x: 51.5,
+        fontSize: 14.3,
+        estimatedWidth: 380,
+      }),
+      createLine({
+        text: "We investigate the impact of politeness levels in prompts",
+        y: -180,
+        x: 16,
+        fontSize: 10.9,
+        estimatedWidth: 520,
+      }),
+      createLine({
+        text: "1 Introduction",
+        y: -444,
+        x: 0,
+        fontSize: 12,
+        estimatedWidth: 100,
+      }),
+    ];
+
+    expect(pdfToHtmlInternals.findTitleLine(lines)).toBe(titleLine);
   });
 
   it("estimates body font size from frequencies and has a fallback", () => {

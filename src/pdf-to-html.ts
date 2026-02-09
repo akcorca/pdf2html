@@ -13,6 +13,11 @@ const MIN_REPEATED_EDGE_TEXT_PAGES = 4;
 const MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE = 0.6;
 const MIN_PAGE_NUMBER_SEQUENCE_PAGES = 3;
 const MIN_PAGE_NUMBER_SEQUENCE_COVERAGE = 0.5;
+const DEFAULT_TITLE_MIN_FONT_SIZE_DELTA = 5;
+const DEFAULT_TITLE_MIN_FONT_SIZE_RATIO = 1.5;
+const NEGATIVE_COORD_TITLE_MIN_FONT_SIZE_DELTA = 2;
+const NEGATIVE_COORD_TITLE_MIN_FONT_SIZE_RATIO = 1.2;
+const TITLE_MIN_RELATIVE_VERTICAL_POSITION = 0.45;
 
 interface ConvertPdfToHtmlInput {
   inputPdfPath: string;
@@ -405,8 +410,21 @@ function findTitleLine(lines: TextLine[]): TextLine | undefined {
     return undefined;
   }
 
+  const negativeCoordinateRatio =
+    firstPageLines.filter((line) => line.y < 0).length / Math.max(firstPageLines.length, 1);
+  const usesNegativeCoordinates = negativeCoordinateRatio > 0.6;
   const bodyFontSize = estimateBodyFontSize(lines);
-  const minTitleFontSize = Math.max(bodyFontSize + 5, bodyFontSize * 1.5);
+  const minTitleFontSize = Math.max(
+    bodyFontSize +
+      (usesNegativeCoordinates
+        ? NEGATIVE_COORD_TITLE_MIN_FONT_SIZE_DELTA
+        : DEFAULT_TITLE_MIN_FONT_SIZE_DELTA),
+    bodyFontSize *
+      (usesNegativeCoordinates
+        ? NEGATIVE_COORD_TITLE_MIN_FONT_SIZE_RATIO
+        : DEFAULT_TITLE_MIN_FONT_SIZE_RATIO),
+  );
+  const firstPageExtents = computePageVerticalExtents(firstPageLines);
 
   const candidates = firstPageLines.filter((line) => {
     if (line.fontSize < minTitleFontSize) {
@@ -418,7 +436,8 @@ function findTitleLine(lines: TextLine[]): TextLine | undefined {
     if (/[.!?]$/.test(line.text)) {
       return false;
     }
-    if (line.y < line.pageHeight * 0.45) {
+    const relativeY = getRelativeVerticalPosition(line, firstPageExtents);
+    if (relativeY < TITLE_MIN_RELATIVE_VERTICAL_POSITION) {
       return false;
     }
     if (line.estimatedWidth > line.pageWidth * 0.7) {
