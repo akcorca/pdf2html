@@ -46,15 +46,20 @@ function findTitleLineOnPage(
     bodyFontSize * TITLE_MIN_FONT_SIZE_RATIO,
   );
   const extents = computePageVerticalExtents(pageLines);
-  const candidates = pageLines.filter((line) =>
-    isTitleCandidate(line, minTitleFontSize, extents, pageLines),
-  );
+  let bestCandidate: TextLine | undefined;
+  let bestScore = Number.NEGATIVE_INFINITY;
 
-  if (candidates.length === 0) return findTopMatterTitleFallback(pageLines);
+  for (const line of pageLines) {
+    if (!isTitleCandidate(line, minTitleFontSize, extents, pageLines)) continue;
+    const score = scoreTitleCandidate(line, bodyFontSize);
+    if (score > bestScore) {
+      bestCandidate = line;
+      bestScore = score;
+    }
+  }
 
-  return candidates.sort(
-    (a, b) => scoreTitleCandidate(b, bodyFontSize) - scoreTitleCandidate(a, bodyFontSize),
-  )[0];
+  if (bestCandidate) return bestCandidate;
+  return findTopMatterTitleFallback(pageLines);
 }
 
 function isTitleCandidate(
@@ -77,17 +82,22 @@ function isTitleCandidate(
   return Math.abs(lineCenter - pageCenter) <= line.pageWidth * 0.2;
 }
 
-function isLikelyDenseSameFontBlock(line: TextLine, firstPageLines: TextLine[]): boolean {
-  const count = firstPageLines.filter(
-    (other) =>
+function isLikelyDenseSameFontBlock(line: TextLine, pageLines: TextLine[]): boolean {
+  let nearbySameFontLineCount = 0;
+  for (const other of pageLines) {
+    if (
       Math.abs(other.y - line.y) <= TITLE_NEARBY_LINE_WINDOW &&
-      Math.abs(other.fontSize - line.fontSize) <= TITLE_NEARBY_FONT_SIZE_TOLERANCE,
-  ).length;
-  return count > MAX_NEARBY_SAME_FONT_LINES;
+      Math.abs(other.fontSize - line.fontSize) <= TITLE_NEARBY_FONT_SIZE_TOLERANCE
+    ) {
+      nearbySameFontLineCount += 1;
+      if (nearbySameFontLineCount > MAX_NEARBY_SAME_FONT_LINES) return true;
+    }
+  }
+  return false;
 }
 
-function findTopMatterTitleFallback(firstPageLines: TextLine[]): TextLine | undefined {
-  const sorted = [...firstPageLines].sort((a, b) => {
+function findTopMatterTitleFallback(pageLines: TextLine[]): TextLine | undefined {
+  const sorted = [...pageLines].sort((a, b) => {
     if (a.y !== b.y) return b.y - a.y;
     return a.x - b.x;
   });
@@ -96,23 +106,21 @@ function findTopMatterTitleFallback(firstPageLines: TextLine[]): TextLine | unde
 
   const authorLine = sorted[authorIdx];
   const minIdx = Math.max(0, authorIdx - TOP_MATTER_TITLE_LOOKBACK_LINES);
-  const block: TextLine[] = [];
+  let fallbackTitleLine: TextLine | undefined;
 
   for (let i = authorIdx - 1; i >= minIdx; i -= 1) {
     const line = sorted[i];
-    if (!isLikelyTopMatterTitleLine(line.text)) {
-      if (block.length > 0) break;
+    const isAlignedTopMatterTitleLine =
+      isLikelyTopMatterTitleLine(line.text) &&
+      Math.abs(line.x - authorLine.x) <= line.pageWidth * 0.08;
+    if (!isAlignedTopMatterTitleLine) {
+      if (fallbackTitleLine) break;
       continue;
     }
-    const maxXOffset = line.pageWidth * 0.08;
-    if (Math.abs(line.x - authorLine.x) > maxXOffset) {
-      if (block.length > 0) break;
-      continue;
-    }
-    block.push(line);
+    fallbackTitleLine = line;
   }
 
-  return block.length === 0 ? undefined : block[block.length - 1];
+  return fallbackTitleLine;
 }
 
 function isLikelyAuthorLine(text: string): boolean {
