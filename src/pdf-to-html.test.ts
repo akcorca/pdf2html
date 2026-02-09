@@ -432,6 +432,12 @@ describe("convertPdfToHtml", () => {
     expect(tftHtml).not.toContain("<p>DOI: 10.1002/adma.201607055</p>");
   });
 
+  it("removes publisher-imprint footer lines from tft.pdf", () => {
+    expect(tftHtml).not.toMatch(
+      /<p>[^<]*(?:\b(?:19|20)\d{2}\b)[^<]*\b(?:GmbH|KGaA)\b[^<]*<\/p>/,
+    );
+  });
+
   it("removes standalone plus-symbol artifact lines from tft.pdf", () => {
     expect(tftHtml).not.toContain("<p>++</p>");
     expect(tftHtml).not.toContain("<p>+</p>");

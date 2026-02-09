@@ -84,6 +84,12 @@ const FIRST_PAGE_VENUE_FOOTER_MAX_SUBSTANTIVE_CHARS = 140;
 const FIRST_PAGE_VENUE_FOOTER_YEAR_PATTERN = /\b(?:19|20)\d{2}\b/;
 const FIRST_PAGE_VENUE_FOOTER_KEYWORD_PATTERN =
   /\b(?:conference|proceedings|journal|workshop|symposium|transactions)\b/iu;
+const PUBLISHER_IMPRINT_FOOTER_MAX_FONT_RATIO = 1.05;
+const PUBLISHER_IMPRINT_FOOTER_MIN_SUBSTANTIVE_CHARS = 24;
+const PUBLISHER_IMPRINT_FOOTER_MIN_CORPORATE_TOKEN_COUNT = 2;
+const PUBLISHER_IMPRINT_FOOTER_CORPORATE_TOKEN_PATTERN =
+  /\b(?:verlag|gmbh|kgaa|ltd\.?|inc\.?|llc|corp\.?|corporation|press|publishing)\b/giu;
+const PUBLISHER_IMPRINT_FOOTER_LONG_NUMBER_PATTERN = /\b\d{4,8}\b/g;
 const SPECIAL_TOKEN_ARTIFACT_PATTERN = /<\s*(?:pad|eos|bos|unk)\s*>/giu;
 const SPECIAL_TOKEN_ARTIFACT_MAX_FONT_RATIO = 0.96;
 const SPECIAL_TOKEN_ARTIFACT_MAX_WORDS_WITH_SINGLE_TOKEN = 4;
@@ -177,6 +183,7 @@ function isRemovablePageArtifact(
     isLikelyStandaloneDoiMetadataLine(line) ||
     isLikelySpecialTokenArtifactLine(line, bodyFontSize) ||
     isLikelyPublisherPageCounterFooter(line, pageExtents) ||
+    isLikelyPublisherImprintFooterLine(line, bodyFontSize, pageExtents) ||
     isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize) ||
     isLikelyTopMatterSymbolicAffiliationLine(line, bodyFontSize) ||
     isLikelyFirstPageVenueFooterLine(line, bodyFontSize) ||
@@ -765,6 +772,34 @@ function isLikelyPublisherPageCounterFooter(
   if (!PAGE_COUNTER_PATTERN.test(normalized)) return false;
   if (!DOMAIN_LIKE_TOKEN_PATTERN.test(normalized)) return false;
   return isNearPageEdge(line, pageExtents) || isNearPhysicalPageEdge(line);
+}
+
+function isLikelyPublisherImprintFooterLine(
+  line: TextLine,
+  bodyFontSize: number,
+  pageExtents: Map<number, PageVerticalExtent>,
+): boolean {
+  if (line.fontSize > bodyFontSize * PUBLISHER_IMPRINT_FOOTER_MAX_FONT_RATIO) return false;
+  if (!(isNearPageEdge(line, pageExtents) || isNearPhysicalPageEdge(line))) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (countSubstantiveChars(normalized) < PUBLISHER_IMPRINT_FOOTER_MIN_SUBSTANTIVE_CHARS) {
+    return false;
+  }
+  if (!FIRST_PAGE_VENUE_FOOTER_YEAR_PATTERN.test(normalized)) return false;
+  if (!hasMultiplePublisherCorporateTokens(normalized)) return false;
+  return hasNonYearLongNumericToken(normalized);
+}
+
+function hasMultiplePublisherCorporateTokens(text: string): boolean {
+  const matches = text.match(PUBLISHER_IMPRINT_FOOTER_CORPORATE_TOKEN_PATTERN) ?? [];
+  return matches.length >= PUBLISHER_IMPRINT_FOOTER_MIN_CORPORATE_TOKEN_COUNT;
+}
+
+function hasNonYearLongNumericToken(text: string): boolean {
+  const matches = text.match(PUBLISHER_IMPRINT_FOOTER_LONG_NUMBER_PATTERN);
+  if (!matches) return false;
+  return matches.some((token) => !FIRST_PAGE_VENUE_FOOTER_YEAR_PATTERN.test(token));
 }
 
 function isLikelyFirstPageVenueFooterLine(
