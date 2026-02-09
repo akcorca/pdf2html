@@ -33,6 +33,11 @@ interface HeadingCandidate {
   level: number;
 }
 
+interface NumberedHeadingSectionInfo {
+  topLevelNumber: number;
+  depth: number;
+}
+
 export function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
   const bodyLines = renderBodyLines(lines, titleLine);
@@ -64,6 +69,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   const hasDottedSubsectionHeadings = lines.some((line) =>
     DOTTED_SUBSECTION_HEADING_PATTERN.test(normalizeSpacing(line.text)),
   );
+  const seenTopLevelNumberedSections = new Set<number>();
   const consumedTitle = titleLine ? consumeTitleLines(lines, titleLine) : undefined;
   const consumedNumberedHeadingContinuationIndexes = new Set<number>();
   let index = 0;
@@ -84,7 +90,18 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
 
     const currentLine = lines[index];
 
-    const heading = detectHeadingCandidate(currentLine, bodyFontSize, hasDottedSubsectionHeadings);
+    let heading = detectHeadingCandidate(currentLine, bodyFontSize, hasDottedSubsectionHeadings);
+    const numberedHeadingSectionInfo =
+      heading?.kind === "numbered" ? parseNumberedHeadingSectionInfo(currentLine.text) : undefined;
+    if (
+      heading?.kind === "numbered" &&
+      numberedHeadingSectionInfo !== undefined &&
+      numberedHeadingSectionInfo.depth > 1 &&
+      !seenTopLevelNumberedSections.has(numberedHeadingSectionInfo.topLevelNumber)
+    ) {
+      heading = undefined;
+    }
+
     if (heading !== undefined) {
       let headingText = currentLine.text;
       if (heading.kind === "numbered") {
@@ -102,6 +119,13 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
         }
       }
       bodyLines.push(`<h${heading.level}>${escapeHtml(headingText)}</h${heading.level}>`);
+      if (
+        heading.kind === "numbered" &&
+        numberedHeadingSectionInfo !== undefined &&
+        numberedHeadingSectionInfo.depth === 1
+      ) {
+        seenTopLevelNumberedSections.add(numberedHeadingSectionInfo.topLevelNumber);
+      }
       index += 1;
       continue;
     }
@@ -132,6 +156,17 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     index += 1;
   }
   return bodyLines;
+}
+
+function parseNumberedHeadingSectionInfo(text: string): NumberedHeadingSectionInfo | undefined {
+  const normalized = normalizeSpacing(text);
+  const match = /^(\d+(?:\.\d+){0,4})\.?\s+/.exec(normalized);
+  if (!match) return undefined;
+
+  const sectionNumber = match[1];
+  const topLevelNumber = Number.parseInt(sectionNumber.split(".")[0] ?? "", 10);
+  if (!Number.isFinite(topLevelNumber)) return undefined;
+  return { topLevelNumber, depth: sectionNumber.split(".").length };
 }
 
 function detectHeadingCandidate(
