@@ -273,6 +273,11 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("<p>tensorflow/tensor2tensor .</p>");
   });
 
+  it("removes attention-visualization special-token artifact lines in attention.pdf", () => {
+    expect(html).not.toContain("&lt;EOS&gt;");
+    expect(html).not.toContain("&lt;pad&gt;");
+  });
+
   it("removes repeated running-label header lines from tft.pdf", () => {
     expect(tftHtml).not.toContain("<p>COMMUNICATION</p>");
   });

@@ -70,6 +70,9 @@ const FIRST_PAGE_VENUE_FOOTER_MAX_SUBSTANTIVE_CHARS = 140;
 const FIRST_PAGE_VENUE_FOOTER_YEAR_PATTERN = /\b(?:19|20)\d{2}\b/;
 const FIRST_PAGE_VENUE_FOOTER_KEYWORD_PATTERN =
   /\b(?:conference|proceedings|journal|workshop|symposium|transactions)\b/iu;
+const SPECIAL_TOKEN_ARTIFACT_PATTERN = /<\s*(?:pad|eos|bos|unk)\s*>/giu;
+const SPECIAL_TOKEN_ARTIFACT_MAX_FONT_RATIO = 0.96;
+const SPECIAL_TOKEN_ARTIFACT_MAX_WORDS_WITH_SINGLE_TOKEN = 4;
 
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
@@ -111,6 +114,7 @@ function isRemovablePageArtifact(
   if (line.text.length === 0) return true;
   if (isLikelyStandaloneSymbolArtifact(line, bodyFontSize)) return true;
   if (isLikelyArxivSubmissionStamp(line, bodyFontSize)) return true;
+  if (isLikelySpecialTokenArtifactLine(line, bodyFontSize)) return true;
   if (isLikelyPublisherPageCounterFooter(line, pageExtents)) return true;
   if (isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize)) return true;
   if (isLikelyTopMatterSymbolicAffiliationLine(line, bodyFontSize)) return true;
@@ -474,6 +478,21 @@ function isLikelyStandaloneSymbolArtifact(line: TextLine, bodyFontSize: number):
   if (!STANDALONE_SYMBOL_ARTIFACT_PATTERN.test(normalized)) return false;
   if (FOOTNOTE_MARKER_ONLY_SYMBOL_PATTERN.test(normalized)) return false;
   return line.estimatedWidth <= line.pageWidth * STANDALONE_SYMBOL_ARTIFACT_MAX_WIDTH_RATIO;
+}
+
+function isLikelySpecialTokenArtifactLine(line: TextLine, bodyFontSize: number): boolean {
+  if (line.fontSize > bodyFontSize * SPECIAL_TOKEN_ARTIFACT_MAX_FONT_RATIO) return false;
+  const normalized = normalizeSpacing(line.text);
+  const matchedTokens = normalized.match(SPECIAL_TOKEN_ARTIFACT_PATTERN);
+  if (!matchedTokens || matchedTokens.length === 0) return false;
+  if (matchedTokens.length > 1) return true;
+
+  const textWithoutTokens = normalizeSpacing(
+    normalized.replace(SPECIAL_TOKEN_ARTIFACT_PATTERN, " "),
+  );
+  if (textWithoutTokens.length === 0) return true;
+  const tokenlessWordCount = textWithoutTokens.split(/\s+/).filter(Boolean).length;
+  return tokenlessWordCount <= SPECIAL_TOKEN_ARTIFACT_MAX_WORDS_WITH_SINGLE_TOKEN;
 }
 
 function countSubstantiveChars(text: string): number {
