@@ -56,6 +56,10 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("does not treat figure flow labels as numbered section headings in clean.pdf", () => {
+    expect(cleanHtml).not.toContain("<h2>1 Historical 5 Historical</h2>");
+  });
+
   it("removes repeated running headers and standalone page number lines", () => {
     expect(covidHtml).not.toContain("<p>Thrombosis Research 202 (2021) 17–23</p>");
     expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);

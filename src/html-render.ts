@@ -90,6 +90,7 @@ function isValidHeadingText(text: string): boolean {
   if (/[.!?]$/.test(text)) return false;
   if (!/^[A-Z]/.test(text)) return false;
   if (!/[A-Za-z]/.test(text)) return false;
+  if (isLikelyFlowLabelText(text)) return false;
   const wordCount = text.split(/\s+/).filter((p) => p.length > 0).length;
   if (wordCount > MAX_NUMBERED_HEADING_WORDS) return false;
   const hasMeaningful = text
@@ -99,4 +100,14 @@ function isValidHeadingText(text: string): boolean {
   const alphanumeric = text.replace(/[^A-Za-z0-9]/g, "");
   const digitRatio = text.replace(/[^0-9]/g, "").length / Math.max(alphanumeric.length, 1);
   return digitRatio <= MAX_NUMBERED_HEADING_DIGIT_RATIO;
+}
+
+function isLikelyFlowLabelText(text: string): boolean {
+  const tokens = text.split(/\s+/).filter((p) => p.length > 0);
+  if (tokens.length !== 3) return false;
+  if (!/^\d{1,2}$/.test(tokens[1])) return false;
+  const left = tokens[0].replace(/[^A-Za-z]/g, "");
+  const right = tokens[2].replace(/[^A-Za-z]/g, "");
+  if (left.length < 4 || right.length < 4) return false;
+  return left.toLowerCase() === right.toLowerCase();
 }
