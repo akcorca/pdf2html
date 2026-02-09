@@ -21,20 +21,24 @@ import {
 
 const NUMBERED_SECTION_MARKER_PATTERN = /^\d+(?:\.\d+){0,4}\.?$/;
 const MAX_NUMBERED_SECTION_PREFIX_WORDS = 8;
+const MULTI_COLUMN_SPLIT_RATIO = 0.5;
+const MULTI_COLUMN_SPANNING_LINE_WIDTH_RATIO = 0.62;
+const MULTI_COLUMN_HEADING_REORDER_PATTERN = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u;
+const MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH = 90;
+const MAX_MULTI_COLUMN_HEADING_WORDS = 16;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
+  const multiColumnPageIndexes = new Set<number>();
   for (const page of document.pages) {
-    lines.push(...collectPageLines(page));
+    const collectedPage = collectPageLines(page);
+    lines.push(...collectedPage.lines);
+    if (collectedPage.isMultiColumn) multiColumnPageIndexes.add(page.pageIndex);
   }
-  return lines.sort((left, right) => {
-    if (left.pageIndex !== right.pageIndex) return left.pageIndex - right.pageIndex;
-    if (left.y !== right.y) return right.y - left.y;
-    return left.x - right.x;
-  });
+  return lines.sort((left, right) => compareLinesForReadingOrder(left, right, multiColumnPageIndexes));
 }
 
-function collectPageLines(page: ExtractedPage): TextLine[] {
+function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColumn: boolean } {
   const buckets = bucketFragments(page);
   const splitByColumn = isLikelyMultiColumnPage(buckets, page.width);
   const lines: TextLine[] = [];
@@ -64,7 +68,56 @@ function collectPageLines(page: ExtractedPage): TextLine[] {
     }
   }
 
-  return lines;
+  return { lines, isMultiColumn: splitByColumn };
+}
+
+function compareLinesForReadingOrder(
+  left: TextLine,
+  right: TextLine,
+  multiColumnPageIndexes: Set<number>,
+): number {
+  if (left.pageIndex !== right.pageIndex) return left.pageIndex - right.pageIndex;
+
+  if (multiColumnPageIndexes.has(left.pageIndex)) {
+    const columnOrder = compareMultiColumnLineOrder(left, right);
+    if (columnOrder !== 0) return columnOrder;
+  }
+
+  if (left.y !== right.y) return right.y - left.y;
+  return left.x - right.x;
+}
+
+function compareMultiColumnLineOrder(left: TextLine, right: TextLine): number {
+  if (!isLikelyColumnHeadingLine(left.text) || !isLikelyColumnHeadingLine(right.text)) return 0;
+  const leftColumn = classifyMultiColumnLine(left);
+  const rightColumn = classifyMultiColumnLine(right);
+  if (leftColumn === "spanning" || rightColumn === "spanning") return 0;
+  if (leftColumn === rightColumn) return 0;
+  return leftColumn === "left" ? -1 : 1;
+}
+
+function isLikelyColumnHeadingLine(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  const match = MULTI_COLUMN_HEADING_REORDER_PATTERN.exec(normalized);
+  if (!match) return false;
+  const headingText = match[2].trim();
+  if (headingText.length < 2 || headingText.length > MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH) {
+    return false;
+  }
+  if (!/^[A-Z]/.test(headingText)) return false;
+  if (!/[A-Za-z]/.test(headingText)) return false;
+  if (headingText.includes(",") || headingText.includes(":")) return false;
+  if (/[.!?]$/.test(headingText)) return false;
+  const words = headingText.split(/\s+/).filter((token) => token.length > 0);
+  if (words.length === 0 || words.length > MAX_MULTI_COLUMN_HEADING_WORDS) return false;
+  return words.every((token) => /^[A-Za-z][A-Za-z-]*$/.test(token));
+}
+
+function classifyMultiColumnLine(line: TextLine): "left" | "right" | "spanning" {
+  const pageWidth = Math.max(line.pageWidth, 1);
+  if (line.estimatedWidth / pageWidth >= MULTI_COLUMN_SPANNING_LINE_WIDTH_RATIO) return "spanning";
+  const lineCenter = line.x + line.estimatedWidth / 2;
+  return lineCenter < pageWidth * MULTI_COLUMN_SPLIT_RATIO ? "left" : "right";
 }
 
 function bucketFragments(page: ExtractedPage): Map<number, ExtractedFragment[]> {

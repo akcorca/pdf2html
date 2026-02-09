@@ -113,6 +113,16 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).not.toMatch(/<h[2-6]>\d+\s+[^<]*\s\d+\.\d{2}<\/h[2-6]>/);
   });
 
+  it("preserves left-to-right reading order for two-column section headings in respect.pdf", () => {
+    const sectionHeading = "<h2>5 Results</h2>";
+    const rightColumnSubheading = "<h4>5.1.2 Chinese</h4>";
+    expect(respectHtml).toContain(sectionHeading);
+    expect(respectHtml).toContain(rightColumnSubheading);
+    expect(respectHtml.indexOf(sectionHeading)).toBeLessThan(
+      respectHtml.indexOf(rightColumnSubheading),
+    );
+  });
+
   it("merges wrapped tft paper title lines into a single h1 heading", () => {
     expect(tftHtml).toContain(
       "<h1>Multifunctional Organic-Semiconductor Interfacial Layers for Solution-Processed Oxide-Semiconductor Thin-Film Transistor</h1>",
