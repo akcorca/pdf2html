@@ -5,6 +5,7 @@ import { assertReadableFile, extractDocument } from "./pdf-extract.ts";
 import { collectTextLines } from "./text-lines.ts";
 import { filterPageArtifacts } from "./page-filter.ts";
 import { renderHtml } from "./html-render.ts";
+import { movePageFootnotesToDocumentEnd } from "./footnotes.ts";
 import {
   computePageVerticalExtents,
   estimateBodyFontSize,
@@ -30,7 +31,7 @@ export async function convertPdfToHtml(
   const resolvedOutputHtmlPath = resolve(input.outputHtmlPath);
   await assertReadableFile(resolvedInputPdfPath);
   const extracted = await extractDocument(resolvedInputPdfPath);
-  const lines = filterPageArtifacts(collectTextLines(extracted));
+  const lines = movePageFootnotesToDocumentEnd(filterPageArtifacts(collectTextLines(extracted)));
   const html = renderHtml(lines);
   await mkdir(dirname(resolvedOutputHtmlPath), { recursive: true });
   await writeFile(resolvedOutputHtmlPath, html, "utf8");
@@ -41,6 +42,7 @@ export const pdfToHtmlInternals = {
   collectTextLines,
   renderHtml,
   filterPageArtifacts,
+  movePageFootnotesToDocumentEnd,
   computePageVerticalExtents,
   findRepeatedEdgeTexts,
   isNearPageEdge,

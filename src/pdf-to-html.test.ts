@@ -123,6 +123,14 @@ describe("convertPdfToHtml", () => {
     expect(html).toContain("<h2>Abstract</h2>");
   });
 
+  it("moves first-page footnotes in attention.pdf to the end of the document", () => {
+    const footnoteText = "Equal contribution. Listing order is random.";
+    const referencesHeading = "<h2>References</h2>";
+    expect(html).toContain(footnoteText);
+    expect(html).toContain(referencesHeading);
+    expect(html.indexOf(footnoteText)).toBeGreaterThan(html.indexOf(referencesHeading));
+  });
+
   it("renders bullet lists in attention.pdf using ul/li semantics", () => {
     expect(html).toContain("<ul>");
     expect(html).toContain("<li>In \"encoder-decoder attention\" layers,");
