@@ -15,9 +15,12 @@
 <p>Google Brain Google Brain Google Research Google Research</p>
 <p>avaswani@google.com noam@google.com nikip@google.com usz@google.com</p>
 <p>∗ ∗ † ∗</p>
-<p>Llion Jones Aidan N. Gomez Łukasz Kaiser</p>
-<p>Google Research University of Toronto Google Brain</p>
-<p>llion@google.com aidan@cs.toronto.edu lukaszkaiser@google.com</p>
+<p>Llion Jones Aidan N. Gomez</p>
+<p>Łukasz Kaiser</p>
+<p>Google Research University of Toronto</p>
+<p>Google Brain</p>
+<p>llion@google.com aidan@cs.toronto.edu</p>
+<p>lukaszkaiser@google.com</p>
 <p>∗ ‡</p>
 <p>Illia Polosukhin</p>
 <p>illia.polosukhin@gmail.com</p>
@@ -53,23 +56,23 @@
 <p>Work performed while at Google Research.</p>
 <p>31st Conference on Neural Information Processing Systems (NIPS 2017), Long Beach, CA, USA.</p>
 <h2>1 Introduction</h2>
-<p>Recurrent neural networks, long short-term memory [13] and gated recurrent [7] neural networks</p>
+<p>Recurrent neural networks, long short-term memory [ 13 ] and gated recurrent [ 7 ] neural networks</p>
 <p>in particular, have been firmly established as state of the art approaches in sequence modeling and</p>
-<p>transduction problems such as language modeling and machine translation [ 35, 2, 5]. Numerous</p>
+<p>transduction problems such as language modeling and machine translation [ 35 , 2 , 5 ]. Numerous</p>
 <p>efforts have since continued to push the boundaries of recurrent language models and encoder-decoder</p>
 <p>architectures [38, 24, 15].</p>
 <p>Recurrent models typically factor computation along the symbol positions of the input and output</p>
 <p>sequences. Aligning the positions to steps in computation time, they generate a sequence of hidden</p>
-<p>states h , as a function of the previous hidden state h t . This inherently</p>
-<p>t t − 1 and the input for position</p>
+<p>states h , as a function of the previous hidden state h and the input for position t . This inherently</p>
+<p>t t − 1</p>
 <p>sequential nature precludes parallelization within training examples, which becomes critical at longer</p>
 <p>sequence lengths, as memory constraints limit batching across examples. Recent work has achieved</p>
-<p>significant improvements in computational efficiency through factorization tricks [21] and conditional</p>
-<p>computation [32], while also improving model performance in case of the latter. The fundamental</p>
+<p>significant improvements in computational efficiency through factorization tricks [ 21 ] and conditional</p>
+<p>computation [ 32 ], while also improving model performance in case of the latter. The fundamental</p>
 <p>constraint of sequential computation, however, remains.</p>
 <p>Attention mechanisms have become an integral part of compelling sequence modeling and transduc-</p>
 <p>tion models in various tasks, allowing modeling of dependencies without regard to their distance in</p>
-<p>the input or output sequences [2, 19]. In all but a few cases [27], however, such attention mechanisms</p>
+<p>the input or output sequences [ 2 , 19 ]. In all but a few cases [ 27 ], however, such attention mechanisms</p>
 <p>are used in conjunction with a recurrent network.</p>
 <p>In this work we propose the Transformer, a model architecture eschewing recurrence and instead</p>
 <p>relying entirely on an attention mechanism to draw global dependencies between input and output.</p>
@@ -77,11 +80,11 @@
 <p>translation quality after being trained for as little as twelve hours on eight P100 GPUs.</p>
 <h2>2 Background</h2>
 <p>The goal of reducing sequential computation also forms the foundation of the Extended Neural GPU</p>
-<p>[16], ByteNet [18] and ConvS2S [9], all of which use convolutional neural networks as basic building</p>
+<p>[ 16 ], ByteNet [ 18 ] and ConvS2S [ 9 ], all of which use convolutional neural networks as basic building</p>
 <p>block, computing hidden representations in parallel for all input and output positions. In these models,</p>
 <p>the number of operations required to relate signals from two arbitrary input or output positions grows</p>
 <p>in the distance between positions, linearly for ConvS2S and logarithmically for ByteNet. This makes</p>
-<p>it more difficult to learn dependencies between distant positions [ 12]. In the Transformer this is</p>
+<p>it more difficult to learn dependencies between distant positions [ 12 ]. In the Transformer this is</p>
 <p>reduced to a constant number of operations, albeit at the cost of reduced effective resolution due</p>
 <p>to averaging attention-weighted positions, an effect we counteract with Multi-Head Attention as</p>
 <p>described in section 3.2.</p>
@@ -97,7 +100,7 @@
 <p>aligned RNNs or convolution. In the following sections, we will describe the Transformer, motivate</p>
 <p>self-attention and discuss its advantages over models such as [17, 18] and [9].</p>
 <h2>3 Model Architecture</h2>
-<p>Most competitive neural sequence transduction models have an encoder-decoder structure [5, 2, 35].</p>
+<p>Most competitive neural sequence transduction models have an encoder-decoder structure [ 5 , 2 , 35 ].</p>
 <p>Here, the encoder maps an input sequence of symbol representations ( x 1 , ..., x n ) to a sequence</p>
 <p>of continuous representations z = ( z , ..., z ) . Given z , the decoder then generates an output</p>
 <p>1 n</p>
@@ -110,12 +113,12 @@
 <h3>3.1 Encoder and Decoder Stacks</h3>
 <p>Encoder: The encoder is composed of a stack of N = 6 identical layers. Each layer has two</p>
 <p>sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, position-</p>
-<p>wise fully connected feed-forward network. We employ a residual connection [11] around each of</p>
-<p>the two sub-layers, followed by layer normalization [ 1]. That is, the output of each sub-layer is</p>
+<p>wise fully connected feed-forward network. We employ a residual connection [ 11 ] around each of</p>
+<p>the two sub-layers, followed by layer normalization [ 1 ]. That is, the output of each sub-layer is</p>
 <p>LayerNorm( x + Sublayer( x )) , where Sublayer( x ) is the function implemented by the sub-layer</p>
 <p>itself. To facilitate these residual connections, all sub-layers in the model, as well as the embedding</p>
-<p>layers, produce outputs of dimension d .</p>
-<p>model = 512</p>
+<p>layers, produce outputs of dimension d = 512 .</p>
+<p>model</p>
 <p>Decoder: The decoder is also composed of a stack of N = 6 identical layers. In addition to the two</p>
 <p>sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head</p>
 <p>attention over the output of the encoder stack. Similar to the encoder, we employ residual connections</p>
@@ -126,7 +129,7 @@
 <h3>3.2 Attention</h3>
 <p>An attention function can be described as mapping a query and a set of key-value pairs to an output,</p>
 <p>where the query, keys, values, and output are all vectors. The output is computed as a weighted sum</p>
-<p>Scaled Dot-Product Attention</p>
+<p>Scaled Dot-Product Attention Multi-Head Attention</p>
 <p>Figure 2: (left) Scaled Dot-Product Attention. (right) Multi-Head Attention consists of several</p>
 <p>attention layers running in parallel.</p>
 <p>of the values, where the weight assigned to each value is computed by a compatibility function of the</p>
@@ -135,7 +138,8 @@
 <p>We call our particular attention "Scaled Dot-Product Attention" (Figure 2). The input consists of</p>
 <p>queries and keys of dimension d , and values of dimension d . We compute the dot products of the</p>
 <p>k v</p>
-<p>query with all keys, divide each by √ d k , and apply a softmax function to obtain the weights on the</p>
+<p>√</p>
+<p>query with all keys, divide each by d k , and apply a softmax function to obtain the weights on the</p>
 <p>values.</p>
 <p>In practice, we compute the attention function on a set of queries simultaneously, packed together</p>
 <p>into a matrix Q . The keys and values are also packed together into matrices K and V . We compute</p>
@@ -145,34 +149,35 @@
 <p>Attention( Q, K, V ) = softmax( √ ) V (1)</p>
 <p>d</p>
 <p>k</p>
-<p>The two most commonly used attention functions are additive attention [2], and dot-product (multi-</p>
+<p>The two most commonly used attention functions are additive attention [ 2 ], and dot-product (multi-</p>
 <p>plicative) attention. Dot-product attention is identical to our algorithm, except for the scaling factor</p>
-<p>of 1 √ . Additive attention computes the compatibility function using a feed-forward network with</p>
+<p>1</p>
+<p>of √ . Additive attention computes the compatibility function using a feed-forward network with</p>
 <p>d k</p>
 <p>a single hidden layer. While the two are similar in theoretical complexity, dot-product attention is</p>
 <p>much faster and more space-efficient in practice, since it can be implemented using highly optimized</p>
 <p>matrix multiplication code.</p>
-<p>While for small values of d</p>
-<p>k the two mechanisms perform similarly, additive attention outperforms</p>
-<p>dot product attention without scaling for larger values of d k [3]. We suspect that for large values of</p>
+<p>While for small values of d the two mechanisms perform similarly, additive attention outperforms</p>
+<p>k</p>
+<p>dot product attention without scaling for larger values of d k [ 3 ]. We suspect that for large values of</p>
 <p>d , the dot products grow large in magnitude, pushing the softmax function into regions where it has</p>
 <p>k</p>
-<p>extremely small gradients 4 . To counteract this effect, we scale the dot products by 1 √ .</p>
+<p>4 1</p>
+<p>extremely small gradients . To counteract this effect, we scale the dot products by √ .</p>
 <p>d k</p>
 <h4>3.2.2 Multi-Head Attention</h4>
 <p>Instead of performing a single attention function with d model -dimensional keys, values and queries,</p>
 <p>we found it beneficial to linearly project the queries, keys and values h times with different, learned</p>
-<p>linear projections to d , d d</p>
-<p>k k and v dimensions, respectively. On each of these projected versions of</p>
+<p>linear projections to d , d and d dimensions, respectively. On each of these projected versions of</p>
+<p>k k v</p>
 <p>queries, keys and values we then perform the attention function in parallel, yielding d -dimensional</p>
 <p>v</p>
-<p>4</p>
 <p>To illustrate why the dot products get large, assume that the components of q and k are independent random</p>
+<p>P</p>
 <p>d</p>
 <p>k</p>
-<p>variables with mean 0 and variance 1 . Then their dot product, q · k = P i k i , has mean 0 and variance d .</p>
-<p>i =1 q k</p>
-<p>Multi-Head Attention</p>
+<p>variables with mean 0 and variance 1 . Then their dot product, q · k = q i k i , has mean 0 and variance d .</p>
+<p>i =1 k</p>
 <p>output values. These are concatenated and once again projected, resulting in the final values, as</p>
 <p>depicted in Figure 2.</p>
 <p>Multi-head attention allows the model to jointly attend to information from different representation</p>
@@ -180,60 +185,52 @@
 <p>O</p>
 <p>MultiHead( Q, K, V ) = Concat(head 1 , ..., head h ) W</p>
 <p>Q K V</p>
-<p>where head QW</p>
-<p>i = Attention( i , KW i , V W i )</p>
+<p>where head = Attention( QW , KW , V W )</p>
+<p>i i i i</p>
 <p>Q</p>
-<p>d model × d k , K d model × d k , V d model × d v</p>
-<p>Where the projections are parameter matrices W R W R W R</p>
-<p>i ∈ i ∈ i ∈</p>
-<p>O ∈ hd v × d model .</p>
-<p>and W R</p>
+<p>d model × d k K d model × d k V d model × d v</p>
+<p>Where the projections are parameter matrices W ∈ R , W ∈ R , W ∈ R</p>
+<p>i i i</p>
+<p>O hd v × d model</p>
+<p>and W ∈ R .</p>
 <p>In this work we employ h = 8 parallel attention layers, or heads. For each of these we use</p>
-<p>d d d /h = 64 . Due to the reduced dimension of each head, the total computational cost</p>
-<p>k = v = model</p>
+<p>d = d = d /h = 64 . Due to the reduced dimension of each head, the total computational cost</p>
+<p>k v model</p>
 <p>is similar to that of single-head attention with full dimensionality.</p>
 <h4>3.2.3 Applications of Attention in our Model</h4>
 <p>The Transformer uses multi-head attention in three different ways:</p>
-<p>• In "encoder-decoder attention" layers, the queries come from the previous decoder layer,</p>
-<p>and the memory keys and values come from the output of the encoder. This allows every</p>
-<p>position in the decoder to attend over all positions in the input sequence. This mimics the</p>
-<p>typical encoder-decoder attention mechanisms in sequence-to-sequence models such as</p>
-<p>[38, 2, 9].</p>
-<p>• The encoder contains self-attention layers. In a self-attention layer all of the keys, values</p>
-<p>and queries come from the same place, in this case, the output of the previous layer in the</p>
-<p>encoder. Each position in the encoder can attend to all positions in the previous layer of the</p>
-<p>encoder.</p>
-<p>• Similarly, self-attention layers in the decoder allow each position in the decoder to attend to</p>
-<p>all positions in the decoder up to and including that position. We need to prevent leftward</p>
-<p>information flow in the decoder to preserve the auto-regressive property. We implement this</p>
-<p>inside of scaled dot-product attention by masking out (setting to −∞ ) all values in the input</p>
-<p>of the softmax which correspond to illegal connections. See Figure 2.</p>
+<ul>
+<li>In "encoder-decoder attention" layers, the queries come from the previous decoder layer, and the memory keys and values come from the output of the encoder. This allows every position in the decoder to attend over all positions in the input sequence. This mimics the typical encoder-decoder attention mechanisms in sequence-to-sequence models such as [38, 2, 9].</li>
+<li>The encoder contains self-attention layers. In a self-attention layer all of the keys, values and queries come from the same place, in this case, the output of the previous layer in the encoder. Each position in the encoder can attend to all positions in the previous layer of the encoder.</li>
+<li>Similarly, self-attention layers in the decoder allow each position in the decoder to attend to all positions in the decoder up to and including that position. We need to prevent leftward information flow in the decoder to preserve the auto-regressive property. We implement this inside of scaled dot-product attention by masking out (setting to −∞ ) all values in the input of the softmax which correspond to illegal connections. See Figure 2.</li>
+</ul>
 <h3>3.3 Position-wise Feed-Forward Networks</h3>
 <p>In addition to attention sub-layers, each of the layers in our encoder and decoder contains a fully</p>
 <p>connected feed-forward network, which is applied to each position separately and identically. This</p>
 <p>consists of two linear transformations with a ReLU activation in between.</p>
-<p>FFN( x ) = max(0 , xW b ) W b</p>
-<p>1 + 1 2 + 2 (2)</p>
+<p>FFN( x ) = max(0 , xW + b ) W + b (2)</p>
+<p>1 1 2 2</p>
 <p>While the linear transformations are the same across different positions, they use different parameters</p>
 <p>from layer to layer. Another way of describing this is as two convolutions with kernel size 1.</p>
-<p>The dimensionality of input and output is d , and the inner-layer has dimensionality</p>
-<p>model = 512</p>
-<p>d .</p>
-<p>ff = 2048</p>
+<p>The dimensionality of input and output is d = 512 , and the inner-layer has dimensionality</p>
+<p>model</p>
+<p>d = 2048 .</p>
+<p>f f</p>
 <h3>3.4 Embeddings and Softmax</h3>
 <p>Similarly to other sequence transduction models, we use learned embeddings to convert the input</p>
 <p>tokens and output tokens to vectors of dimension d model . We also use the usual learned linear transfor-</p>
 <p>mation and softmax function to convert the decoder output to predicted next-token probabilities. In</p>
 <p>our model, we share the same weight matrix between the two embedding layers and the pre-softmax</p>
-<p>linear transformation, similar to [30]. In the embedding layers, we multiply those weights by √ d .</p>
+<p>√</p>
+<p>linear transformation, similar to [ 30 ]. In the embedding layers, we multiply those weights by d .</p>
 <p>model</p>
 <p>Table 1: Maximum path lengths, per-layer complexity and minimum number of sequential operations</p>
 <p>for different layer types. n is the sequence length, d is the representation dimension, k is the kernel</p>
 <p>size of convolutions and r the size of the neighborhood in restricted self-attention.</p>
 <p>Layer Type Complexity per Layer Sequential Maximum Path Length</p>
 <p>Operations</p>
-<p>2 ·</p>
-<p>Self-Attention O ( n d ) O (1) O (1)</p>
+<p>2</p>
+<p>Self-Attention O ( n · d ) O (1) O (1)</p>
 <p>2</p>
 <p>Recurrent O ( n · d ) O ( n ) O ( n )</p>
 <p>2</p>
@@ -249,21 +246,21 @@
 <p>as the embeddings, so that the two can be summed. There are many choices of positional encodings,</p>
 <p>learned and fixed [9].</p>
 <p>In this work, we use sine and cosine functions of different frequencies:</p>
-<p>2 i/d model )</p>
-<p>P E sin ( pos/ 10000</p>
-<p>( pos, 2 i ) =</p>
+<p>2 i/d model</p>
+<p>P E = sin ( pos/ 10000 )</p>
+<p>( pos, 2 i )</p>
 <p>2 i/d</p>
-<p>model )</p>
-<p>P E cos ( pos/ 10000</p>
-<p>( pos, 2 i +1) =</p>
+<p>model</p>
+<p>P E = cos ( pos/ 10000 )</p>
+<p>( pos, 2 i +1)</p>
 <p>where pos is the position and i is the dimension. That is, each dimension of the positional encoding</p>
 <p>corresponds to a sinusoid. The wavelengths form a geometric progression from 2 π to 10000 · 2 π . We</p>
 <p>chose this function because we hypothesized it would allow the model to easily learn to attend by</p>
-<p>relative positions, since for any fixed offset k , P E</p>
-<p>pos + k can be represented as a linear function of</p>
+<p>relative positions, since for any fixed offset k , P E can be represented as a linear function of</p>
+<p>pos + k</p>
 <p>P E .</p>
 <p>pos</p>
-<p>We also experimented with using learned positional embeddings [9] instead, and found that the two</p>
+<p>We also experimented with using learned positional embeddings [ 9 ] instead, and found that the two</p>
 <p>versions produced nearly identical results (see Table 3 row (E)). We chose the sinusoidal version</p>
 <p>because it may allow the model to extrapolate to sequence lengths longer than the ones encountered</p>
 <p>during training.</p>
@@ -271,8 +268,8 @@
 <p>In this section we compare various aspects of self-attention layers to the recurrent and convolu-</p>
 <p>tional layers commonly used for mapping one variable-length sequence of symbol representations</p>
 <p>d</p>
-<p>( x , ..., x ) to another sequence of equal length ( z , ..., z ) , with x , z R , such as a hidden</p>
-<p>1 n 1 n i i ∈</p>
+<p>( x , ..., x ) to another sequence of equal length ( z , ..., z ) , with x , z ∈ R , such as a hidden</p>
+<p>1 n 1 n i i</p>
 <p>layer in a typical sequence transduction encoder or decoder. Motivating our use of self-attention we</p>
 <p>consider three desiderata.</p>
 <p>One is the total computational complexity per layer. Another is the amount of computation that can</p>
@@ -281,7 +278,7 @@
 <p>dependencies is a key challenge in many sequence transduction tasks. One key factor affecting the</p>
 <p>ability to learn such dependencies is the length of the paths forward and backward signals have to</p>
 <p>traverse in the network. The shorter these paths between any combination of positions in the input</p>
-<p>and output sequences, the easier it is to learn long-range dependencies [12]. Hence we also compare</p>
+<p>and output sequences, the easier it is to learn long-range dependencies [ 12 ]. Hence we also compare</p>
 <p>the maximum path length between any two input and output positions in networks composed of the</p>
 <p>different layer types.</p>
 <p>As noted in Table 1, a self-attention layer connects all positions with a constant number of sequentially</p>
@@ -289,16 +286,16 @@
 <p>computational complexity, self-attention layers are faster than recurrent layers when the sequence</p>
 <p>length n is smaller than the representation dimensionality d , which is most often the case with</p>
 <p>sentence representations used by state-of-the-art models in machine translations, such as word-piece</p>
-<p>[38] and byte-pair [31] representations. To improve computational performance for tasks involving</p>
+<p>[ 38 ] and byte-pair [ 31 ] representations. To improve computational performance for tasks involving</p>
 <p>very long sequences, self-attention could be restricted to considering only a neighborhood of size r in</p>
 <p>the input sequence centered around the respective output position. This would increase the maximum</p>
 <p>path length to O ( n/r ) . We plan to investigate this approach further in future work.</p>
 <p>A single convolutional layer with kernel width k &lt; n does not connect all pairs of input and output</p>
 <p>positions. Doing so requires a stack of O ( n/k ) convolutional layers in the case of contiguous kernels,</p>
-<p>or O ( log ( n )) in the case of dilated convolutions [ 18], increasing the length of the longest paths</p>
+<p>or O ( log ( n )) in the case of dilated convolutions [ 18 ], increasing the length of the longest paths</p>
 <p>k</p>
 <p>between any two positions in the network. Convolutional layers are generally more expensive than</p>
-<p>recurrent layers, by a factor of k . Separable convolutions [ 6], however, decrease the complexity</p>
+<p>recurrent layers, by a factor of k . Separable convolutions [ 6 ], however, decrease the complexity</p>
 <p>2</p>
 <p>considerably, to O ( k · n · d + n · d ) . Even with k = n , however, the complexity of a separable</p>
 <p>convolution is equal to the combination of a self-attention layer and a point-wise feed-forward layer,</p>
@@ -311,10 +308,10 @@
 <p>This section describes the training regime for our models.</p>
 <h3>5.1 Training Data and Batching</h3>
 <p>We trained on the standard WMT 2014 English-German dataset consisting of about 4.5 million</p>
-<p>sentence pairs. Sentences were encoded using byte-pair encoding [ 3], which has a shared source-</p>
+<p>sentence pairs. Sentences were encoded using byte-pair encoding [ 3 ], which has a shared source-</p>
 <p>target vocabulary of about 37000 tokens. For English-French, we used the significantly larger WMT</p>
 <p>2014 English-French dataset consisting of 36M sentences and split tokens into a 32000 word-piece</p>
-<p>vocabulary [38]. Sentence pairs were batched together by approximate sequence length. Each training</p>
+<p>vocabulary [ 38 ]. Sentence pairs were batched together by approximate sequence length. Each training</p>
 <p>batch contained a set of sentence pairs containing approximately 25000 source tokens and 25000</p>
 <p>target tokens.</p>
 <h3>5.2 Hardware and Schedule</h3>
@@ -325,12 +322,12 @@
 <p>(3.5 days).</p>
 <h3>5.3 Optimizer</h3>
 <p>− 9</p>
-<p>We used the Adam optimizer [20] with β . 9 , β . 98 and ϵ = 10 . We varied the learning</p>
-<p>1 = 0 2 = 0</p>
+<p>We used the Adam optimizer [ 20 ] with β = 0 . 9 , β = 0 . 98 and ϵ = 10 . We varied the learning</p>
+<p>1 2</p>
 <p>rate over the course of training, according to the formula:</p>
 <p>− 0 . 5 − 0 . 5 − 1 . 5</p>
-<p>lrate = d min( step _ num , step _ num · warmup _ steps ) (3)</p>
-<p>model ·</p>
+<p>lrate = d · min( step _ num , step _ num · warmup _ steps ) (3)</p>
+<p>model</p>
 <p>This corresponds to increasing the learning rate linearly for the first warmup _ steps training steps,</p>
 <p>and decreasing it thereafter proportionally to the inverse square root of the step number. We used</p>
 <p>warmup _ steps = 4000 .</p>
@@ -344,29 +341,29 @@
 <p>ByteNet [18] 23.75</p>
 <p>20</p>
 <p>Deep-Att + PosUnk [39] 39.2 1 . 0 · 10</p>
-<p>19 1 20</p>
-<p>GNMT + RL [38] 24.6 39.92 2 . 3 · 10 . 4 · 10</p>
-<p>18 1 20</p>
-<p>ConvS2S [9] 25.16 40.46 9 . 6 · 10 . 5 · 10</p>
-<p>19 1 20</p>
-<p>MoE [32] 26.03 40.56 2 . 0 · 10 . 2 · 10</p>
+<p>19 20</p>
+<p>GNMT + RL [38] 24.6 39.92 2 . 3 · 10 1 . 4 · 10</p>
+<p>18 20</p>
+<p>ConvS2S [9] 25.16 40.46 9 . 6 · 10 1 . 5 · 10</p>
+<p>19 20</p>
+<p>MoE [32] 26.03 40.56 2 . 0 · 10 1 . 2 · 10</p>
 <p>20</p>
 <p>Deep-Att + PosUnk Ensemble [39] 40.4 8 . 0 · 10</p>
-<p>20 1 21</p>
-<p>GNMT + RL Ensemble [38] 26.30 41.16 1 . 8 · 10 . 1 · 10</p>
-<p>19 1 21</p>
-<p>ConvS2S Ensemble [9] 26.36 41.29 7 . 7 · 10 . 2 · 10</p>
+<p>20 21</p>
+<p>GNMT + RL Ensemble [38] 26.30 41.16 1 . 8 · 10 1 . 1 · 10</p>
+<p>19 21</p>
+<p>ConvS2S Ensemble [9] 26.36 41.29 7 . 7 · 10 1 . 2 · 10</p>
 <p>18</p>
 <p>Transformer (base model) 27.3 38.1 3 . 3 · 10</p>
 <p>19</p>
 <p>Transformer (big) 28.4 41.8 2 . 3 · 10</p>
-<p>Residual Dropout We apply dropout [33] to the output of each sub-layer, before it is added to the</p>
+<p>Residual Dropout We apply dropout [ 33 ] to the output of each sub-layer, before it is added to the</p>
 <p>sub-layer input and normalized. In addition, we apply dropout to the sums of the embeddings and the</p>
 <p>positional encodings in both the encoder and decoder stacks. For the base model, we use a rate of</p>
-<p>P . 1 .</p>
-<p>drop = 0</p>
-<p>Label Smoothing During training, we employed label smoothing of value ϵ . 1 [36]. This</p>
-<p>ls = 0</p>
+<p>P = 0 . 1 .</p>
+<p>drop</p>
+<p>Label Smoothing During training, we employed label smoothing of value ϵ = 0 . 1 [ 36 ]. This</p>
+<p>ls</p>
 <p>hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score.</p>
 <h2>6 Results</h2>
 <h3>6.1 Machine Translation</h3>
@@ -382,13 +379,14 @@
 <p>dropout rate P drop = 0 . 1 , instead of 0 . 3 .</p>
 <p>For the base models, we used a single model obtained by averaging the last 5 checkpoints, which</p>
 <p>were written at 10-minute intervals. For the big models, we averaged the last 20 checkpoints. We</p>
-<p>used beam search with a beam size of 4 and length penalty α = 0 . 6 [38]. These hyperparameters</p>
+<p>used beam search with a beam size of 4 and length penalty α = 0 . 6 [ 38 ]. These hyperparameters</p>
 <p>were chosen after experimentation on the development set. We set the maximum output length during</p>
 <p>inference to input length + 50 , but terminate early when possible [38].</p>
 <p>Table 2 summarizes our results and compares our translation quality and training costs to other model</p>
 <p>architectures from the literature. We estimate the number of floating point operations used to train a</p>
 <p>model by multiplying the training time, the number of GPUs used, and an estimate of the sustained</p>
-<p>single-precision floating-point capacity of each GPU 5 .</p>
+<p>5</p>
+<p>single-precision floating-point capacity of each GPU .</p>
 <h3>6.2 Model Variations</h3>
 <p>To evaluate the importance of different components of the Transformer, we varied our base model</p>
 <p>in different ways, measuring the change in performance on English-to-German translation on the</p>
@@ -398,107 +396,122 @@
 <p>model. All metrics are on the English-to-German translation development set, newstest2013. Listed</p>
 <p>perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to</p>
 <p>per-word perplexities.</p>
-<p>train</p>
-<p>N d model k</p>
-<p>d ff h d d v P drop ϵ ls 6</p>
-<p>steps × 10</p>
-<p>base</p>
-<p>1 512 512</p>
-<p>4 128 128</p>
+<p>train PPL BLEU params</p>
+<p>N d d h d d P ϵ</p>
+<p>model ff k v drop ls 6</p>
+<p>steps (dev) (dev) × 10</p>
+<p>base 6 512 2048 8 64 64 0.1 0.1 100K 4.92 25.8 65</p>
+<p>1 512 512 5.29 24.9</p>
+<p>4 128 128 5.00 25.5</p>
 <p>(A)</p>
-<p>16 32 32</p>
-<p>32 16 16</p>
+<p>16 32 32 4.91 25.8</p>
+<p>32 16 16 5.01 25.4</p>
+<p>16 5.16 25.1 58</p>
 <p>(B)</p>
-<p>32</p>
-<p>2</p>
-<p>4</p>
-<p>8</p>
-<p>(C) 256 32 32</p>
-<p>1024 128 128</p>
-<p>1024</p>
-<p>4096</p>
-<p>0.0</p>
-<p>0.2</p>
+<p>32 5.01 25.4 60</p>
+<p>2 6.11 23.7 36</p>
+<p>4 5.19 25.3 50</p>
+<p>8 4.88 25.5 80</p>
+<p>(C) 256 32 32 5.75 24.5 28</p>
+<p>1024 128 128 4.66 26.0 168</p>
+<p>1024 5.12 25.4 53</p>
+<p>4096 4.75 26.2 90</p>
+<p>0.0 5.77 24.6</p>
+<p>0.2 4.95 25.5</p>
 <p>(D)</p>
-<p>0.0</p>
-<p>0.2</p>
-<p>(E)</p>
-<p>big 213</p>
+<p>0.0 4.67 25.3</p>
+<p>0.2 5.47 25.7</p>
+<p>(E) positional embedding instead of sinusoids 4.92 25.7</p>
+<p>big 6 1024 4096 16 0.3 300K 4.33 26.4 213</p>
 <p>development set, newstest2013. We used beam search as described in the previous section, but no</p>
 <p>checkpoint averaging. We present these results in Table 3.</p>
 <p>In Table 3 rows (A), we vary the number of attention heads and the attention key and value dimensions,</p>
 <p>keeping the amount of computation constant, as described in Section 3.2.2. While single-head</p>
 <p>attention is 0.9 BLEU worse than the best setting, quality also drops off with too many heads.</p>
-<p>In Table 3 rows (B), we observe that reducing the attention key size d</p>
-<p>k hurts model quality. This</p>
+<p>In Table 3 rows (B), we observe that reducing the attention key size d hurts model quality. This</p>
+<p>k</p>
 <p>suggests that determining compatibility is not easy and that a more sophisticated compatibility</p>
 <p>function than dot product may be beneficial. We further observe in rows (C) and (D) that, as expected,</p>
 <p>bigger models are better, and dropout is very helpful in avoiding over-fitting. In row (E) we replace our</p>
-<p>sinusoidal positional encoding with learned positional embeddings [9], and observe nearly identical</p>
+<p>sinusoidal positional encoding with learned positional embeddings [ 9 ], and observe nearly identical</p>
 <p>results to the base model.</p>
 <h3>6.3 English Constituency Parsing</h3>
 <p>To evaluate if the Transformer can generalize to other tasks we performed experiments on English</p>
 <p>constituency parsing. This task presents specific challenges: the output is subject to strong structural</p>
 <p>constraints and is significantly longer than the input. Furthermore, RNN sequence-to-sequence</p>
 <p>models have not been able to attain state-of-the-art results in small-data regimes [37].</p>
-<p>We trained a 4-layer transformer with d on the Wall Street Journal (WSJ) portion of the</p>
-<p>model = 1024</p>
-<p>Penn Treebank [25], about 40K training sentences. We also trained it in a semi-supervised setting,</p>
+<p>We trained a 4-layer transformer with d = 1024 on the Wall Street Journal (WSJ) portion of the</p>
+<p>model</p>
+<p>Penn Treebank [ 25 ], about 40K training sentences. We also trained it in a semi-supervised setting,</p>
 <p>using the larger high-confidence and BerkleyParser corpora from with approximately 17M sentences</p>
-<p>[37]. We used a vocabulary of 16K tokens for the WSJ only setting and a vocabulary of 32K tokens</p>
+<p>[ 37 ]. We used a vocabulary of 16K tokens for the WSJ only setting and a vocabulary of 32K tokens</p>
 <p>for the semi-supervised setting.</p>
 <p>We performed only a small number of experiments to select the dropout, both attention and residual</p>
 <p>(section 5.4), learning rates and beam size on the Section 22 development set, all other parameters</p>
 <p>remained unchanged from the English-to-German base translation model. During inference, we</p>
-<p>PPL BLEU params (dev) (dev) 6 512 2048 8 64 64 0.1 0.1 100K 4.92 25.8 65 5.29 24.9 5.00 25.5 4.91 25.8 5.01 25.4 16 5.16 25.1 58 5.01 25.4 60 6.11 23.7 36 5.19 25.3 50 4.88 25.5 80 5.75 24.5 28 4.66 26.0 168 5.12 25.4 53 4.75 26.2 90 5.77 24.6 4.95 25.5 4.67 25.3 5.47 25.7 positional embedding instead of sinusoids 4.92 25.7 6 1024 4096 16 0.3 300K 4.33 26.4</p>
 <p>Table 4: The Transformer generalizes well to English constituency parsing (Results are on Section 23</p>
 <p>of WSJ)</p>
 <p>Parser</p>
+<p>Training WSJ 23 F1</p>
 <p>Vinyals &amp; Kaiser el al. (2014) [37]</p>
+<p>WSJ only, discriminative 88.3</p>
 <p>Petrov et al. (2006) [29]</p>
+<p>WSJ only, discriminative 90.4</p>
 <p>Zhu et al. (2013) [40]</p>
+<p>WSJ only, discriminative 90.4</p>
 <p>Dyer et al. (2016) [8]</p>
+<p>WSJ only, discriminative 91.7</p>
 <p>Transformer (4 layers)</p>
+<p>WSJ only, discriminative 91.3</p>
 <p>Zhu et al. (2013) [40]</p>
+<p>semi-supervised 91.3</p>
 <p>Huang &amp; Harper (2009) [14]</p>
+<p>semi-supervised 91.3</p>
 <p>McClosky et al. (2006) [26]</p>
+<p>semi-supervised 92.1</p>
 <p>Vinyals &amp; Kaiser el al. (2014) [37]</p>
+<p>semi-supervised 92.1</p>
 <p>Transformer (4 layers)</p>
+<p>semi-supervised 92.7</p>
 <p>Luong et al. (2015) [23]</p>
+<p>multi-task 93.0</p>
 <p>Dyer et al. (2016) [8]</p>
+<p>generative 93.3</p>
 <p>increased the maximum output length to input length + 300 . We used a beam size of 21 and α = 0 . 3</p>
 <p>for both WSJ only and the semi-supervised setting.</p>
 <p>Our results in Table 4 show that despite the lack of task-specific tuning our model performs sur-</p>
 <p>prisingly well, yielding better results than all previously reported models with the exception of the</p>
 <p>Recurrent Neural Network Grammar [8].</p>
-<p>In contrast to RNN sequence-to-sequence models [37], the Transformer outperforms the Berkeley-</p>
+<p>In contrast to RNN sequence-to-sequence models [ 37 ], the Transformer outperforms the Berkeley-</p>
 <p>Parser [29] even when training only on the WSJ training set of 40K sentences.</p>
 <h2>7 Conclusion</h2>
 <p>In this work, we presented the Transformer, the first sequence transduction model based entirely on</p>
 <p>attention, replacing the recurrent layers most commonly used in encoder-decoder architectures with</p>
 <p>multi-headed self-attention.</p>
 <p>For translation tasks, the Transformer can be trained significantly faster than architectures based</p>
-<p>on recurrent or convolutional layers. On both WMT 2014 English-to-German and WMT 2014</p>
+<p>on recurrent or convolutional layers.</p>
+<p>On both WMT 2014 English-to-German and WMT 2014</p>
 <p>English-to-French translation tasks, we achieve a new state of the art. In the former task our best</p>
 <p>model outperforms even all previously reported ensembles.</p>
 <p>We are excited about the future of attention-based models and plan to apply them to other tasks. We</p>
 <p>plan to extend the Transformer to problems involving input and output modalities other than text and</p>
 <p>to investigate local, restricted attention mechanisms to efficiently handle large inputs and outputs</p>
 <p>such as images, audio and video. Making generation less sequential is another research goals of ours.</p>
-<p>The code we used to train and evaluate our models is available at https://github.com/</p>
+<p>The code we used to train and evaluate our models is available at</p>
+<p>https://github.com/</p>
 <p>tensorflow/tensor2tensor .</p>
 <p>Acknowledgements We are grateful to Nal Kalchbrenner and Stephan Gouws for their fruitful</p>
 <p>comments, corrections and inspiration.</p>
 <h2>References</h2>
-<p>[1] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. Layer normalization. arXiv preprint</p>
+<p>[1] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. Layer normalization.</p>
+<p>arXiv preprint</p>
 <p>arXiv:1607.06450 , 2016.</p>
 <p>[2] Dzmitry Bahdanau, Kyunghyun Cho, and Yoshua Bengio. Neural machine translation by jointly</p>
 <p>learning to align and translate. CoRR , abs/1409.0473, 2014.</p>
-<p>[3] Denny Britz, Anna Goldie, Minh-Thang Luong, and Quoc V . Le. Massive exploration of neural</p>
+<p>[3] Denny Britz, Anna Goldie, Minh-Thang Luong, and Quoc V. Le. Massive exploration of neural</p>
 <p>machine translation architectures. CoRR , abs/1703.03906, 2017.</p>
 <p>[4] Jianpeng Cheng, Li Dong, and Mirella Lapata. Long short-term memory-networks for machine</p>
 <p>reading. arXiv preprint arXiv:1601.06733 , 2016.</p>
-<p>Training WSJ 23 F1 WSJ only, discriminative 88.3 WSJ only, discriminative 90.4 WSJ only, discriminative 90.4 WSJ only, discriminative 91.7 WSJ only, discriminative 91.3 semi-supervised 91.3 semi-supervised 91.3 semi-supervised 92.1 semi-supervised 92.1 semi-supervised 92.7 multi-task 93.0 generative 93.3</p>
 <p>[5] Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Fethi Bougares, Holger Schwenk,</p>
 <p>and Yoshua Bengio. Learning phrase representations using rnn encoder-decoder for statistical</p>
 <p>machine translation. CoRR , abs/1406.1078, 2014.</p>
@@ -509,42 +522,54 @@
 <p>[8] Chris Dyer, Adhiguna Kuncoro, Miguel Ballesteros, and Noah A. Smith. Recurrent neural</p>
 <p>network grammars. In Proc. of NAACL , 2016.</p>
 <p>[9] Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, and Yann N. Dauphin. Convolu-</p>
-<p>tional sequence to sequence learning. arXiv preprint arXiv:1705.03122v2 , 2017.</p>
-<p>[10] Alex Graves. Generating sequences with recurrent neural networks. arXiv preprint</p>
+<p>tional sequence to sequence learning.</p>
+<p>arXiv preprint arXiv:1705.03122v2 , 2017.</p>
+<p>[10] Alex Graves. Generating sequences with recurrent neural networks.</p>
+<p>arXiv preprint</p>
 <p>arXiv:1308.0850 , 2013.</p>
 <p>[11] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for im-</p>
 <p>age recognition. In Proceedings of the IEEE Conference on Computer Vision and Pattern</p>
 <p>Recognition , pages 770–778, 2016.</p>
 <p>[12] Sepp Hochreiter, Yoshua Bengio, Paolo Frasconi, and Jürgen Schmidhuber. Gradient flow in</p>
 <p>recurrent nets: the difficulty of learning long-term dependencies, 2001.</p>
-<p>[13] Sepp Hochreiter and Jürgen Schmidhuber. Long short-term memory. Neural computation ,</p>
+<p>[13] Sepp Hochreiter and Jürgen Schmidhuber. Long short-term memory.</p>
+<p>Neural computation ,</p>
 <p>9(8):1735–1780, 1997.</p>
 <p>[14] Zhongqiang Huang and Mary Harper. Self-training PCFG grammars with latent annotations</p>
 <p>across languages. In Proceedings of the 2009 Conference on Empirical Methods in Natural</p>
 <p>Language Processing , pages 832–841. ACL, August 2009.</p>
 <p>[15] Rafal Jozefowicz, Oriol Vinyals, Mike Schuster, Noam Shazeer, and Yonghui Wu. Exploring</p>
-<p>the limits of language modeling. arXiv preprint arXiv:1602.02410 , 2016.</p>
-<p>[16] Łukasz Kaiser and Samy Bengio. Can active memory replace attention? In Advances in Neural</p>
+<p>the limits of language modeling.</p>
+<p>arXiv preprint arXiv:1602.02410 , 2016.</p>
+<p>[16] Łukasz Kaiser and Samy Bengio. Can active memory replace attention? In</p>
+<p>Advances in Neural</p>
 <p>Information Processing Systems, (NIPS) , 2016.</p>
-<p>[17] Łukasz Kaiser and Ilya Sutskever. Neural GPUs learn algorithms. In International Conference</p>
+<p>[17] Łukasz Kaiser and Ilya Sutskever. Neural GPUs learn algorithms. In</p>
+<p>International Conference</p>
 <p>on Learning Representations (ICLR) , 2016.</p>
 <p>[18] Nal Kalchbrenner, Lasse Espeholt, Karen Simonyan, Aaron van den Oord, Alex Graves, and Ko-</p>
-<p>ray Kavukcuoglu. Neural machine translation in linear time. arXiv preprint arXiv:1610.10099v2 ,</p>
+<p>ray Kavukcuoglu. Neural machine translation in linear time.</p>
+<p>arXiv preprint arXiv:1610.10099v2 ,</p>
 <p>2017.</p>
 <p>[19] Yoon Kim, Carl Denton, Luong Hoang, and Alexander M. Rush. Structured attention networks.</p>
 <p>In International Conference on Learning Representations , 2017.</p>
 <p>[20] Diederik Kingma and Jimmy Ba. Adam: A method for stochastic optimization. In ICLR , 2015.</p>
-<p>[21] Oleksii Kuchaiev and Boris Ginsburg. Factorization tricks for LSTM networks. arXiv preprint</p>
+<p>[21] Oleksii Kuchaiev and Boris Ginsburg. Factorization tricks for LSTM networks.</p>
+<p>arXiv preprint</p>
 <p>arXiv:1703.10722 , 2017.</p>
 <p>[22] Zhouhan Lin, Minwei Feng, Cicero Nogueira dos Santos, Mo Yu, Bing Xiang, Bowen</p>
-<p>Zhou, and Yoshua Bengio. A structured self-attentive sentence embedding. arXiv preprint</p>
+<p>Zhou, and Yoshua Bengio. A structured self-attentive sentence embedding.</p>
+<p>arXiv preprint</p>
 <p>arXiv:1703.03130 , 2017.</p>
-<p>[23] Minh-Thang Luong, Quoc V . Le, Ilya Sutskever, Oriol Vinyals, and Lukasz Kaiser. Multi-task</p>
-<p>sequence to sequence learning. arXiv preprint arXiv:1511.06114 , 2015.</p>
+<p>[23] Minh-Thang Luong, Quoc V. Le, Ilya Sutskever, Oriol Vinyals, and Lukasz Kaiser. Multi-task</p>
+<p>sequence to sequence learning.</p>
+<p>arXiv preprint arXiv:1511.06114 , 2015.</p>
 <p>[24] Minh-Thang Luong, Hieu Pham, and Christopher D Manning. Effective approaches to attention-</p>
-<p>based neural machine translation. arXiv preprint arXiv:1508.04025 , 2015.</p>
+<p>based neural machine translation.</p>
+<p>arXiv preprint arXiv:1508.04025 , 2015.</p>
 <p>[25] Mitchell P Marcus, Mary Ann Marcinkiewicz, and Beatrice Santorini. Building a large annotated</p>
-<p>corpus of english: The penn treebank. Computational linguistics , 19(2):313–330, 1993.</p>
+<p>corpus of english: The penn treebank.</p>
+<p>Computational linguistics , 19(2):313–330, 1993.</p>
 <p>[26] David McClosky, Eugene Charniak, and Mark Johnson. Effective self-training for parsing. In</p>
 <p>Proceedings of the Human Language Technology Conference of the NAACL, Main Conference ,</p>
 <p>pages 152–159. ACL, June 2006.</p>
@@ -552,9 +577,11 @@
 <p>model. In Empirical Methods in Natural Language Processing , 2016.</p>
 <p>[28] Romain Paulus, Caiming Xiong, and Richard Socher. A deep reinforced model for abstractive</p>
 <p>summarization. arXiv preprint arXiv:1705.04304 , 2017.</p>
-<p>[29] Slav Petrov, Leon Barrett, Romain Thibaux, and Dan Klein. Learning accurate, compact,</p>
+<p>[29] Slav Petrov, Leon Barrett, Romain Thibaux, and Dan Klein.</p>
+<p>Learning accurate, compact,</p>
 <p>and interpretable tree annotation. In Proceedings of the 21st International Conference on</p>
-<p>Computational Linguistics and 44th Annual Meeting of the ACL , pages 433–440. ACL, July</p>
+<p>Computational Linguistics and 44th Annual Meeting of the ACL</p>
+<p>, pages 433–440. ACL, July</p>
 <p>2006.</p>
 <p>[30] Ofir Press and Lior Wolf. Using the output embedding to improve language models. arXiv</p>
 <p>preprint arXiv:1608.05859 , 2016.</p>
@@ -564,103 +591,123 @@
 <p>and Jeff Dean. Outrageously large neural networks: The sparsely-gated mixture-of-experts</p>
 <p>layer. arXiv preprint arXiv:1701.06538 , 2017.</p>
 <p>[33] Nitish Srivastava, Geoffrey E Hinton, Alex Krizhevsky, Ilya Sutskever, and Ruslan Salakhutdi-</p>
-<p>nov. Dropout: a simple way to prevent neural networks from overfitting. Journal of Machine</p>
+<p>nov. Dropout: a simple way to prevent neural networks from overfitting.</p>
+<p>Journal of Machine</p>
 <p>Learning Research , 15(1):1929–1958, 2014.</p>
 <p>[34] Sainbayar Sukhbaatar, Arthur Szlam, Jason Weston, and Rob Fergus. End-to-end memory</p>
 <p>networks. In C. Cortes, N. D. Lawrence, D. D. Lee, M. Sugiyama, and R. Garnett, editors,</p>
-<p>Advances in Neural Information Processing Systems 28 , pages 2440–2448. Curran Associates,</p>
+<p>Advances in Neural Information Processing Systems 28</p>
+<p>, pages 2440–2448. Curran Associates,</p>
 <p>Inc., 2015.</p>
 <p>[35] Ilya Sutskever, Oriol Vinyals, and Quoc VV Le. Sequence to sequence learning with neural</p>
-<p>networks. In Advances in Neural Information Processing Systems , pages 3104–3112, 2014.</p>
+<p>networks. In Advances in Neural Information Processing Systems</p>
+<p>, pages 3104–3112, 2014.</p>
 <p>[36] Christian Szegedy, Vincent Vanhoucke, Sergey Ioffe, Jonathon Shlens, and Zbigniew Wojna.</p>
 <p>Rethinking the inception architecture for computer vision. CoRR , abs/1512.00567, 2015.</p>
 <p>[37] Vinyals &amp; Kaiser, Koo, Petrov, Sutskever, and Hinton. Grammar as a foreign language. In</p>
 <p>Advances in Neural Information Processing Systems , 2015.</p>
 <p>[38] Yonghui Wu, Mike Schuster, Zhifeng Chen, Quoc V Le, Mohammad Norouzi, Wolfgang</p>
 <p>Macherey, Maxim Krikun, Yuan Cao, Qin Gao, Klaus Macherey, et al. Google’s neural machine</p>
-<p>translation system: Bridging the gap between human and machine translation. arXiv preprint</p>
+<p>translation system: Bridging the gap between human and machine translation.</p>
+<p>arXiv preprint</p>
 <p>arXiv:1609.08144 , 2016.</p>
-<p>[39] Jie Zhou, Ying Cao, Xuguang Wang, Peng Li, and Wei Xu. Deep recurrent models with</p>
+<p>[39] Jie Zhou, Ying Cao, Xuguang Wang, Peng Li, and Wei Xu.</p>
+<p>Deep recurrent models with</p>
 <p>fast-forward connections for neural machine translation. CoRR , abs/1606.04199, 2016.</p>
-<p>[40] Muhua Zhu, Yue Zhang, Wenliang Chen, Min Zhang, and Jingbo Zhu. Fast and accurate</p>
-<p>shift-reduce constituent parsing. In Proceedings of the 51st Annual Meeting of the ACL (Volume</p>
+<p>[40] Muhua Zhu, Yue Zhang, Wenliang Chen, Min Zhang, and Jingbo Zhu.</p>
+<p>Fast and accurate</p>
+<p>shift-reduce constituent parsing. In</p>
+<p>Proceedings of the 51st Annual Meeting of the ACL (Volume</p>
 <p>1: Long Papers) , pages 434–443. ACL, August 2013.</p>
-<p>Attention Visualizations Input-Input Layer5 It is in this spirit that a majority of American governments have passed new laws since 2009 making the registration or voting process more difficult . &lt;EOS&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; It is in this spirit that a majority of American governments have passed new laws since 2009 making the registration or voting process more difficult . &lt;EOS&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt;</p>
+<p>Input-Input Layer5</p>
+<p>Attention Visualizations</p>
+<p>It is in this spirit that a majority of American governments have passed new laws since 2009 making the registration or voting process more difficult . &lt;EOS&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt;</p>
+<p>.</p>
+<p>It a</p>
+<p>is in of or</p>
+<p>the</p>
+<p>this that</p>
+<p>new laws</p>
+<p>spirit have 2009</p>
+<p>since more</p>
+<p>voting</p>
+<p>&lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt;</p>
+<p>passed making difficult &lt;EOS&gt;</p>
+<p>majority process</p>
+<p>American</p>
+<p>registration</p>
+<p>governments</p>
 <p>Figure 3: An example of the attention mechanism following long-distance dependencies in the</p>
 <p>encoder self-attention in layer 5 of 6. Many of the attention heads attend to a distant dependency of</p>
 <p>the verb ‘making’, completing the phrase ‘making...more difficult’. Attentions here shown only for</p>
 <p>the word ‘making’. Different colors represent different heads. Best viewed in color.</p>
 <p>Input-Input Layer5</p>
-<p>It is in this spirit that a majority of American governments have passed new laws since 2009 making the registration or voting process more difficult . &lt;EOS&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt;</p>
-<p>.</p>
-<p>It is a</p>
-<p>in of or</p>
-<p>the</p>
-<p>this that</p>
-<p>new laws</p>
-<p>spirit have since 2009 more 13</p>
-<p>voting &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt;</p>
-<p>difficult</p>
-<p>passed making &lt;EOS&gt;</p>
-<p>majority process</p>
-<p>American</p>
-<p>registration</p>
-<p>governments</p>
-<p>Input-Input Layer5 It is in this spirit that a majority of American governments have passed new laws since 2009 making the registration or voting process more difficult . &lt;EOS&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; It is in this spirit that a majority of American governments have passed new laws since 2009 making the registration or voting process more difficult . &lt;EOS&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt; &lt;pad&gt;</p>
-<p>Input-Input Layer5</p>
-<p>Input-Input Layer5</p>
+<p>The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt;</p>
+<p>, , .</p>
+<p>-</p>
+<p>is</p>
+<p>in</p>
+<p>be its be</p>
+<p>we my</p>
+<p>will but just this are</p>
+<p>The</p>
+<p>Law</p>
+<p>Input-Input Layer5 what</p>
+<p>never</p>
+<p>&lt;pad&gt;</p>
+<p>perfect should</p>
+<p>opinion &lt;EOS&gt;</p>
+<p>missing</p>
+<p>application</p>
+<p>The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt;</p>
+<p>, - , .</p>
+<p>is in</p>
+<p>be its be</p>
+<p>we</p>
+<p>will but are my</p>
+<p>The just this</p>
+<p>Law</p>
+<p>what</p>
+<p>never</p>
+<p>should &lt;pad&gt;</p>
+<p>perfect opinion</p>
+<p>missing &lt;EOS&gt;</p>
+<p>application</p>
 <p>Figure 4: Two attention heads, also in layer 5 of 6, apparently involved in anaphora resolution. Top:</p>
 <p>Full attentions for head 5. Bottom: Isolated attentions from just the word ‘its’ for attention heads 5</p>
 <p>and 6. Note that the attentions are very sharp for this word.</p>
-<p>The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt;</p>
+<p>Input-Input Layer5</p>
 <p>The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt;</p>
 <p>, - , .</p>
-<p>is</p>
-<p>its in</p>
-<p>be be</p>
-<p>will but we are my</p>
-<p>The just this</p>
-<p>Law</p>
-<p>what 14</p>
-<p>never</p>
-<p>&lt;pad&gt;</p>
-<p>perfect , should - , .</p>
-<p>missing opinion &lt;EOS&gt;</p>
 <p>is in</p>
-<p>be its be</p>
+<p>its</p>
+<p>be be we</p>
+<p>will but are my</p>
+<p>just this</p>
+<p>The Law</p>
+<p>what</p>
+<p>Input-Input Layer5</p>
+<p>never</p>
+<p>should &lt;pad&gt;</p>
+<p>perfect</p>
+<p>missing opinion &lt;EOS&gt;</p>
+<p>application</p>
+<p>The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt;</p>
+<p>, - , .</p>
+<p>is in</p>
+<p>its</p>
+<p>be be</p>
 <p>will but we are my</p>
 <p>just this</p>
 <p>The Law</p>
-<p>application what</p>
+<p>what</p>
 <p>never</p>
 <p>should &lt;pad&gt;</p>
-<p>perfect opinion &lt;EOS&gt;</p>
-<p>missing</p>
+<p>perfect</p>
+<p>missing opinion &lt;EOS&gt;</p>
 <p>application</p>
-<p>Input-Input Layer5 The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; Input-Input Layer5 The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; Input-Input Layer5 The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; Input-Input Layer5 The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt;</p>
-<p>Input-Input Layer5</p>
-<p>Input-Input Layer5</p>
 <p>Figure 5: Many of the attention heads exhibit behaviour that seems related to the structure of the</p>
 <p>sentence. We give two such examples above, from two different heads from the encoder self-attention</p>
 <p>at layer 5 of 6. The heads clearly learned to perform different tasks.</p>
-<p>The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt;</p>
-<p>The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt;</p>
-<p>15</p>
-<p>, - , .</p>
-<p>, - , .</p>
-<p>is in</p>
-<p>be its be is in</p>
-<p>will be but its be we are my</p>
-<p>The will but just this we my</p>
-<p>Law just this are</p>
-<p>The Law what</p>
-<p>never what</p>
-<p>never perfect should &lt;pad&gt;</p>
-<p>should opinion &lt;EOS&gt; &lt;pad&gt;</p>
-<p>perfect missing opinion</p>
-<p>missing &lt;EOS&gt;</p>
-<p>application</p>
-<p>application</p>
-<p>Input-Input Layer5 The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; Input-Input Layer5 The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; Input-Input Layer5 The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; Input-Input Layer5 The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt; The Law will never be perfect , but its application should be just - this is what we are missing , in my opinion . &lt;EOS&gt; &lt;pad&gt;</p>
 </body>
 </html>

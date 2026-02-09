@@ -19,18 +19,12 @@ const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
   ["references", 2],
 ]);
 const TRAILING_TABULAR_SCORE_PATTERN = /\b\d{1,2}\.\d{1,2}$/;
+const BULLET_LIST_ITEM_PATTERN = /^([•◦▪●○■□◆◇‣⁃∙·])\s+(.+)$/u;
+const MIN_LIST_CONTINUATION_INDENT = 6;
 
 export function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
-  const bodyLines = lines.map((line) => {
-    if (line === titleLine) return `<h1>${escapeHtml(line.text)}</h1>`;
-    const headingLevel =
-      detectNumberedHeadingLevel(line.text) ?? detectNamedSectionHeadingLevel(line.text);
-    if (headingLevel !== undefined) {
-      return `<h${headingLevel}>${escapeHtml(line.text)}</h${headingLevel}>`;
-    }
-    return `<p>${escapeHtml(line.text)}</p>`;
-  });
+  const bodyLines = renderBodyLines(lines, titleLine);
 
   return [
     "<!DOCTYPE html>",
@@ -50,6 +44,104 @@ export function renderHtml(lines: TextLine[]): string {
 
 export function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+}
+
+function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): string[] {
+  const bodyLines: string[] = [];
+  let index = 0;
+  while (index < lines.length) {
+    const headingTag = renderHeadingTag(lines[index], titleLine);
+    if (headingTag !== undefined) {
+      bodyLines.push(headingTag);
+      index += 1;
+      continue;
+    }
+
+    const renderedList = renderBulletList(lines, index, titleLine);
+    if (renderedList !== undefined) {
+      bodyLines.push(...renderedList.htmlLines);
+      index = renderedList.nextIndex;
+      continue;
+    }
+
+    bodyLines.push(`<p>${escapeHtml(lines[index].text)}</p>`);
+    index += 1;
+  }
+  return bodyLines;
+}
+
+function renderHeadingTag(line: TextLine, titleLine: TextLine | undefined): string | undefined {
+  if (line === titleLine) return `<h1>${escapeHtml(line.text)}</h1>`;
+  const headingLevel =
+    detectNumberedHeadingLevel(line.text) ?? detectNamedSectionHeadingLevel(line.text);
+  if (headingLevel === undefined) return undefined;
+  return `<h${headingLevel}>${escapeHtml(line.text)}</h${headingLevel}>`;
+}
+
+function renderBulletList(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+): { htmlLines: string[]; nextIndex: number } | undefined {
+  if (parseBulletListItemText(lines[startIndex].text) === undefined) return undefined;
+  const listItems: string[] = [];
+  let index = startIndex;
+  while (index < lines.length) {
+    const consumedItem = consumeBulletListItem(lines, index, titleLine);
+    if (consumedItem === undefined) break;
+    listItems.push(consumedItem.text);
+    index = consumedItem.nextIndex;
+  }
+  if (listItems.length === 0) return undefined;
+
+  return {
+    htmlLines: ["<ul>", ...listItems.map((item) => `<li>${escapeHtml(item)}</li>`), "</ul>"],
+    nextIndex: index,
+  };
+}
+
+function consumeBulletListItem(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+): { text: string; nextIndex: number } | undefined {
+  const itemStartLine = lines[startIndex];
+  const itemStartText = parseBulletListItemText(itemStartLine.text);
+  if (itemStartText === undefined) return undefined;
+
+  let itemText = itemStartText;
+  let index = startIndex + 1;
+  while (index < lines.length && isBulletListContinuation(lines[index], itemStartLine, titleLine)) {
+    itemText = normalizeSpacing(`${itemText} ${lines[index].text}`);
+    index += 1;
+  }
+  return { text: itemText, nextIndex: index };
+}
+
+function parseBulletListItemText(text: string): string | undefined {
+  const normalized = normalizeSpacing(text);
+  const match = BULLET_LIST_ITEM_PATTERN.exec(normalized);
+  if (!match) return undefined;
+  const itemText = match[2].trim();
+  if (itemText.length === 0) return undefined;
+  return itemText;
+}
+
+function isBulletListContinuation(
+  line: TextLine,
+  itemStartLine: TextLine,
+  titleLine: TextLine | undefined,
+): boolean {
+  if (line === titleLine) return false;
+  if (line.pageIndex !== itemStartLine.pageIndex) return false;
+  if (parseBulletListItemText(line.text) !== undefined) return false;
+  if (
+    detectNumberedHeadingLevel(line.text) !== undefined ||
+    detectNamedSectionHeadingLevel(line.text) !== undefined
+  ) {
+    return false;
+  }
+  return line.x >= itemStartLine.x + MIN_LIST_CONTINUATION_INDENT;
 }
 
 export function detectNumberedHeadingLevel(text: string): number | undefined {

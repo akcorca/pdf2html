@@ -102,6 +102,12 @@ describe("convertPdfToHtml", () => {
     expect(html).toContain("<h2>Abstract</h2>");
   });
 
+  it("renders bullet lists in attention.pdf using ul/li semantics", () => {
+    expect(html).toContain("<ul>");
+    expect(html).toContain("<li>In \"encoder-decoder attention\" layers,");
+    expect(html).not.toContain("<p>• In \"encoder-decoder attention\" layers,");
+  });
+
   it("removes repeated running-label header lines from tft.pdf", () => {
     expect(tftHtml).not.toContain("<p>COMMUNICATION</p>");
   });
