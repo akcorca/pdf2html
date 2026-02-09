@@ -90,6 +90,14 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).not.toContain("<p>Input Table 𝑻</p>");
   });
 
+  it("keeps clean.pdf numbered section headings in left-to-right column reading order", () => {
+    const section3 = "<h2>3 CLEANAGENT WORKFLOW</h2>";
+    const section4 = "<h2>4 EXPERIMENTS</h2>";
+    expect(cleanHtml).toContain(section3);
+    expect(cleanHtml).toContain(section4);
+    expect(cleanHtml.indexOf(section3)).toBeLessThan(cleanHtml.indexOf(section4));
+  });
+
   it("removes repeated running headers and standalone page number lines", () => {
     expect(covidHtml).not.toContain("<p>Thrombosis Research 202 (2021) 17–23</p>");
     expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);
@@ -161,6 +169,24 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml.indexOf(sectionHeading)).toBeLessThan(
       respectHtml.indexOf(rightColumnSubheading),
     );
+  });
+
+  it("keeps numbered subsection headings in logical order for respect.pdf", () => {
+    const section41 = "<h3>4.1 Languages, LLMs, and Prompt</h3>";
+    const section42 = "<h3>4.2 Tasks</h3>";
+    const section511 = "<h4>5.1.1 English</h4>";
+    const section512 = "<h4>5.1.2 Chinese</h4>";
+    const section53 = "<h3>5.3 Stereotypical Bias Detection</h3>";
+    const section532 = "<h4>5.3.2 Chinese</h4>";
+    expect(respectHtml).toContain(section41);
+    expect(respectHtml).toContain(section42);
+    expect(respectHtml).toContain(section511);
+    expect(respectHtml).toContain(section512);
+    expect(respectHtml).toContain(section53);
+    expect(respectHtml).toContain(section532);
+    expect(respectHtml.indexOf(section41)).toBeLessThan(respectHtml.indexOf(section42));
+    expect(respectHtml.indexOf(section511)).toBeLessThan(respectHtml.indexOf(section512));
+    expect(respectHtml.indexOf(section53)).toBeLessThan(respectHtml.indexOf(section532));
   });
 
   it("moves numeric footnote URLs in respect.pdf to the end of the document", () => {

@@ -33,6 +33,10 @@ const MULTI_COLUMN_NEAR_ROW_TOP_Y_RATIO = 0.8;
 const MULTI_COLUMN_NEAR_ROW_BOTTOM_Y_RATIO = 0.1;
 const MULTI_COLUMN_NEAR_ROW_LEFT_MAX_RATIO = 0.42;
 const MULTI_COLUMN_NEAR_ROW_RIGHT_MIN_RATIO = 0.58;
+const MISORDERED_TOP_LEVEL_HEADING_LOOKAHEAD = 18;
+const MISORDERED_TOP_LEVEL_HEADING_MAX_Y_DELTA_FONT_RATIO = 3.2;
+const MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO = 8.4;
+const MAX_REORDER_HEADING_DIGIT_RATIO = 0.34;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
@@ -42,7 +46,11 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
     lines.push(...collectedPage.lines);
     if (collectedPage.isMultiColumn) multiColumnPageIndexes.add(page.pageIndex);
   }
-  return lines.sort((left, right) => compareLinesForReadingOrder(left, right, multiColumnPageIndexes));
+  const sorted = lines.sort((left, right) =>
+    compareLinesForReadingOrder(left, right, multiColumnPageIndexes),
+  );
+  const reorderedTopLevel = reorderMisorderedTopLevelHeadings(sorted, multiColumnPageIndexes);
+  return reorderMisorderedNumberedHeadings(reorderedTopLevel, multiColumnPageIndexes);
 }
 
 function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColumn: boolean } {
@@ -112,6 +120,185 @@ function compareMultiColumnLineOrder(left: TextLine, right: TextLine): number {
   if (leftColumn === "spanning" || rightColumn === "spanning") return 0;
   if (leftColumn === rightColumn) return 0;
   return leftColumn === "left" ? -1 : 1;
+}
+
+function reorderMisorderedTopLevelHeadings(
+  lines: TextLine[],
+  multiColumnPageIndexes: Set<number>,
+): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 0; index < reordered.length; index += 1) {
+    const promotionIndex = findTopLevelHeadingPromotionIndex(
+      reordered,
+      index,
+      multiColumnPageIndexes,
+    );
+    if (promotionIndex === undefined) continue;
+    promoteLine(reordered, promotionIndex, index);
+    index += 1;
+  }
+  return reordered;
+}
+
+function reorderMisorderedNumberedHeadings(
+  lines: TextLine[],
+  multiColumnPageIndexes: Set<number>,
+): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 0; index < reordered.length; index += 1) {
+    const promotionIndex = findNumberedHeadingPromotionIndex(
+      reordered,
+      index,
+      multiColumnPageIndexes,
+    );
+    if (promotionIndex === undefined) continue;
+    promoteLine(reordered, promotionIndex, index);
+    index += 1;
+  }
+  return reordered;
+}
+
+function findTopLevelHeadingPromotionIndex(
+  lines: TextLine[],
+  currentIndex: number,
+  multiColumnPageIndexes: Set<number>,
+): number | undefined {
+  const current = lines[currentIndex];
+  if (!isRightColumnHeadingCandidate(current, multiColumnPageIndexes)) return undefined;
+  const currentHeadingNumber = getTopLevelHeadingNumber(current.text);
+  if (currentHeadingNumber === undefined) return undefined;
+
+  return findPromotionIndexWithinLookahead(lines, currentIndex, (candidate) => {
+    const candidateHeadingNumber = getTopLevelHeadingNumber(candidate.text);
+    if (candidateHeadingNumber === undefined) return false;
+    if (candidateHeadingNumber + 1 !== currentHeadingNumber) return false;
+    if (classifyMultiColumnLine(candidate) !== "left") return false;
+    return isWithinVerticalHeadingRange(
+      current,
+      candidate,
+      MISORDERED_TOP_LEVEL_HEADING_MAX_Y_DELTA_FONT_RATIO,
+    );
+  });
+}
+
+function findNumberedHeadingPromotionIndex(
+  lines: TextLine[],
+  currentIndex: number,
+  multiColumnPageIndexes: Set<number>,
+): number | undefined {
+  const current = lines[currentIndex];
+  if (!isRightColumnHeadingCandidate(current, multiColumnPageIndexes)) return undefined;
+  const currentPath = parseNumberedHeadingPathForReorder(current.text);
+  if (!currentPath) return undefined;
+
+  return findPromotionIndexWithinLookahead(lines, currentIndex, (candidate) => {
+    if (classifyMultiColumnLine(candidate) !== "left") return false;
+    const candidatePath = parseNumberedHeadingPathForReorder(candidate.text);
+    if (!candidatePath) return false;
+    if (!shouldPromoteNumberedHeadingCandidate(candidatePath, currentPath)) return false;
+    return isWithinVerticalHeadingRange(
+      current,
+      candidate,
+      MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO,
+    );
+  });
+}
+
+function findPromotionIndexWithinLookahead(
+  lines: TextLine[],
+  currentIndex: number,
+  shouldPromote: (candidate: TextLine) => boolean,
+): number | undefined {
+  const current = lines[currentIndex];
+  const scanEnd = Math.min(lines.length, currentIndex + MISORDERED_TOP_LEVEL_HEADING_LOOKAHEAD);
+  for (let scanIndex = currentIndex + 1; scanIndex < scanEnd; scanIndex += 1) {
+    const candidate = lines[scanIndex];
+    if (candidate.pageIndex !== current.pageIndex) break;
+    if (!shouldPromote(candidate)) continue;
+    return scanIndex;
+  }
+  return undefined;
+}
+
+function isRightColumnHeadingCandidate(
+  line: TextLine,
+  multiColumnPageIndexes: Set<number>,
+): boolean {
+  return multiColumnPageIndexes.has(line.pageIndex) && classifyMultiColumnLine(line) === "right";
+}
+
+function isWithinVerticalHeadingRange(
+  current: TextLine,
+  candidate: TextLine,
+  maxFontRatio: number,
+): boolean {
+  const maxYDelta = Math.max(current.fontSize, candidate.fontSize) * maxFontRatio;
+  return Math.abs(current.y - candidate.y) <= maxYDelta;
+}
+
+function promoteLine(lines: TextLine[], fromIndex: number, toIndex: number): void {
+  const promoted = lines[fromIndex];
+  if (!promoted) return;
+  lines.splice(fromIndex, 1);
+  lines.splice(toIndex, 0, promoted);
+}
+
+function parseNumberedHeadingPathForReorder(text: string): number[] | undefined {
+  const normalized = normalizeSpacing(text);
+  const match = MULTI_COLUMN_HEADING_REORDER_PATTERN.exec(normalized);
+  if (!match) return undefined;
+
+  const headingText = match[2]?.trim() ?? "";
+  if (!isLikelyNumberedHeadingTextForReorder(headingText)) return undefined;
+
+  const pathTokens = match[1].replace(/\.$/, "").split(".");
+  const path: number[] = [];
+  for (const token of pathTokens) {
+    const value = Number.parseInt(token, 10);
+    if (!Number.isFinite(value) || value < 0) return undefined;
+    path.push(value);
+  }
+  return path.length > 0 ? path : undefined;
+}
+
+function isLikelyNumberedHeadingTextForReorder(text: string): boolean {
+  if (text.length < 2 || text.length > MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH) return false;
+  if (!/^[A-Z]/.test(text)) return false;
+  if (!/[A-Za-z]/.test(text)) return false;
+  if (/[.!?]$/.test(text)) return false;
+  const words = text.split(/\s+/).filter((token) => token.length > 0);
+  if (words.length === 0 || words.length > MAX_MULTI_COLUMN_HEADING_WORDS) return false;
+  const alphanumericLength = text.replace(/[^A-Za-z0-9]/g, "").length;
+  const digitLength = text.replace(/[^0-9]/g, "").length;
+  const digitRatio = digitLength / Math.max(alphanumericLength, 1);
+  return digitRatio <= MAX_REORDER_HEADING_DIGIT_RATIO;
+}
+
+function shouldPromoteNumberedHeadingCandidate(
+  candidatePath: number[],
+  currentPath: number[],
+): boolean {
+  if (candidatePath[0] !== currentPath[0]) return false;
+  if (isNumberPathPrefix(candidatePath, currentPath)) return true;
+  if (candidatePath.length !== currentPath.length) return false;
+  if (!isNumberPathPrefix(candidatePath.slice(0, -1), currentPath.slice(0, -1))) return false;
+  const candidateLast = candidatePath[candidatePath.length - 1] ?? -1;
+  const currentLast = currentPath[currentPath.length - 1] ?? -1;
+  return candidateLast + 1 === currentLast;
+}
+
+function isNumberPathPrefix(prefix: number[], target: number[]): boolean {
+  if (prefix.length === 0 || prefix.length > target.length) return false;
+  return prefix.every((part, index) => part === target[index]);
+}
+
+function getTopLevelHeadingNumber(text: string): number | undefined {
+  if (!isLikelyColumnHeadingLine(text)) return undefined;
+  const normalized = normalizeSpacing(text);
+  const match = /^(\d+)\.?\s+/.exec(normalized);
+  if (!match) return undefined;
+  if (/^\d+\.\d/.test(normalized)) return undefined;
+  return Number.parseInt(match[1] ?? "", 10);
 }
 
 function isLikelyNearRowBodyPair(left: TextLine, right: TextLine): boolean {
