@@ -63,7 +63,7 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const sorted = lines.sort((left, right) =>
     compareLinesForReadingOrder(left, right, multiColumnPageIndexes, columnMajorPageIndexes),
   );
-  const reorderedTopLevel = reorderMisorderedTopLevelHeadings(sorted, multiColumnPageIndexes);
+  const reorderedTopLevel = reorderMisorderedTopLevelHeadings(sorted);
   const reorderedWithLeftHeadingPromotion = reorderLeftColumnTopLevelHeadings(
     reorderedTopLevel,
     multiColumnPageIndexes,
@@ -190,47 +190,61 @@ function estimatePageVerticalSpanRatio(lines: TextLine[]): number {
 
 function reorderMisorderedTopLevelHeadings(
   lines: TextLine[],
-  _multiColumnPageIndexes: Set<number>,
 ): TextLine[] {
-  const reordered = [...lines];
-  for (let index = 0; index < reordered.length; index += 1) {
-    const promotionIndex = findTopLevelHeadingPromotionIndex(reordered, index);
-    if (promotionIndex === undefined) continue;
-    promoteLine(reordered, promotionIndex, index);
-    index += 1;
-  }
-  return reordered;
+  return reorderLinesByPromotion(lines, {
+    startIndex: 0,
+    moveDirection: "forward",
+    skipNextAfterPromotion: true,
+    findPromotionIndex: (reordered, index) => findTopLevelHeadingPromotionIndex(reordered, index),
+  });
 }
 
 function reorderMisorderedNumberedHeadings(
   lines: TextLine[],
   multiColumnPageIndexes: Set<number>,
 ): TextLine[] {
-  const reordered = [...lines];
-  for (let index = 0; index < reordered.length; index += 1) {
-    const promotionIndex = findNumberedHeadingPromotionIndex(
-      reordered,
-      index,
-      multiColumnPageIndexes,
-    );
-    if (promotionIndex === undefined) continue;
-    promoteLine(reordered, promotionIndex, index);
-  }
-  return reordered;
+  return reorderLinesByPromotion(lines, {
+    startIndex: 0,
+    moveDirection: "forward",
+    findPromotionIndex: (reordered, index) =>
+      findNumberedHeadingPromotionIndex(reordered, index, multiColumnPageIndexes),
+  });
 }
 
 function reorderLeftColumnTopLevelHeadings(
   lines: TextLine[],
   multiColumnPageIndexes: Set<number>,
 ): TextLine[] {
+  return reorderLinesByPromotion(lines, {
+    startIndex: 1,
+    moveDirection: "backward",
+    findPromotionIndex: (reordered, index) =>
+      findLeftColumnTopLevelHeadingPromotionIndex(reordered, index, multiColumnPageIndexes),
+  });
+}
+
+interface ReorderLinesByPromotionInput {
+  startIndex: number;
+  moveDirection: "forward" | "backward";
+  findPromotionIndex: (lines: TextLine[], currentIndex: number) => number | undefined;
+  skipNextAfterPromotion?: boolean;
+}
+
+function reorderLinesByPromotion(
+  lines: TextLine[],
+  input: ReorderLinesByPromotionInput,
+): TextLine[] {
   const reordered = [...lines];
-  for (let index = 1; index < reordered.length; index += 1) {
-    const promotionIndex = findLeftColumnTopLevelHeadingPromotionIndex(
-      reordered,
-      index,
-      multiColumnPageIndexes,
-    );
+  for (let index = input.startIndex; index < reordered.length; index += 1) {
+    const promotionIndex = input.findPromotionIndex(reordered, index);
     if (promotionIndex === undefined) continue;
+
+    if (input.moveDirection === "forward") {
+      promoteLine(reordered, promotionIndex, index);
+      if (input.skipNextAfterPromotion) index += 1;
+      continue;
+    }
+
     promoteLine(reordered, index, promotionIndex);
   }
   return reordered;
