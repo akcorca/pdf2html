@@ -195,6 +195,12 @@ describe("convertPdfToHtml", () => {
     expect(html.indexOf(footnoteText)).toBeGreaterThan(html.indexOf(referencesHeading));
   });
 
+  it("removes standalone symbolic affiliation marker lines in attention.pdf title block", () => {
+    expect(html).not.toContain("<p>∗ ∗ ∗ ∗</p>");
+    expect(html).not.toContain("<p>∗ ∗ † ∗</p>");
+    expect(html).not.toContain("<p>∗ ‡</p>");
+  });
+
   it("renders bullet lists in attention.pdf using ul/li semantics", () => {
     expect(html).toContain("<ul>");
     expect(html).toContain("<li>In \"encoder-decoder attention\" layers,");

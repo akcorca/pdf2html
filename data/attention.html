@@ -10,18 +10,18 @@
 <p>reproduce the tables and figures in this paper solely for use in journalistic or</p>
 <p>scholarly works.</p>
 <h1>Attention Is All You Need</h1>
-<p>∗ ∗ ∗ ∗</p>
-<p>Ashish Vaswani Noam Shazeer Niki Parmar Jakob Uszkoreit</p>
-<p>Google Brain Google Brain Google Research Google Research</p>
-<p>avaswani@google.com noam@google.com nikip@google.com usz@google.com</p>
-<p>∗ ∗ † ∗</p>
+<p>Ashish Vaswani Noam Shazeer</p>
+<p>Niki Parmar Jakob Uszkoreit</p>
+<p>Google Brain Google Brain</p>
+<p>Google Research Google Research</p>
+<p>avaswani@google.com noam@google.com</p>
+<p>nikip@google.com usz@google.com</p>
 <p>Llion Jones Aidan N. Gomez</p>
-<p>Łukasz Kaiser</p>
 <p>Google Research University of Toronto</p>
-<p>Google Brain</p>
+<p>Łukasz Kaiser</p>
 <p>llion@google.com aidan@cs.toronto.edu</p>
+<p>Google Brain</p>
 <p>lukaszkaiser@google.com</p>
-<p>∗ ‡</p>
 <p>Illia Polosukhin</p>
 <p>illia.polosukhin@gmail.com</p>
 <h2>Abstract</h2>
@@ -30,7 +30,8 @@
 <p>performing models also connect the encoder and decoder through an attention</p>
 <p>mechanism. We propose a new simple network architecture, the Transformer,</p>
 <p>based solely on attention mechanisms, dispensing with recurrence and convolutions</p>
-<p>entirely. Experiments on two machine translation tasks show these models to</p>
+<p>entirely.</p>
+<p>Experiments on two machine translation tasks show these models to</p>
 <p>be superior in quality while being more parallelizable and requiring significantly</p>
 <p>less time to train. Our model achieves 28.4 BLEU on the WMT 2014 English-</p>
 <p>to-German translation task, improving over the existing best results, including</p>
@@ -376,8 +377,6 @@
 <h3>6.2 Model Variations</h3>
 <p>To evaluate the importance of different components of the Transformer, we varied our base model</p>
 <p>in different ways, measuring the change in performance on English-to-German translation on the</p>
-<p>5</p>
-<p>We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.</p>
 <p>Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base</p>
 <p>model. All metrics are on the English-to-German translation development set, newstest2013. Listed</p>
 <p>perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to</p>
@@ -463,12 +462,14 @@
 <p>multi-task 93.0</p>
 <p>Dyer et al. (2016) [8]</p>
 <p>generative 93.3</p>
-<p>increased the maximum output length to input length + 300 . We used a beam size of 21 and α = 0 . 3</p>
+<p>increased the maximum output length to input length +</p>
+<p>300 . We used a beam size of 21 and α = 0 . 3</p>
 <p>for both WSJ only and the semi-supervised setting.</p>
 <p>Our results in Table 4 show that despite the lack of task-specific tuning our model performs sur-</p>
 <p>prisingly well, yielding better results than all previously reported models with the exception of the</p>
 <p>Recurrent Neural Network Grammar [8].</p>
-<p>In contrast to RNN sequence-to-sequence models [ 37 ], the Transformer outperforms the Berkeley-</p>
+<p>In contrast to RNN sequence-to-sequence models [</p>
+<p>37 ], the Transformer outperforms the Berkeley-</p>
 <p>Parser [29] even when training only on the WSJ training set of 40K sentences.</p>
 <h2>7 Conclusion</h2>
 <p>In this work, we presented the Transformer, the first sequence transduction model based entirely on</p>
@@ -490,49 +491,55 @@
 <p>comments, corrections and inspiration.</p>
 <h2>References</h2>
 <p>[1] Jimmy Lei Ba, Jamie Ryan Kiros, and Geoffrey E Hinton. Layer normalization.</p>
-<p>arXiv preprint</p>
 <p>arXiv:1607.06450 , 2016.</p>
+<p>arXiv preprint</p>
 <p>[2] Dzmitry Bahdanau, Kyunghyun Cho, and Yoshua Bengio. Neural machine translation by jointly</p>
-<p>learning to align and translate. CoRR , abs/1409.0473, 2014.</p>
+<p>learning to align and translate. CoRR</p>
+<p>, abs/1409.0473, 2014.</p>
 <p>[3] Denny Britz, Anna Goldie, Minh-Thang Luong, and Quoc V. Le. Massive exploration of neural</p>
-<p>machine translation architectures. CoRR , abs/1703.03906, 2017.</p>
+<p>machine translation architectures. CoRR</p>
+<p>, abs/1703.03906, 2017.</p>
 <p>[4] Jianpeng Cheng, Li Dong, and Mirella Lapata. Long short-term memory-networks for machine</p>
 <p>reading. arXiv preprint arXiv:1601.06733 , 2016.</p>
 <p>[5] Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Fethi Bougares, Holger Schwenk,</p>
 <p>and Yoshua Bengio. Learning phrase representations using rnn encoder-decoder for statistical</p>
 <p>machine translation. CoRR , abs/1406.1078, 2014.</p>
-<p>[6] Francois Chollet. Xception: Deep learning with depthwise separable convolutions. arXiv</p>
+<p>[6] Francois Chollet.</p>
+<p>Xception: Deep learning with depthwise separable convolutions. arXiv</p>
 <p>preprint arXiv:1610.02357 , 2016.</p>
 <p>[7] Junyoung Chung, Çaglar Gülçehre, Kyunghyun Cho, and Yoshua Bengio. Empirical evaluation</p>
-<p>of gated recurrent neural networks on sequence modeling. CoRR , abs/1412.3555, 2014.</p>
+<p>of gated recurrent neural networks on sequence modeling.</p>
 <p>[8] Chris Dyer, Adhiguna Kuncoro, Miguel Ballesteros, and Noah A. Smith. Recurrent neural</p>
+<p>CoRR , abs/1412.3555, 2014.</p>
 <p>network grammars. In Proc. of NAACL , 2016.</p>
 <p>[9] Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, and Yann N. Dauphin. Convolu-</p>
 <p>tional sequence to sequence learning.</p>
 <p>arXiv preprint arXiv:1705.03122v2 , 2017.</p>
 <p>[10] Alex Graves. Generating sequences with recurrent neural networks.</p>
-<p>arXiv preprint</p>
 <p>arXiv:1308.0850 , 2013.</p>
+<p>arXiv preprint</p>
 <p>[11] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for im-</p>
-<p>age recognition. In Proceedings of the IEEE Conference on Computer Vision and Pattern</p>
+<p>age recognition. In</p>
+<p>Proceedings of the IEEE Conference on Computer Vision and Pattern</p>
 <p>Recognition , pages 770–778, 2016.</p>
 <p>[12] Sepp Hochreiter, Yoshua Bengio, Paolo Frasconi, and Jürgen Schmidhuber. Gradient flow in</p>
 <p>recurrent nets: the difficulty of learning long-term dependencies, 2001.</p>
 <p>[13] Sepp Hochreiter and Jürgen Schmidhuber. Long short-term memory.</p>
-<p>Neural computation ,</p>
 <p>9(8):1735–1780, 1997.</p>
+<p>Neural computation ,</p>
 <p>[14] Zhongqiang Huang and Mary Harper. Self-training PCFG grammars with latent annotations</p>
-<p>across languages. In Proceedings of the 2009 Conference on Empirical Methods in Natural</p>
+<p>across languages. In</p>
+<p>Proceedings of the 2009 Conference on Empirical Methods in Natural</p>
 <p>Language Processing , pages 832–841. ACL, August 2009.</p>
 <p>[15] Rafal Jozefowicz, Oriol Vinyals, Mike Schuster, Noam Shazeer, and Yonghui Wu. Exploring</p>
 <p>the limits of language modeling.</p>
 <p>arXiv preprint arXiv:1602.02410 , 2016.</p>
 <p>[16] Łukasz Kaiser and Samy Bengio. Can active memory replace attention? In</p>
-<p>Advances in Neural</p>
 <p>Information Processing Systems, (NIPS) , 2016.</p>
+<p>Advances in Neural</p>
 <p>[17] Łukasz Kaiser and Ilya Sutskever. Neural GPUs learn algorithms. In</p>
-<p>International Conference</p>
 <p>on Learning Representations (ICLR) , 2016.</p>
+<p>International Conference</p>
 <p>[18] Nal Kalchbrenner, Lasse Espeholt, Karen Simonyan, Aaron van den Oord, Alex Graves, and Ko-</p>
 <p>ray Kavukcuoglu. Neural machine translation in linear time.</p>
 <p>arXiv preprint arXiv:1610.10099v2 ,</p>
@@ -541,12 +548,12 @@
 <p>In International Conference on Learning Representations , 2017.</p>
 <p>[20] Diederik Kingma and Jimmy Ba. Adam: A method for stochastic optimization. In ICLR , 2015.</p>
 <p>[21] Oleksii Kuchaiev and Boris Ginsburg. Factorization tricks for LSTM networks.</p>
-<p>arXiv preprint</p>
 <p>arXiv:1703.10722 , 2017.</p>
+<p>arXiv preprint</p>
 <p>[22] Zhouhan Lin, Minwei Feng, Cicero Nogueira dos Santos, Mo Yu, Bing Xiang, Bowen</p>
 <p>Zhou, and Yoshua Bengio. A structured self-attentive sentence embedding.</p>
-<p>arXiv preprint</p>
 <p>arXiv:1703.03130 , 2017.</p>
+<p>arXiv preprint</p>
 <p>[23] Minh-Thang Luong, Quoc V. Le, Ilya Sutskever, Oriol Vinyals, and Lukasz Kaiser. Multi-task</p>
 <p>sequence to sequence learning.</p>
 <p>arXiv preprint arXiv:1511.06114 , 2015.</p>
@@ -564,8 +571,9 @@
 <p>[28] Romain Paulus, Caiming Xiong, and Richard Socher. A deep reinforced model for abstractive</p>
 <p>summarization. arXiv preprint arXiv:1705.04304 , 2017.</p>
 <p>[29] Slav Petrov, Leon Barrett, Romain Thibaux, and Dan Klein.</p>
+<p>and interpretable tree annotation. In</p>
 <p>Learning accurate, compact,</p>
-<p>and interpretable tree annotation. In Proceedings of the 21st International Conference on</p>
+<p>Proceedings of the 21st International Conference on</p>
 <p>Computational Linguistics and 44th Annual Meeting of the ACL</p>
 <p>, pages 433–440. ACL, July</p>
 <p>2006.</p>
@@ -578,8 +586,8 @@
 <p>layer. arXiv preprint arXiv:1701.06538 , 2017.</p>
 <p>[33] Nitish Srivastava, Geoffrey E Hinton, Alex Krizhevsky, Ilya Sutskever, and Ruslan Salakhutdi-</p>
 <p>nov. Dropout: a simple way to prevent neural networks from overfitting.</p>
-<p>Journal of Machine</p>
 <p>Learning Research , 15(1):1929–1958, 2014.</p>
+<p>Journal of Machine</p>
 <p>[34] Sainbayar Sukhbaatar, Arthur Szlam, Jason Weston, and Rob Fergus. End-to-end memory</p>
 <p>networks. In C. Cortes, N. D. Lawrence, D. D. Lee, M. Sugiyama, and R. Garnett, editors,</p>
 <p>Advances in Neural Information Processing Systems 28</p>
@@ -589,20 +597,22 @@
 <p>networks. In Advances in Neural Information Processing Systems</p>
 <p>, pages 3104–3112, 2014.</p>
 <p>[36] Christian Szegedy, Vincent Vanhoucke, Sergey Ioffe, Jonathon Shlens, and Zbigniew Wojna.</p>
-<p>Rethinking the inception architecture for computer vision. CoRR , abs/1512.00567, 2015.</p>
+<p>Rethinking the inception architecture for computer vision.</p>
+<p>CoRR , abs/1512.00567, 2015.</p>
 <p>[37] Vinyals &amp; Kaiser, Koo, Petrov, Sutskever, and Hinton. Grammar as a foreign language. In</p>
 <p>Advances in Neural Information Processing Systems , 2015.</p>
 <p>[38] Yonghui Wu, Mike Schuster, Zhifeng Chen, Quoc V Le, Mohammad Norouzi, Wolfgang</p>
 <p>Macherey, Maxim Krikun, Yuan Cao, Qin Gao, Klaus Macherey, et al. Google’s neural machine</p>
 <p>translation system: Bridging the gap between human and machine translation.</p>
-<p>arXiv preprint</p>
 <p>arXiv:1609.08144 , 2016.</p>
+<p>arXiv preprint</p>
 <p>[39] Jie Zhou, Ying Cao, Xuguang Wang, Peng Li, and Wei Xu.</p>
+<p>fast-forward connections for neural machine translation.</p>
 <p>Deep recurrent models with</p>
-<p>fast-forward connections for neural machine translation. CoRR , abs/1606.04199, 2016.</p>
+<p>CoRR , abs/1606.04199, 2016.</p>
 <p>[40] Muhua Zhu, Yue Zhang, Wenliang Chen, Min Zhang, and Jingbo Zhu.</p>
-<p>Fast and accurate</p>
 <p>shift-reduce constituent parsing. In</p>
+<p>Fast and accurate</p>
 <p>Proceedings of the 51st Annual Meeting of the ACL (Volume</p>
 <p>1: Long Papers) , pages 434–443. ACL, August 2013.</p>
 <p>Input-Input Layer5</p>
@@ -709,5 +719,7 @@
 <p>Work performed while at Google Brain.</p>
 <p>‡</p>
 <p>Work performed while at Google Research.</p>
+<p>5</p>
+<p>We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.</p>
 </body>
 </html>
