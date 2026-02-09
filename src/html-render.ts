@@ -232,20 +232,10 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       continue;
     }
 
-    const inlineHeading = parseInlineAcknowledgementsHeading(currentLine.text);
+    const inlineHeading = parseInlineHeadingParagraph(currentLine.text);
     if (inlineHeading !== undefined) {
       bodyLines.push(`<h${inlineHeading.level}>${escapeHtml(inlineHeading.heading)}</h${inlineHeading.level}>`);
       bodyLines.push(`<p>${escapeHtml(inlineHeading.body)}</p>`);
-      index += 1;
-      continue;
-    }
-
-    const inlineNamedSectionHeading = parseInlineNamedSectionHeading(currentLine.text);
-    if (inlineNamedSectionHeading !== undefined) {
-      bodyLines.push(
-        `<h${inlineNamedSectionHeading.level}>${escapeHtml(inlineNamedSectionHeading.heading)}</h${inlineNamedSectionHeading.level}>`,
-      );
-      bodyLines.push(`<p>${escapeHtml(inlineNamedSectionHeading.body)}</p>`);
       index += 1;
       continue;
     }
@@ -464,12 +454,11 @@ function isNumberedHeadingContinuationLine(
   if (Math.abs(line.fontSize - headingLine.fontSize) > NUMBERED_HEADING_CONTINUATION_MAX_FONT_DELTA) {
     return false;
   }
-  const verticalGap = previousPartLine.y - line.y;
-  const maxVerticalGap = Math.max(
-    headingLine.fontSize * NUMBERED_HEADING_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
-    headingLine.fontSize + 10,
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    headingLine.fontSize,
+    NUMBERED_HEADING_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
   );
-  return verticalGap > 0 && verticalGap <= maxVerticalGap;
+  return hasDescendingVerticalGapWithinLimit(previousPartLine, line, maxVerticalGap);
 }
 
 function isAlignedWithNumberedHeadingColumn(line: TextLine, headingLine: TextLine): boolean {
@@ -563,9 +552,9 @@ function isWithinTitleContinuationSpacing(
   titleLine: TextLine,
   yDelta: number,
 ): boolean {
-  const maxGap = Math.max(
-    titleLine.fontSize * TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
-    titleLine.fontSize + 10,
+  const maxGap = getFontScaledVerticalGapLimit(
+    titleLine.fontSize,
+    TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
   );
   if (Math.abs(yDelta) > maxGap) return false;
   return Math.abs(line.fontSize - titleLine.fontSize) <= TITLE_CONTINUATION_MAX_FONT_DELTA;
@@ -588,6 +577,19 @@ function isLikelyShortTitleContinuation(words: string[]): boolean {
     words.every((word) => /^[A-Za-z][A-Za-z0-9'-]*$/.test(word)) &&
     words.some((word) => word.replace(/[^A-Za-z]/g, "").length >= 4)
   );
+}
+
+function getFontScaledVerticalGapLimit(fontSize: number, ratio: number): number {
+  return Math.max(fontSize * ratio, fontSize + 10);
+}
+
+function hasDescendingVerticalGapWithinLimit(
+  previousLine: TextLine,
+  line: TextLine,
+  maxVerticalGap: number,
+): boolean {
+  const verticalGap = previousLine.y - line.y;
+  return verticalGap > 0 && verticalGap <= maxVerticalGap;
 }
 
 function getLineCenter(line: TextLine): number {
@@ -669,8 +671,7 @@ function parseInlineAcknowledgementsHeading(
 
   const headingText = normalizeSpacing(match[1]);
   const bodyText = match[2].trim();
-  if (bodyText.length < INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH) return undefined;
-  if (!/[A-Za-z]/.test(bodyText)) return undefined;
+  if (!hasInlineHeadingBodyText(bodyText, INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH)) return undefined;
   return { heading: headingText, body: bodyText, level: 2 };
 }
 
@@ -689,9 +690,20 @@ function parseInlineNamedSectionHeading(
   if (headingLevel === undefined) return undefined;
 
   const bodyText = match[2].trim();
-  if (bodyText.length < INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH) return undefined;
-  if (!/[A-Za-z]/.test(bodyText)) return undefined;
+  if (!hasInlineHeadingBodyText(bodyText, INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH)) {
+    return undefined;
+  }
   return { heading: headingText, body: bodyText, level: headingLevel };
+}
+
+function parseInlineHeadingParagraph(
+  text: string,
+): { heading: string; body: string; level: number } | undefined {
+  return parseInlineAcknowledgementsHeading(text) ?? parseInlineNamedSectionHeading(text);
+}
+
+function hasInlineHeadingBodyText(text: string, minLength: number): boolean {
+  return text.length >= minLength && /[A-Za-z]/.test(text);
 }
 
 function isStandaloneAcknowledgementsHeading(text: string): boolean {
@@ -787,12 +799,11 @@ function isHyphenWrapContinuationLine(
   );
   if (normalized === undefined) return false;
 
-  const verticalGap = previousLine.y - line.y;
-  const maxVerticalGap = Math.max(
-    previousLine.fontSize * HYPHEN_WRAP_MAX_VERTICAL_GAP_RATIO,
-    previousLine.fontSize + 10,
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    previousLine.fontSize,
+    HYPHEN_WRAP_MAX_VERTICAL_GAP_RATIO,
   );
-  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
   if (previousLine.estimatedWidth < previousLine.pageWidth * HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO) {
     return false;
   }
@@ -976,9 +987,9 @@ function isWithinAcknowledgementsBodyGeometry(line: TextLine, headingLine: TextL
     return false;
   }
   const verticalGap = headingLine.y - line.y;
-  const maxVerticalGap = Math.max(
-    headingLine.fontSize * ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO,
-    headingLine.fontSize + 10,
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    headingLine.fontSize,
+    ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO,
   );
   if (verticalGap < 0 || verticalGap > maxVerticalGap) return false;
   return line.x >= headingLine.x - line.pageWidth * ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO;
@@ -1002,12 +1013,11 @@ function isAcknowledgementsBodyContinuationLine(
   if (Math.abs(line.fontSize - previousLine.fontSize) > ACKNOWLEDGEMENTS_MAX_FONT_DELTA) {
     return false;
   }
-  const verticalGap = previousLine.y - line.y;
-  const maxVerticalGap = Math.max(
-    previousLine.fontSize * ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO,
-    previousLine.fontSize + 10,
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    previousLine.fontSize,
+    ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO,
   );
-  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
 
   const maxLeftOffset = line.pageWidth * ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO;
   return (
@@ -1250,12 +1260,11 @@ function isNumberedCodeContinuationCandidateLine(
   if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
     return false;
   }
-  const verticalGap = previousCodeLine.y - line.y;
-  const maxVerticalGap = Math.max(
-    previousCodeLine.fontSize * NUMBERED_CODE_BLOCK_MAX_VERTICAL_GAP_RATIO,
-    previousCodeLine.fontSize + 10,
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    previousCodeLine.fontSize,
+    NUMBERED_CODE_BLOCK_MAX_VERTICAL_GAP_RATIO,
   );
-  return verticalGap > 0 && verticalGap <= maxVerticalGap;
+  return hasDescendingVerticalGapWithinLimit(previousCodeLine, line, maxVerticalGap);
 }
 
 function isAlignedWithNumberedCodeColumn(line: TextLine, startLine: TextLine): boolean {
@@ -1593,12 +1602,11 @@ function isBodyParagraphContinuationLine(
 
   if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
 
-  const verticalGap = previousLine.y - line.y;
-  const maxVerticalGap = Math.max(
-    previousLine.fontSize * BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO,
-    previousLine.fontSize + 10,
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    previousLine.fontSize,
+    BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO,
   );
-  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
 
   const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
   const leftOffset = Math.abs(line.x - previousLine.x);
