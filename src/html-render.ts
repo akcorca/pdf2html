@@ -789,14 +789,13 @@ function isHyphenWrapContinuationLine(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
-  const normalized = parseSamePageParagraphMergeCandidateText(
-    line,
-    previousLine,
+  const normalized = parseParagraphMergeCandidateText(line, {
+    samePageAs: previousLine,
     titleLine,
     bodyFontSize,
     hasDottedSubsectionHeadings,
-    HYPHEN_WRAP_CONTINUATION_START_PATTERN,
-  );
+    startPattern: HYPHEN_WRAP_CONTINUATION_START_PATTERN,
+  });
   if (normalized === undefined) return false;
 
   const maxVerticalGap = getFontScaledVerticalGapLimit(
@@ -877,12 +876,11 @@ function isSameRowSentenceSplitStartLine(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
-  const normalized = parseParagraphMergeCandidateText(
-    line,
+  const normalized = parseParagraphMergeCandidateText(line, {
     titleLine,
     bodyFontSize,
     hasDottedSubsectionHeadings,
-  );
+  });
   if (normalized === undefined) return false;
   if (!SAME_ROW_SENTENCE_SPLIT_END_PATTERN.test(normalized)) return false;
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
@@ -900,14 +898,13 @@ function isSameRowSentenceSplitContinuationLine(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
-  const normalized = parseSamePageParagraphMergeCandidateText(
-    line,
-    previousLine,
+  const normalized = parseParagraphMergeCandidateText(line, {
+    samePageAs: previousLine,
     titleLine,
     bodyFontSize,
     hasDottedSubsectionHeadings,
-    SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN,
-  );
+    startPattern: SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN,
+  });
   if (normalized === undefined) return false;
 
   const maxYDelta =
@@ -925,31 +922,20 @@ function isSameRowSentenceSplitContinuationLine(
   return true;
 }
 
-function parseSamePageParagraphMergeCandidateText(
-  line: TextLine,
-  previousLine: TextLine,
-  titleLine: TextLine | undefined,
-  bodyFontSize: number,
-  hasDottedSubsectionHeadings: boolean,
-  startPattern: RegExp,
-): string | undefined {
-  if (line.pageIndex !== previousLine.pageIndex) return undefined;
-  return parseParagraphMergeCandidateText(
-    line,
-    titleLine,
-    bodyFontSize,
-    hasDottedSubsectionHeadings,
-    startPattern,
-  );
+interface ParagraphMergeCandidateOptions {
+  samePageAs?: TextLine;
+  titleLine: TextLine | undefined;
+  bodyFontSize: number;
+  hasDottedSubsectionHeadings: boolean;
+  startPattern?: RegExp;
 }
 
 function parseParagraphMergeCandidateText(
   line: TextLine,
-  titleLine: TextLine | undefined,
-  bodyFontSize: number,
-  hasDottedSubsectionHeadings: boolean,
-  startPattern?: RegExp,
+  options: ParagraphMergeCandidateOptions,
 ): string | undefined {
+  if (options.samePageAs && line.pageIndex !== options.samePageAs.pageIndex) return undefined;
+  const { titleLine, bodyFontSize, hasDottedSubsectionHeadings, startPattern } = options;
   if (line === titleLine) return undefined;
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return undefined;
@@ -1321,12 +1307,11 @@ function consumeBodyParagraph(
   const typicalWidth = pageTypicalWidths.get(startLine.pageIndex);
   if (typicalWidth === undefined) return undefined;
 
-  const startNormalized = parseParagraphMergeCandidateText(
-    startLine,
+  const startNormalized = parseParagraphMergeCandidateText(startLine, {
     titleLine,
     bodyFontSize,
     hasDottedSubsectionHeadings,
-  );
+  });
   if (startNormalized === undefined) return undefined;
   if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(startNormalized)) return undefined;
@@ -1486,12 +1471,11 @@ function shouldSkipDetachedLowercaseMathSubscriptLine(
   if (!line || !previousLine) return false;
   if (line.pageIndex !== previousLine.pageIndex) return false;
 
-  const normalized = parseParagraphMergeCandidateText(
-    line,
+  const normalized = parseParagraphMergeCandidateText(line, {
     titleLine,
     bodyFontSize,
     hasDottedSubsectionHeadings,
-  );
+  });
   if (normalized === undefined) return false;
   if (!DETACHED_LOWERCASE_MATH_SUBSCRIPT_PATTERN.test(normalized)) return false;
 
@@ -1583,14 +1567,13 @@ function isBodyParagraphContinuationLine(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
-  const normalized = parseSamePageParagraphMergeCandidateText(
-    line,
-    previousLine,
+  const normalized = parseParagraphMergeCandidateText(line, {
+    samePageAs: previousLine,
     titleLine,
     bodyFontSize,
     hasDottedSubsectionHeadings,
-    BODY_PARAGRAPH_CONTINUATION_START_PATTERN,
-  );
+    startPattern: BODY_PARAGRAPH_CONTINUATION_START_PATTERN,
+  });
   if (normalized === undefined) return false;
   if (
     BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized) &&
