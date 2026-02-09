@@ -248,6 +248,17 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).toContain("rent socio-cultural situation.");
   });
 
+  it("keeps 1 Introduction heading before its right-column continuation in respect.pdf", () => {
+    const introductionHeading = "<h2>1 Introduction</h2>";
+    const rightColumnContinuationStart = "<p>to a deterioration in model performance, including";
+
+    expect(respectHtml).toContain(introductionHeading);
+    expect(respectHtml).toContain(rightColumnContinuationStart);
+    expect(respectHtml.indexOf(introductionHeading)).toBeLessThan(
+      respectHtml.indexOf(rightColumnContinuationStart),
+    );
+  });
+
   it("moves numeric footnote URLs in respect.pdf to the end of the document", () => {
     const referencesHeading = "<h2>References</h2>";
     const footnoteUrl = "https://openai.com/product";

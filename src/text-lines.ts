@@ -43,6 +43,8 @@ const MAX_REORDER_HEADING_DIGIT_RATIO = 0.34;
 const MIN_MIDPOINT_RECOVERY_GAP_RATIO = 0.05;
 const MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE = 10;
 const MIN_COLUMN_MAJOR_VERTICAL_SPAN_RATIO = 0.2;
+const ADJACENT_RIGHT_BODY_HEADING_LOOKBACK = 6;
+const ADJACENT_RIGHT_BODY_HEADING_MAX_Y_DELTA_FONT_RATIO = 2.8;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
@@ -62,7 +64,11 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
     compareLinesForReadingOrder(left, right, multiColumnPageIndexes, columnMajorPageIndexes),
   );
   const reorderedTopLevel = reorderMisorderedTopLevelHeadings(sorted, multiColumnPageIndexes);
-  return reorderMisorderedNumberedHeadings(reorderedTopLevel, multiColumnPageIndexes);
+  const reorderedWithLeftHeadingPromotion = reorderLeftColumnTopLevelHeadings(
+    reorderedTopLevel,
+    multiColumnPageIndexes,
+  );
+  return reorderMisorderedNumberedHeadings(reorderedWithLeftHeadingPromotion, multiColumnPageIndexes);
 }
 
 function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColumn: boolean } {
@@ -211,6 +217,51 @@ function reorderMisorderedNumberedHeadings(
     promoteLine(reordered, promotionIndex, index);
   }
   return reordered;
+}
+
+function reorderLeftColumnTopLevelHeadings(
+  lines: TextLine[],
+  multiColumnPageIndexes: Set<number>,
+): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 1; index < reordered.length; index += 1) {
+    const promotionIndex = findLeftColumnTopLevelHeadingPromotionIndex(
+      reordered,
+      index,
+      multiColumnPageIndexes,
+    );
+    if (promotionIndex === undefined) continue;
+    promoteLine(reordered, index, promotionIndex);
+  }
+  return reordered;
+}
+
+function findLeftColumnTopLevelHeadingPromotionIndex(
+  lines: TextLine[],
+  currentIndex: number,
+  multiColumnPageIndexes: Set<number>,
+): number | undefined {
+  const current = lines[currentIndex];
+  if (!multiColumnPageIndexes.has(current.pageIndex)) return undefined;
+  if (classifyMultiColumnLine(current) !== "left") return undefined;
+  if (getTopLevelHeadingNumber(current.text) === undefined) return undefined;
+
+  const maxYDelta = Math.max(
+    current.fontSize * ADJACENT_RIGHT_BODY_HEADING_MAX_Y_DELTA_FONT_RATIO,
+    current.fontSize + 12,
+  );
+  let promotionIndex = currentIndex;
+  const scanStart = Math.max(0, currentIndex - ADJACENT_RIGHT_BODY_HEADING_LOOKBACK);
+  for (let scanIndex = currentIndex - 1; scanIndex >= scanStart; scanIndex -= 1) {
+    const candidate = lines[scanIndex];
+    if (candidate.pageIndex !== current.pageIndex) break;
+    if (Math.abs(candidate.y - current.y) > maxYDelta) break;
+    if (classifyMultiColumnLine(candidate) !== "right") break;
+    if (isLikelyColumnHeadingLine(candidate.text)) break;
+    promotionIndex = scanIndex;
+  }
+
+  return promotionIndex < currentIndex ? promotionIndex : undefined;
 }
 
 function findTopLevelHeadingPromotionIndex(
