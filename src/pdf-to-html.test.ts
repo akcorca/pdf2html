@@ -221,6 +221,12 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("<p>∗ ‡</p>");
   });
 
+  it("removes first-page conference venue footer lines from attention.pdf", () => {
+    expect(html).not.toContain(
+      "<p>31st Conference on Neural Information Processing Systems (NIPS 2017), Long Beach, CA, USA.</p>",
+    );
+  });
+
   it("renders bullet lists in attention.pdf using ul/li semantics", () => {
     expect(html).toContain("<ul>");
     expect(html).toContain("<li>In \"encoder-decoder attention\" layers,");

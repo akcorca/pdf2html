@@ -58,6 +58,13 @@ const INLINE_FIGURE_LABEL_NEAR_BODY_MAX_Y_DELTA_FONT_RATIO = 2.4;
 const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_Y_DELTA = 10;
 const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_SUBSTANTIVE_CHARS = 8;
 const DENSE_INLINE_FIGURE_LABEL_MIN_LINES = 20;
+const FIRST_PAGE_VENUE_FOOTER_MAX_VERTICAL_RATIO = 0.12;
+const FIRST_PAGE_VENUE_FOOTER_MAX_FONT_RATIO = 0.96;
+const FIRST_PAGE_VENUE_FOOTER_MIN_SUBSTANTIVE_CHARS = 20;
+const FIRST_PAGE_VENUE_FOOTER_MAX_SUBSTANTIVE_CHARS = 140;
+const FIRST_PAGE_VENUE_FOOTER_YEAR_PATTERN = /\b(?:19|20)\d{2}\b/;
+const FIRST_PAGE_VENUE_FOOTER_KEYWORD_PATTERN =
+  /\b(?:conference|proceedings|journal|workshop|symposium|transactions)\b/iu;
 
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
@@ -101,6 +108,7 @@ function isRemovablePageArtifact(
   if (isLikelyPublisherPageCounterFooter(line, pageExtents)) return true;
   if (isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize)) return true;
   if (isLikelyTopMatterSymbolicAffiliationLine(line, bodyFontSize)) return true;
+  if (isLikelyFirstPageVenueFooterLine(line, bodyFontSize)) return true;
   if (alphabeticAffiliationLines.has(line)) return true;
   if (inlineFigureLabelLines.has(line)) return true;
   if (repeatedEdgeTexts.has(line.text)) return true;
@@ -462,6 +470,27 @@ function isLikelyPublisherPageCounterFooter(
   if (!PAGE_COUNTER_PATTERN.test(normalized)) return false;
   if (!DOMAIN_LIKE_TOKEN_PATTERN.test(normalized)) return false;
   return isNearPageEdge(line, pageExtents) || isNearPhysicalPageEdge(line);
+}
+
+function isLikelyFirstPageVenueFooterLine(
+  line: TextLine,
+  bodyFontSize: number,
+): boolean {
+  if (line.pageIndex !== 0) return false;
+  if (line.pageHeight <= 0) return false;
+  if (line.y / line.pageHeight > FIRST_PAGE_VENUE_FOOTER_MAX_VERTICAL_RATIO) return false;
+  if (line.fontSize > bodyFontSize * FIRST_PAGE_VENUE_FOOTER_MAX_FONT_RATIO) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  const substantiveCharCount = countSubstantiveChars(normalized);
+  if (
+    substantiveCharCount < FIRST_PAGE_VENUE_FOOTER_MIN_SUBSTANTIVE_CHARS ||
+    substantiveCharCount > FIRST_PAGE_VENUE_FOOTER_MAX_SUBSTANTIVE_CHARS
+  ) {
+    return false;
+  }
+  if (!FIRST_PAGE_VENUE_FOOTER_YEAR_PATTERN.test(normalized)) return false;
+  return FIRST_PAGE_VENUE_FOOTER_KEYWORD_PATTERN.test(normalized);
 }
 
 function isLikelyTopMatterAffiliationIndexLine(
