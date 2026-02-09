@@ -59,8 +59,7 @@ function findTitleLineOnPage(
     }
   }
 
-  if (bestCandidate) return bestCandidate;
-  return findTopMatterTitleFallback(pageLines);
+  return bestCandidate ?? findTopMatterTitleFallback(pageLines);
 }
 
 function isTitleCandidate(
@@ -107,27 +106,42 @@ function findTopMatterTitleFallback(pageLines: TextLine[]): TextLine | undefined
 
   const authorLine = sorted[authorIdx];
   const minIdx = Math.max(0, authorIdx - TOP_MATTER_TITLE_LOOKBACK_LINES);
-  let fallbackTitleLine: TextLine | undefined;
+  let scanIndex = authorIdx - 1;
 
-  for (let i = authorIdx - 1; i >= minIdx; i -= 1) {
-    const line = sorted[i];
-    const isAlignedTopMatterTitleLine =
-      isLikelyTopMatterTitleLine(line.text) &&
-      Math.abs(line.x - authorLine.x) <= line.pageWidth * 0.08;
-    if (!isAlignedTopMatterTitleLine) {
-      if (fallbackTitleLine) break;
-      continue;
-    }
+  while (scanIndex >= minIdx && !isAlignedTopMatterTitleLine(sorted[scanIndex], authorLine)) {
+    scanIndex -= 1;
+  }
+  if (scanIndex < minIdx) return undefined;
+
+  let fallbackTitleLine = sorted[scanIndex];
+  for (scanIndex -= 1; scanIndex >= minIdx; scanIndex -= 1) {
+    const line = sorted[scanIndex];
+    if (!isAlignedTopMatterTitleLine(line, authorLine)) break;
     fallbackTitleLine = line;
   }
 
   return fallbackTitleLine;
 }
 
-function isLikelyAuthorLine(text: string): boolean {
+function isAlignedTopMatterTitleLine(line: TextLine, authorLine: TextLine): boolean {
+  if (!isLikelyTopMatterTitleLine(line.text)) return false;
+  return Math.abs(line.x - authorLine.x) <= line.pageWidth * 0.08;
+}
+
+function normalizeTopMatterText(
+  text: string,
+  minLength: number,
+  maxLength = Number.POSITIVE_INFINITY,
+): string | undefined {
   const normalized = normalizeSpacing(text);
-  if (normalized.length < 20) return false;
-  if (containsDocumentMetadata(normalized)) return false;
+  if (normalized.length < minLength || normalized.length > maxLength) return undefined;
+  if (containsDocumentMetadata(normalized)) return undefined;
+  return normalized;
+}
+
+function isLikelyAuthorLine(text: string): boolean {
+  const normalized = normalizeTopMatterText(text, 20);
+  if (!normalized) return false;
   const commaCount = (normalized.match(/,/g) ?? []).length;
   if (commaCount < MIN_AUTHOR_LINE_COMMA_COUNT) return false;
   const capitalizedTokens = normalized.match(/\b[A-Z][a-z]+(?:[-'][A-Z]?[a-z]+)?\b/g) ?? [];
@@ -135,9 +149,8 @@ function isLikelyAuthorLine(text: string): boolean {
 }
 
 function isLikelyTopMatterTitleLine(text: string): boolean {
-  const normalized = normalizeSpacing(text);
-  if (normalized.length < 20 || normalized.length > 140) return false;
-  if (containsDocumentMetadata(normalized)) return false;
+  const normalized = normalizeTopMatterText(text, 20, 140);
+  if (!normalized) return false;
   if (/[.!?]$/.test(normalized)) return false;
   if (!/[A-Za-z]/.test(normalized)) return false;
   const wordCount = countWords(normalized);
