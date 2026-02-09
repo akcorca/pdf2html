@@ -27,6 +27,11 @@ const TOP_LEVEL_DOTTED_HEADING_PATTERN = /^\d+\.\s+/;
 const DOTTED_SUBSECTION_HEADING_PATTERN = /^\d+\.\d+(?:\.\d+){0,3}\.\s+/;
 const STANDALONE_URL_LINE_PATTERN = /^(https?:\/\/[^\s]+?)([.,;:!?])?$/iu;
 const URL_CONTINUATION_LINE_PATTERN = /^([A-Za-z0-9._~!$&'()*+,;=:@%/-]+?)([.,;:!?])?$/u;
+const STANDALONE_ACKNOWLEDGEMENTS_HEADING_PATTERN = /^acknowledg(?:e)?ments?$/iu;
+const ACKNOWLEDGEMENTS_CONTINUATION_START_PATTERN = /^[a-z(“‘"']/u;
+const ACKNOWLEDGEMENTS_MAX_FONT_DELTA = 0.8;
+const ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO = 0.06;
+const ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO = 2.8;
 
 interface HeadingCandidate {
   kind: "named" | "numbered";
@@ -63,6 +68,7 @@ export function escapeHtml(value: string): string {
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ordered rendering heuristics are evaluated in one pass.
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: ordered rendering heuristics are evaluated in one pass.
 function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): string[] {
   const bodyLines: string[] = [];
   const bodyFontSize = estimateBodyFontSize(lines);
@@ -125,6 +131,18 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
         numberedHeadingSectionInfo.depth === 1
       ) {
         seenTopLevelNumberedSections.add(numberedHeadingSectionInfo.topLevelNumber);
+      }
+      if (isStandaloneAcknowledgementsHeading(headingText)) {
+        const acknowledgementsParagraph = consumeAcknowledgementsParagraphAfterHeading(
+          lines,
+          index + 1,
+          currentLine,
+        );
+        if (acknowledgementsParagraph !== undefined) {
+          bodyLines.push(`<p>${escapeHtml(acknowledgementsParagraph.text)}</p>`);
+          index = acknowledgementsParagraph.nextIndex;
+          continue;
+        }
       }
       index += 1;
       continue;
@@ -456,6 +474,95 @@ function parseInlineAcknowledgementsHeading(
   if (bodyText.length < INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH) return undefined;
   if (!/[A-Za-z]/.test(bodyText)) return undefined;
   return { heading: headingText, body: bodyText, level: 2 };
+}
+
+function isStandaloneAcknowledgementsHeading(text: string): boolean {
+  return STANDALONE_ACKNOWLEDGEMENTS_HEADING_PATTERN.test(normalizeSpacing(text));
+}
+
+function consumeAcknowledgementsParagraphAfterHeading(
+  lines: TextLine[],
+  startIndex: number,
+  headingLine: TextLine,
+): { text: string; nextIndex: number } | undefined {
+  const firstLine = lines[startIndex];
+  if (!firstLine) return undefined;
+  if (!isAcknowledgementsBodyLine(firstLine, headingLine)) return undefined;
+
+  const bodyParts = [firstLine.text];
+  let previousLine = firstLine;
+  let previousText = normalizeSpacing(firstLine.text);
+  let nextIndex = startIndex + 1;
+
+  while (nextIndex < lines.length) {
+    const candidate = lines[nextIndex];
+    if (
+      !isAcknowledgementsBodyContinuationLine(candidate, previousLine, previousText, headingLine)
+    ) {
+      break;
+    }
+    bodyParts.push(candidate.text);
+    previousLine = candidate;
+    previousText = normalizeSpacing(candidate.text);
+    nextIndex += 1;
+  }
+
+  return { text: normalizeSpacing(bodyParts.join(" ")), nextIndex };
+}
+
+function isAcknowledgementsBodyLine(line: TextLine, headingLine: TextLine): boolean {
+  if (line.pageIndex !== headingLine.pageIndex) return false;
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return false;
+  if (!/[A-Za-z]/.test(normalized)) return false;
+  if (containsDocumentMetadata(normalized)) return false;
+  if (parseBulletListItemText(normalized) !== undefined) return false;
+  if (detectNumberedHeadingLevel(normalized) !== undefined) return false;
+  if (detectNamedSectionHeadingLevel(normalized) !== undefined) return false;
+  if (parseStandaloneUrlLine(normalized) !== undefined) return false;
+
+  if (Math.abs(line.fontSize - headingLine.fontSize) > ACKNOWLEDGEMENTS_MAX_FONT_DELTA) {
+    return false;
+  }
+  const verticalGap = headingLine.y - line.y;
+  const maxVerticalGap = Math.max(
+    headingLine.fontSize * ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO,
+    headingLine.fontSize + 10,
+  );
+  if (verticalGap < 0 || verticalGap > maxVerticalGap) return false;
+
+  return line.x >= headingLine.x - line.pageWidth * ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO;
+}
+
+function isAcknowledgementsBodyContinuationLine(
+  line: TextLine,
+  previousLine: TextLine,
+  previousText: string,
+  headingLine: TextLine,
+): boolean {
+  if (line.pageIndex !== previousLine.pageIndex || line.pageIndex !== headingLine.pageIndex) {
+    return false;
+  }
+  if (/[.!?]$/.test(previousText)) return false;
+  if (!isAcknowledgementsBodyLine(line, headingLine)) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (!ACKNOWLEDGEMENTS_CONTINUATION_START_PATTERN.test(normalized)) return false;
+  if (Math.abs(line.fontSize - previousLine.fontSize) > ACKNOWLEDGEMENTS_MAX_FONT_DELTA) {
+    return false;
+  }
+  const verticalGap = previousLine.y - line.y;
+  const maxVerticalGap = Math.max(
+    previousLine.fontSize * ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO,
+    previousLine.fontSize + 10,
+  );
+  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+
+  const maxLeftOffset = line.pageWidth * ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO;
+  return (
+    Math.abs(line.x - headingLine.x) <= maxLeftOffset ||
+    Math.abs(line.x - previousLine.x) <= maxLeftOffset
+  );
 }
 
 function renderStandaloneLinkParagraph(

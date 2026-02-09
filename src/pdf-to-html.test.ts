@@ -226,8 +226,9 @@ describe("convertPdfToHtml", () => {
   it("splits inline acknowledgements heading in attention.pdf into a semantic heading", () => {
     expect(html).toContain("<h2>Acknowledgements</h2>");
     expect(html).toContain(
-      "<p>We are grateful to Nal Kalchbrenner and Stephan Gouws for their fruitful</p>",
+      "<p>We are grateful to Nal Kalchbrenner and Stephan Gouws for their fruitful comments, corrections and inspiration.</p>",
     );
+    expect(html).not.toContain("<p>comments, corrections and inspiration.</p>");
     expect(html).not.toContain(
       "<p>Acknowledgements We are grateful to Nal Kalchbrenner and Stephan Gouws for their fruitful</p>",
     );
