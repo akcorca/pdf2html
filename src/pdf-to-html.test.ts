@@ -111,6 +111,15 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("keeps unfinished left-column paragraph text before a right-column heading in clean.pdf", () => {
+    const mergedParagraph =
+      "<p>code generation process for data standardization, requiring just a few lines of code.</p>";
+    const section2 = "<h2>2 TYPE-SPECIFIC STANDARDIZATION API DESIGN</h2>";
+    expect(cleanHtml).toContain(mergedParagraph);
+    expect(cleanHtml).toContain(section2);
+    expect(cleanHtml.indexOf(mergedParagraph)).toBeLessThan(cleanHtml.indexOf(section2));
+  });
+
   it("keeps clean.pdf numbered section headings in left-to-right column reading order", () => {
     const section3 = "<h2>3 CLEANAGENT WORKFLOW</h2>";
     const section4 = "<h2>4 EXPERIMENTS</h2>";
