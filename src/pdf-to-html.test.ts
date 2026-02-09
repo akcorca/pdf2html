@@ -304,6 +304,11 @@ describe("convertPdfToHtml", () => {
     expect(tftHtml).not.toContain("<p>Experimental Section</p>");
   });
 
+  it("renders Supporting Information in tft.pdf as a semantic heading", () => {
+    expect(tftHtml).toContain("<h2>Supporting Information</h2>");
+    expect(tftHtml).not.toContain("<p>Supporting Information</p>");
+  });
+
   it("renders numbered section headings in attention.pdf as semantic headings", () => {
     expect(html).toContain("<h2>1 Introduction</h2>");
   });

@@ -19,6 +19,7 @@ const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
   ["discussion", 2],
   ["experimental section", 2],
   ["references", 2],
+  ["supporting information", 2],
 ]);
 
 const TRAILING_TABULAR_SCORE_PATTERN = /\b\d{1,2}\.\d{1,2}$/;
