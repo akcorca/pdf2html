@@ -12,6 +12,11 @@ const FOOTNOTE_TEXT_MAX_FONT_RATIO = 0.98;
 const FOOTNOTE_MIN_TEXT_LENGTH = 8;
 const FOOTNOTE_MAX_VERTICAL_GAP = 20;
 
+interface FootnoteRange {
+  startIndex: number;
+  endIndex: number;
+}
+
 export function movePageFootnotesToDocumentEnd(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
   const bodyFontSize = estimateBodyFontSize(lines);
@@ -28,45 +33,59 @@ export function movePageFootnotesToDocumentEnd(lines: TextLine[]): TextLine[] {
   }
 
   if (moved.size === 0) return lines;
-  const bodyLines = lines.filter((line) => !moved.has(line));
-  const footnoteLines = lines.filter((line) => moved.has(line));
+  const bodyLines: TextLine[] = [];
+  const footnoteLines: TextLine[] = [];
+  for (const line of lines) {
+    if (moved.has(line)) {
+      footnoteLines.push(line);
+      continue;
+    }
+    bodyLines.push(line);
+  }
   return [...bodyLines, ...footnoteLines];
 }
 
 function findFootnoteRangesOnPage(
   pageLines: TextLine[],
   bodyFontSize: number,
-): Array<{ startIndex: number; endIndex: number }> {
-  const ranges: Array<{ startIndex: number; endIndex: number }> = [];
+): FootnoteRange[] {
+  const ranges: FootnoteRange[] = [];
   let index = 0;
 
   while (index < pageLines.length - 1) {
-    const markerLine = pageLines[index];
-    if (!isFootnoteStartMarkerLine(markerLine, bodyFontSize)) {
+    const range = findFootnoteRangeStartingAt(pageLines, index, bodyFontSize);
+    if (range === undefined) {
       index += 1;
       continue;
     }
-
-    const nextLine = pageLines[index + 1];
-    if (!isLikelyFootnoteTextLine(nextLine, bodyFontSize)) {
-      index += 1;
-      continue;
-    }
-
-    let endIndex = index + 2;
-    let previousLine = nextLine;
-    while (endIndex < pageLines.length) {
-      const line = pageLines[endIndex];
-      if (!isLikelyFootnoteContinuationLine(line, previousLine, bodyFontSize)) break;
-      previousLine = line;
-      endIndex += 1;
-    }
-
-    ranges.push({ startIndex: index, endIndex });
-    index = endIndex;
+    ranges.push(range);
+    index = range.endIndex;
   }
 
   return ranges;
+}
+
+function findFootnoteRangeStartingAt(
+  pageLines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+): FootnoteRange | undefined {
+  const markerLine = pageLines[startIndex];
+  if (!isFootnoteStartMarkerLine(markerLine, bodyFontSize)) return undefined;
+
+  const nextLine = pageLines[startIndex + 1];
+  if (!isLikelyFootnoteTextLine(nextLine, bodyFontSize)) return undefined;
+
+  let endIndex = startIndex + 2;
+  let previousLine = nextLine;
+  while (endIndex < pageLines.length) {
+    const line = pageLines[endIndex];
+    if (!isLikelyFootnoteContinuationLine(line, previousLine, bodyFontSize)) break;
+    previousLine = line;
+    endIndex += 1;
+  }
+
+  return { startIndex, endIndex };
 }
 
 function isFootnoteStartMarkerLine(line: TextLine, bodyFontSize: number): boolean {
@@ -86,10 +105,8 @@ function isFootnoteStartMarkerLine(line: TextLine, bodyFontSize: number): boolea
 }
 
 function isLikelyFootnoteTextLine(line: TextLine, bodyFontSize: number): boolean {
-  if (line.y > line.pageHeight * FOOTNOTE_BLOCK_MAX_VERTICAL_RATIO) return false;
-  if (line.fontSize > bodyFontSize * FOOTNOTE_TEXT_MAX_FONT_RATIO) return false;
-  const text = normalizeSpacing(line.text);
-  if (text.length < FOOTNOTE_MIN_TEXT_LENGTH) return false;
+  const text = getValidFootnoteBlockText(line, bodyFontSize);
+  if (!text || text.length < FOOTNOTE_MIN_TEXT_LENGTH) return false;
   return /[A-Za-z]/.test(text);
 }
 
@@ -101,10 +118,17 @@ function isLikelyFootnoteContinuationLine(
   if (line.pageIndex !== previousLine.pageIndex) return false;
   if (line.y >= previousLine.y) return false;
   if (previousLine.y - line.y > FOOTNOTE_MAX_VERTICAL_GAP) return false;
-  if (line.y > line.pageHeight * FOOTNOTE_BLOCK_MAX_VERTICAL_RATIO) return false;
-  if (line.fontSize > bodyFontSize * FOOTNOTE_TEXT_MAX_FONT_RATIO) return false;
+  return getValidFootnoteBlockText(line, bodyFontSize) !== undefined;
+}
+
+function getValidFootnoteBlockText(
+  line: TextLine,
+  bodyFontSize: number,
+): string | undefined {
+  if (line.y > line.pageHeight * FOOTNOTE_BLOCK_MAX_VERTICAL_RATIO) return undefined;
+  if (line.fontSize > bodyFontSize * FOOTNOTE_TEXT_MAX_FONT_RATIO) return undefined;
 
   const text = normalizeSpacing(line.text);
-  if (text.length === 0) return false;
-  return true;
+  if (text.length === 0) return undefined;
+  return text;
 }
