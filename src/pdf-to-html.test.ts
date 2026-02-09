@@ -68,6 +68,12 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).not.toContain("Name Admission Date Address Abby Fri Jan 1st");
   });
 
+  it("extracts clean paper title as an h1 heading", () => {
+    expect(cleanHtml).toContain(
+      "<h1>CleanAgent: Automating Data Standardization with LLM-based</h1>",
+    );
+  });
+
   it("removes repeated running headers and standalone page number lines", () => {
     expect(covidHtml).not.toContain("<p>Thrombosis Research 202 (2021) 17–23</p>");
     expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);
@@ -167,6 +173,46 @@ describe("pdfToHtmlInternals", () => {
     ];
 
     expect(pdfToHtmlInternals.findTitleLine(lines)).toBe(titleLine);
+  });
+
+  it("does not treat dense same-font disclaimer blocks as titles", () => {
+    const lines = [
+      createLine({
+        text: "Since January 2020 Elsevier has created a COVID - 19 resource centre with",
+        x: 74,
+        y: 542,
+        fontSize: 14,
+        estimatedWidth: 518,
+      }),
+      createLine({
+        text: "free information in English and Mandarin on the novel coronavirus COVID -",
+        x: 76,
+        y: 518,
+        fontSize: 14,
+        estimatedWidth: 518,
+      }),
+      createLine({
+        text: "19. The COVID - 19 resource centre is hosted on Elsevier Connect, the",
+        x: 89,
+        y: 494,
+        fontSize: 14,
+        estimatedWidth: 482,
+      }),
+      createLine({
+        text: "company's public news and information website.",
+        x: 156,
+        y: 470,
+        fontSize: 14,
+        estimatedWidth: 329,
+      }),
+      createLine({
+        pageIndex: 1,
+        text: "Body paragraph",
+        fontSize: 9,
+      }),
+    ];
+
+    expect(pdfToHtmlInternals.findTitleLine(lines)).toBeUndefined();
   });
 
   it("estimates body font size from frequencies and has a fallback", () => {

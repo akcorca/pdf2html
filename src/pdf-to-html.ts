@@ -21,6 +21,10 @@ const DEFAULT_TITLE_MIN_FONT_SIZE_DELTA = 5;
 const DEFAULT_TITLE_MIN_FONT_SIZE_RATIO = 1.5;
 const NEGATIVE_COORD_TITLE_MIN_FONT_SIZE_DELTA = 2;
 const NEGATIVE_COORD_TITLE_MIN_FONT_SIZE_RATIO = 1.2;
+const TITLE_MAX_WIDTH_RATIO = 0.9;
+const TITLE_NEARBY_FONT_SIZE_TOLERANCE = 0.5;
+const TITLE_NEARBY_LINE_WINDOW = 90;
+const MAX_NEARBY_SAME_FONT_LINES = 3;
 const TITLE_MIN_RELATIVE_VERTICAL_POSITION = 0.45;
 const TOP_MATTER_TITLE_LOOKBACK_LINES = 8;
 const MIN_AUTHOR_LINE_COMMA_COUNT = 2;
@@ -470,7 +474,10 @@ function findTitleLine(lines: TextLine[]): TextLine | undefined {
     if (relativeY < TITLE_MIN_RELATIVE_VERTICAL_POSITION) {
       return false;
     }
-    if (line.estimatedWidth > line.pageWidth * 0.7) {
+    if (line.estimatedWidth > line.pageWidth * TITLE_MAX_WIDTH_RATIO) {
+      return false;
+    }
+    if (isLikelyDenseSameFontBlock(line, firstPageLines)) {
       return false;
     }
 
@@ -488,6 +495,16 @@ function findTitleLine(lines: TextLine[]): TextLine | undefined {
     (left, right) =>
       scoreTitleCandidate(right, bodyFontSize) - scoreTitleCandidate(left, bodyFontSize),
   )[0];
+}
+
+function isLikelyDenseSameFontBlock(line: TextLine, firstPageLines: TextLine[]): boolean {
+  const nearbySameFontCount = firstPageLines.filter(
+    (other) =>
+      Math.abs(other.y - line.y) <= TITLE_NEARBY_LINE_WINDOW &&
+      Math.abs(other.fontSize - line.fontSize) <= TITLE_NEARBY_FONT_SIZE_TOLERANCE,
+  ).length;
+
+  return nearbySameFontCount > MAX_NEARBY_SAME_FONT_LINES;
 }
 
 function findTopMatterTitleFallback(firstPageLines: TextLine[]): TextLine | undefined {
