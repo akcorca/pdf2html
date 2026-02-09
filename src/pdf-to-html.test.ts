@@ -52,8 +52,15 @@ describe("convertPdfToHtml", () => {
 
   it("extracts clean paper title as an h1 heading", () => {
     expect(cleanHtml).toContain(
-      "<h1>CleanAgent: Automating Data Standardization with LLM-based</h1>",
+      "<h1>CleanAgent: Automating Data Standardization with LLM-based Agents</h1>",
     );
+  });
+
+  it("merges single-word wrapped clean paper title continuation into h1", () => {
+    expect(cleanHtml).toContain(
+      "<h1>CleanAgent: Automating Data Standardization with LLM-based Agents</h1>",
+    );
+    expect(cleanHtml).not.toContain("<p>Agents</p>");
   });
 
   it("does not treat figure flow labels as numbered section headings in clean.pdf", () => {

@@ -190,7 +190,7 @@ function isTitleContinuationLine(
 }
 
 function isLikelyShortTitleContinuation(words: string[]): boolean {
-  if (words.length !== 2) return false;
+  if (words.length < 1 || words.length > 2) return false;
   return words.every((word) => /^[A-Z][A-Za-z0-9'-]*$/.test(word));
 }
 
