@@ -38,6 +38,7 @@ const MISORDERED_NUMBERED_HEADING_LOOKAHEAD = 18;
 const MISORDERED_TOP_LEVEL_HEADING_MAX_Y_DELTA_FONT_RATIO = 3.2;
 const MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO = 12;
 const MAX_REORDER_HEADING_DIGIT_RATIO = 0.34;
+const MIN_MIDPOINT_RECOVERY_GAP_RATIO = 0.06;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
@@ -400,11 +401,11 @@ function splitFragmentsByColumnBreaks(
   options?: { allowMidpointFallback?: boolean },
 ): ExtractedFragment[][] {
   const breakIndexes = precomputedBreakIndexes ?? findColumnBreakIndexes(fragments, pageWidth);
+  const midpointSplit = options?.allowMidpointFallback
+    ? splitFragmentsByMidpoint(fragments, pageWidth)
+    : undefined;
   if (breakIndexes.length === 0) {
-    if (options?.allowMidpointFallback) {
-      const midpointSplit = splitFragmentsByMidpoint(fragments, pageWidth);
-      if (midpointSplit) return midpointSplit;
-    }
+    if (midpointSplit) return midpointSplit;
     return [fragments];
   }
   const groups: ExtractedFragment[][] = [];
@@ -414,7 +415,14 @@ function splitFragmentsByColumnBreaks(
     start = breakIndex + 1;
   }
   groups.push(fragments.slice(start));
-  return groups.filter((g) => g.length > 0);
+  const filteredGroups = groups.filter((g) => g.length > 0);
+  if (
+    midpointSplit &&
+    shouldPreferMidpointSplit(fragments, filteredGroups, midpointSplit, pageWidth)
+  ) {
+    return midpointSplit;
+  }
+  return filteredGroups;
 }
 
 function splitFragmentsByMidpoint(
@@ -451,6 +459,84 @@ function splitFragmentsByMidpoint(
   }
 
   return [leftColumn, rightColumn];
+}
+
+type FragmentGroupSide = "left" | "right" | "mixed";
+
+interface FragmentGroupSideSummary {
+  hasLeft: boolean;
+  hasRight: boolean;
+  hasMixed: boolean;
+}
+
+function shouldPreferMidpointSplit(
+  fragments: ExtractedFragment[],
+  breakSplit: ExtractedFragment[][],
+  midpointSplit: ExtractedFragment[][],
+  pageWidth: number,
+): boolean {
+  if (midpointSplit.length !== 2) return false;
+  const breakSummary = summarizeFragmentGroupSides(breakSplit, pageWidth);
+  if (!breakSummary.hasMixed) return false;
+  if (breakSummary.hasLeft && breakSummary.hasRight) return false;
+
+  const midpointSummary = summarizeFragmentGroupSides(midpointSplit, pageWidth);
+  if (midpointSummary.hasMixed) return false;
+  if (!midpointSummary.hasLeft || !midpointSummary.hasRight) return false;
+
+  const midpointGap = estimateMidpointSideStartGap(fragments, pageWidth);
+  const minimumGap = Math.max(pageWidth * MIN_MIDPOINT_RECOVERY_GAP_RATIO, MIN_COLUMN_BREAK_GAP * 0.3);
+  return midpointGap >= minimumGap;
+}
+
+function summarizeFragmentGroupSides(
+  groups: ExtractedFragment[][],
+  pageWidth: number,
+): FragmentGroupSideSummary {
+  const summary: FragmentGroupSideSummary = {
+    hasLeft: false,
+    hasRight: false,
+    hasMixed: false,
+  };
+  for (const group of groups) {
+    const side = classifyFragmentGroupSide(group, pageWidth);
+    if (side === "left") summary.hasLeft = true;
+    if (side === "right") summary.hasRight = true;
+    if (side === "mixed") summary.hasMixed = true;
+  }
+  return summary;
+}
+
+function classifyFragmentGroupSide(group: ExtractedFragment[], pageWidth: number): FragmentGroupSide {
+  const splitX = pageWidth * MULTI_COLUMN_SPLIT_RATIO;
+  let hasLeft = false;
+  let hasRight = false;
+  for (const fragment of group) {
+    const center = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+    if (center < splitX) {
+      hasLeft = true;
+    } else {
+      hasRight = true;
+    }
+    if (hasLeft && hasRight) return "mixed";
+  }
+  return hasLeft ? "left" : "right";
+}
+
+function estimateMidpointSideStartGap(fragments: ExtractedFragment[], pageWidth: number): number {
+  const splitX = pageWidth * MULTI_COLUMN_SPLIT_RATIO;
+  let leftMaxX = Number.NEGATIVE_INFINITY;
+  let rightMinX = Number.POSITIVE_INFINITY;
+  for (const fragment of fragments) {
+    const center = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+    if (center < splitX) {
+      leftMaxX = Math.max(leftMaxX, fragment.x);
+    } else {
+      rightMinX = Math.min(rightMinX, fragment.x);
+    }
+  }
+  if (!Number.isFinite(leftMaxX) || !Number.isFinite(rightMinX)) return 0;
+  return rightMinX - leftMaxX;
 }
 
 function shouldForceSplitHeadingPrefixedRow(

@@ -319,6 +319,14 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("separates cross-column mixed rows in tft.pdf into distinct lines", () => {
+    expect(tftHtml).not.toContain(
+      "<p>of structural ordering in AOSs prohibits the implementa- TFT circuit, various metals (Al, Cu, Ag, Au, and Mo)</p>",
+    );
+    expect(tftHtml).toContain("<p>of structural ordering in AOSs prohibits the implementa-</p>");
+    expect(tftHtml).toContain("<p>TFT circuit, various metals (Al, Cu, Ag, Au, and Mo) and con-</p>");
+  });
+
   it("keeps left-column abstract text before right-column abstract text in tft.pdf", () => {
     const leftColumnLine = "<p>The stabilization and control of the electrical properties in solution-processed</p>";
     const rightColumnLine = "<p>various semiconductors, sputter-deposited</p>";
