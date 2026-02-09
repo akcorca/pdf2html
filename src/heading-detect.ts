@@ -27,37 +27,61 @@ const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
 const TRAILING_TABULAR_SCORE_PATTERN = /\b\d{1,2}\.\d{1,2}$/;
 
 export function detectNumberedHeadingLevel(text: string): number | undefined {
-  const normalized = normalizeSpacing(text);
-  if (
-    normalized.length < MIN_NUMBERED_HEADING_LENGTH ||
-    normalized.length > MAX_NUMBERED_HEADING_LENGTH
-  ) {
-    return undefined;
-  }
-  if (containsDocumentMetadata(normalized)) return undefined;
+  const normalized = normalizeHeadingCandidate(
+    text,
+    MIN_NUMBERED_HEADING_LENGTH,
+    MAX_NUMBERED_HEADING_LENGTH,
+  );
+  if (normalized === undefined) return undefined;
 
-  const match = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u.exec(normalized);
-  if (!match) return undefined;
+  const parsed = parseNumberedHeading(normalized);
+  if (parsed === undefined) return undefined;
 
-  const sectionNumber = match[1].replace(/\.$/, "");
-  const topLevel = Number.parseInt(sectionNumber.split(".")[0], 10);
-  if (!Number.isFinite(topLevel) || topLevel < 1 || topLevel > MAX_TOP_LEVEL_SECTION_NUMBER) {
+  if (!isValidTopLevelSectionNumber(parsed.sectionNumber)) {
     return undefined;
   }
 
-  const headingText = match[2].trim();
-  if (!isValidHeadingText(headingText, sectionNumber)) return undefined;
+  if (!isValidHeadingText(parsed.headingText, parsed.sectionNumber)) return undefined;
 
-  const depth = sectionNumber.split(".").length;
+  const depth = parsed.sectionNumber.split(".").length;
   return Math.min(depth + 1, 6);
 }
 
 export function detectNamedSectionHeadingLevel(text: string): number | undefined {
-  const normalized = normalizeSpacing(text);
-  if (normalized.length < 4 || normalized.length > 40) return undefined;
-  if (containsDocumentMetadata(normalized)) return undefined;
+  const normalized = normalizeHeadingCandidate(text, 4, 40);
+  if (normalized === undefined) return undefined;
   if (!/^[A-Za-z][A-Za-z\s-]*[A-Za-z]$/u.test(normalized)) return undefined;
   return NAMED_SECTION_HEADING_LEVELS.get(normalized.toLowerCase());
+}
+
+function normalizeHeadingCandidate(
+  text: string,
+  minLength: number,
+  maxLength: number,
+): string | undefined {
+  const normalized = normalizeSpacing(text);
+  if (normalized.length < minLength || normalized.length > maxLength) return undefined;
+  if (containsDocumentMetadata(normalized)) return undefined;
+  return normalized;
+}
+
+interface ParsedNumberedHeading {
+  sectionNumber: string;
+  headingText: string;
+}
+
+function parseNumberedHeading(text: string): ParsedNumberedHeading | undefined {
+  const match = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u.exec(text);
+  if (!match) return undefined;
+  return {
+    sectionNumber: match[1].replace(/\.$/, ""),
+    headingText: match[2].trim(),
+  };
+}
+
+function isValidTopLevelSectionNumber(sectionNumber: string): boolean {
+  const topLevel = Number.parseInt(sectionNumber.split(".")[0], 10);
+  return Number.isFinite(topLevel) && topLevel >= 1 && topLevel <= MAX_TOP_LEVEL_SECTION_NUMBER;
 }
 
 function isValidHeadingText(text: string, sectionNumber: string): boolean {

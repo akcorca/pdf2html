@@ -25,7 +25,6 @@ const MAX_NUMBERED_SECTION_PREFIX_WORDS = 8;
 const MULTI_COLUMN_SPLIT_RATIO = 0.5;
 const MULTI_COLUMN_SPANNING_LINE_WIDTH_RATIO = 0.62;
 const MULTI_COLUMN_HEADING_REORDER_PATTERN = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u;
-const DOTTED_SUBSECTION_HEADING_MARKER_PATTERN = /^\d+(?:\.\d+){1,4}\.\s+/u;
 const MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH = 90;
 const MAX_MULTI_COLUMN_HEADING_WORDS = 16;
 const MULTI_COLUMN_NEAR_ROW_MAX_Y_DELTA_FONT_RATIO = 2.1;
@@ -565,10 +564,6 @@ function isSequentialSiblingSubsectionPair(leftPath: number[], rightPath: number
   const leftLast = leftPath[leftPath.length - 1] ?? -1;
   const rightLast = rightPath[rightPath.length - 1] ?? -1;
   return leftLast + 1 === rightLast;
-}
-
-function hasDottedSubsectionHeadingMarker(text: string): boolean {
-  return DOTTED_SUBSECTION_HEADING_MARKER_PATTERN.test(normalizeSpacing(text));
 }
 
 interface ReorderLinesByPromotionInput {
