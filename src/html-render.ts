@@ -66,6 +66,19 @@ const INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN = /^[A-Za-z]$/;
 const INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN = /^\d{1,4}$/;
 const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}\[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN = /[.!?]["')\]]?$/;
+const NUMBERED_CODE_BLOCK_LINE_PATTERN = /^(\d{1,3})\s+(.+)$/;
+const NUMBERED_CODE_BLOCK_MAX_LOOKAHEAD = 48;
+const NUMBERED_CODE_BLOCK_MIN_LINES = 4;
+const NUMBERED_CODE_BLOCK_MAX_FONT_RATIO = 0.9;
+const NUMBERED_CODE_BLOCK_MAX_FONT_DELTA = 0.7;
+const NUMBERED_CODE_BLOCK_MAX_LEFT_OFFSET = 60;
+const NUMBERED_CODE_BLOCK_MIN_INDENT = 12;
+const NUMBERED_CODE_BLOCK_MAX_NUMBER_GAP = 2;
+const NUMBERED_CODE_BLOCK_MAX_VERTICAL_GAP_RATIO = 2.8;
+const STRONG_CODE_START_TEXT_PATTERN =
+  /[#=]|\b(?:def|class|import|from|return|const|let|var|function|try|except)\b/u;
+const CODE_STYLE_TEXT_PATTERN =
+  /[#=]|\b(?:def|class|return|import|from|try|except|const|let|var|function)\b|^[A-Za-z_][\w.]*\s*\([^)]*\)$/u;
 
 interface HeadingCandidate {
   kind: "named" | "numbered";
@@ -75,6 +88,11 @@ interface HeadingCandidate {
 interface NumberedHeadingSectionInfo {
   topLevelNumber: number;
   depth: number;
+}
+
+interface NumberedCodeLine {
+  lineNumber: number;
+  content: string;
 }
 
 export function renderHtml(lines: TextLine[]): string {
@@ -113,6 +131,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   const seenTopLevelNumberedSections = new Set<number>();
   const consumedTitle = titleLine ? consumeTitleLines(lines, titleLine) : undefined;
   const consumedNumberedHeadingContinuationIndexes = new Set<number>();
+  const consumedNumberedCodeBlockIndexes = new Set<number>();
   let index = consumedTitle?.startIndex ?? 0;
   while (index < lines.length) {
     if (consumedTitle && index === consumedTitle.startIndex) {
@@ -125,6 +144,10 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       continue;
     }
     if (consumedNumberedHeadingContinuationIndexes.has(index)) {
+      index += 1;
+      continue;
+    }
+    if (consumedNumberedCodeBlockIndexes.has(index)) {
       index += 1;
       continue;
     }
@@ -202,6 +225,24 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     if (renderedStandaloneLink !== undefined) {
       bodyLines.push(renderedStandaloneLink.html);
       index = renderedStandaloneLink.nextIndex;
+      continue;
+    }
+
+    const renderedNumberedCodeBlock = renderNumberedCodeBlock(
+      lines,
+      index,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    );
+    if (renderedNumberedCodeBlock !== undefined) {
+      bodyLines.push(renderedNumberedCodeBlock.html);
+      for (const consumedIndex of renderedNumberedCodeBlock.consumedIndexes) {
+        if (consumedIndex !== index) {
+          consumedNumberedCodeBlockIndexes.add(consumedIndex);
+        }
+      }
+      index += 1;
       continue;
     }
 
@@ -930,6 +971,149 @@ function isValidHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function renderNumberedCodeBlock(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): { html: string; consumedIndexes: number[] } | undefined {
+  const startLine = lines[startIndex];
+  const parsedStart = parseNumberedCodeLine(normalizeSpacing(startLine.text));
+  if (parsedStart === undefined) return undefined;
+  if (
+    !isNumberedCodeStartLine(
+      startLine,
+      parsedStart,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
+    return undefined;
+  }
+
+  const codeParts = [normalizeSpacing(startLine.text)];
+  const consumedIndexes = [startIndex];
+  let previousCodeLine = startLine;
+  let expectedNumber = parsedStart.lineNumber + 1;
+
+  const maxScanIndex = Math.min(lines.length, startIndex + NUMBERED_CODE_BLOCK_MAX_LOOKAHEAD + 1);
+  for (let scanIndex = startIndex + 1; scanIndex < maxScanIndex; scanIndex += 1) {
+    const candidate = lines[scanIndex];
+    if (candidate.pageIndex !== startLine.pageIndex) break;
+    if (
+      !isNumberedCodeContinuationCandidateLine(
+        candidate,
+        startLine,
+        previousCodeLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
+      continue;
+    }
+
+    const normalized = normalizeSpacing(candidate.text);
+    const parsedCandidate = parseNumberedCodeLine(normalized);
+    if (parsedCandidate !== undefined) {
+      if (!isLikelyCodeText(parsedCandidate.content)) continue;
+      if (parsedCandidate.lineNumber < expectedNumber) continue;
+      if (parsedCandidate.lineNumber > expectedNumber + NUMBERED_CODE_BLOCK_MAX_NUMBER_GAP) {
+        if (codeParts.length >= NUMBERED_CODE_BLOCK_MIN_LINES) break;
+        continue;
+      }
+      expectedNumber = parsedCandidate.lineNumber + 1;
+    } else {
+      if (candidate.x < startLine.x + NUMBERED_CODE_BLOCK_MIN_INDENT) continue;
+      if (!isLikelyCodeContinuationText(normalized)) continue;
+    }
+
+    codeParts.push(normalized);
+    consumedIndexes.push(scanIndex);
+    previousCodeLine = candidate;
+  }
+
+  if (codeParts.length < NUMBERED_CODE_BLOCK_MIN_LINES) return undefined;
+  return {
+    html: `<pre><code>${escapeHtml(codeParts.join("\n"))}</code></pre>`,
+    consumedIndexes,
+  };
+}
+
+function parseNumberedCodeLine(text: string): NumberedCodeLine | undefined {
+  const match = NUMBERED_CODE_BLOCK_LINE_PATTERN.exec(text);
+  if (!match) return undefined;
+  const lineNumber = Number.parseInt(match[1] ?? "", 10);
+  if (!Number.isFinite(lineNumber)) return undefined;
+  const content = (match[2] ?? "").trim();
+  if (content.length === 0) return undefined;
+  return { lineNumber, content };
+}
+
+function isNumberedCodeStartLine(
+  line: TextLine,
+  parsedCodeLine: NumberedCodeLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (line === titleLine) return false;
+  if (containsDocumentMetadata(parsedCodeLine.content)) return false;
+  if (!STRONG_CODE_START_TEXT_PATTERN.test(parsedCodeLine.content)) return false;
+  if (!isLikelyCodeText(parsedCodeLine.content)) return false;
+  if (line.fontSize > bodyFontSize * NUMBERED_CODE_BLOCK_MAX_FONT_RATIO) return false;
+  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+    return false;
+  }
+  return true;
+}
+
+function isNumberedCodeContinuationCandidateLine(
+  line: TextLine,
+  startLine: TextLine,
+  previousCodeLine: TextLine,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (line.pageIndex !== startLine.pageIndex) return false;
+  if (line.y >= previousCodeLine.y) return false;
+  if (line.fontSize > bodyFontSize * NUMBERED_CODE_BLOCK_MAX_FONT_RATIO) return false;
+  if (Math.abs(line.fontSize - startLine.fontSize) > NUMBERED_CODE_BLOCK_MAX_FONT_DELTA) return false;
+  if (!isAlignedWithNumberedCodeColumn(line, startLine)) return false;
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return false;
+  if (containsDocumentMetadata(normalized)) return false;
+  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+    return false;
+  }
+  const verticalGap = previousCodeLine.y - line.y;
+  const maxVerticalGap = Math.max(
+    previousCodeLine.fontSize * NUMBERED_CODE_BLOCK_MAX_VERTICAL_GAP_RATIO,
+    previousCodeLine.fontSize + 10,
+  );
+  return verticalGap > 0 && verticalGap <= maxVerticalGap;
+}
+
+function isAlignedWithNumberedCodeColumn(line: TextLine, startLine: TextLine): boolean {
+  if (line.x < startLine.x - 2) return false;
+  return line.x <= startLine.x + NUMBERED_CODE_BLOCK_MAX_LEFT_OFFSET;
+}
+
+function isLikelyCodeContinuationText(text: string): boolean {
+  if (isLikelyCodeText(text)) return true;
+  if (text.length < 2) return false;
+  if (!/[A-Za-z]/.test(text)) return false;
+  if (!/[(){}\[\].,_]/.test(text)) return false;
+  return true;
+}
+
+function isLikelyCodeText(text: string): boolean {
+  const normalized = text.trim();
+  if (normalized.length === 0) return false;
+  return CODE_STYLE_TEXT_PATTERN.test(normalized);
 }
 
 function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): Map<number, number> {

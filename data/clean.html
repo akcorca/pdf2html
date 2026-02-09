@@ -24,25 +24,25 @@
 <p>Date” and address standardization code for “Address” using regex. An</p>
 <p>process.</p>
 <p>example standardization code for “Address” is shown as follows .</p>
-<p>1 def standardize_address ( addr ):</p>
+<pre><code>1 def standardize_address ( addr ):
+2 # Extract street number and street name
+3 street = pd . Series ( addr ). str . extract (r ' (\ d+ [^ ,]+) ' ).
+squeeze ()
+4 # Extract state name
+5 state = " LA "
+6 # Extract zipcode
+7 zipcode = pd . Series ( addr ). str . extract (r ' (\ d {5}) ' ).
+squeeze ()
+8 # Output standardized address
+9 return f"{ street }, { state }, { zipcode }"</code></pre>
 <h2>1 INTRODUCTION</h2>
-<p>2 # Extract street number and street name</p>
 <p>Data standardization, which is pivotal in the realm of data science,</p>
-<p>3 street = pd . Series ( addr ). str . extract (r ' (\ d+ [^ ,]+) ' ).</p>
 <p>aims to transform heterogeneous data formats within a single col-</p>
-<p>squeeze ()</p>
-<p>4 # Extract state name</p>
 <p>umn into a unified data format. This crucial data preprocessing step</p>
-<p>5 state = " LA "</p>
 <p>is essential for enabling effective data integration, data analysis,</p>
-<p>6 # Extract zipcode</p>
 <p>and decision-making.</p>
-<p>7 zipcode = pd . Series ( addr ). str . extract (r ' (\ d {5}) ' ).</p>
 <p>Example 1. We illustrate the data standardization task in Figure 1.</p>
-<p>squeeze ()</p>
-<p>8 # Output standardized address</p>
 <p>Given the input table 𝑇 , it is obvious that data in the “Admission</p>
-<p>9 return f"{ street }, { state }, { zipcode }"</p>
 <p>Date” column and the “Address” column are in different formats, and the data in the cells of the “Admission Date” column includes two</p>
 <p>If the input table 𝑇 has other column types such as email and</p>
 <p>different date formats. The goal of data standardization is to unify</p>
