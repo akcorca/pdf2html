@@ -145,7 +145,7 @@ interface PageArtifactContext {
   bodyFontSize: number;
   pageExtents: Map<number, PageVerticalExtent>;
   repeatedEdgeTexts: Set<string>;
-  removableLineSets: ReadonlyArray<Set<TextLine>>;
+  removableLines: Set<TextLine>;
 }
 
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
@@ -156,50 +156,47 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   const strippedLines = stripArxivSubmissionStampAffixes(
     stripRepeatedEdgeTextAffixes(lines, repeatedEdgeTexts),
   );
-  const alternatingRunningHeaderLines = findLikelyAlternatingRunningHeaderLines(
-    strippedLines,
-    pageExtents,
-    bodyFontSize,
-  );
-  const pageNumberLines = findLikelyPageNumberLines(strippedLines, pageExtents);
-  const alphabeticAffiliationLines = findLikelyTopMatterAlphabeticAffiliationLines(
-    strippedLines,
-    bodyFontSize,
-  );
-  const inlineFigureLabelLines = findLikelyInlineFigureLabelLines(strippedLines, bodyFontSize);
-  const firstPageInlineFigureCaptionLines = findLikelyFirstPageInlineFigureCaptionLines(
-    strippedLines,
-    bodyFontSize,
-  );
+  const removableLines = collectRemovablePageArtifactLines(strippedLines, pageExtents, bodyFontSize);
   const context: PageArtifactContext = {
     bodyFontSize,
     pageExtents,
     repeatedEdgeTexts,
-    removableLineSets: [
-      pageNumberLines,
-      alphabeticAffiliationLines,
-      inlineFigureLabelLines,
-      firstPageInlineFigureCaptionLines,
-      alternatingRunningHeaderLines,
-    ],
+    removableLines,
   };
 
   return strippedLines.filter((line) => !isRemovablePageArtifact(line, context));
 }
 
+function collectRemovablePageArtifactLines(
+  lines: TextLine[],
+  pageExtents: Map<number, PageVerticalExtent>,
+  bodyFontSize: number,
+): Set<TextLine> {
+  return mergeLineSets([
+    findLikelyPageNumberLines(lines, pageExtents),
+    findLikelyTopMatterAlphabeticAffiliationLines(lines, bodyFontSize),
+    findLikelyInlineFigureLabelLines(lines, bodyFontSize),
+    findLikelyFirstPageInlineFigureCaptionLines(lines, bodyFontSize),
+    findLikelyAlternatingRunningHeaderLines(lines, pageExtents, bodyFontSize),
+  ]);
+}
+
+function mergeLineSets(lineSets: ReadonlyArray<Set<TextLine>>): Set<TextLine> {
+  const merged = new Set<TextLine>();
+  for (const lineSet of lineSets) {
+    for (const line of lineSet) {
+      merged.add(line);
+    }
+  }
+  return merged;
+}
+
 function isRemovablePageArtifact(line: TextLine, context: PageArtifactContext): boolean {
   if (line.text.length === 0) return true;
-  if (hasAnyRemovableLineMatch(line, context.removableLineSets)) return true;
+  if (context.removableLines.has(line)) return true;
   if (context.repeatedEdgeTexts.has(line.text)) return true;
   if (isStandaloneCitationMarker(line.text)) return true;
   return isLikelyIntrinsicArtifact(line, context.bodyFontSize, context.pageExtents);
-}
-
-function hasAnyRemovableLineMatch(
-  line: TextLine,
-  removableLineSets: ReadonlyArray<Set<TextLine>>,
-): boolean {
-  return removableLineSets.some((removableLines) => removableLines.has(line));
 }
 
 function isLikelyIntrinsicArtifact(
