@@ -38,9 +38,7 @@
 
 변환 품질을 개선하려면 반드시 다음 절차를 따라 진행하며, 한 번에 한 종류의 문제를 개선하는 일에 집중한다. 아래 절차를 따르면 한 문서의 한 종류의 문제에만 집중했음에도 불구하고 여러 문서가 동시에 좋아질 수 있다.
 
-1. `data`의 각 문서의 모든 페이지를 `png` 파일로 변환한다. (이미 있으면 생략)
-   - 명령: `node src/cli.ts pdf2png <pdfPath> <outputDir>`
-   - 출력 위치: `data/work/png/{문서명}/` (예: `data/work/png/attention/`)
+1. 각 문서의 페이지 PNG 이미지는 `data/work/png/{문서명}/`에 있다. (예: `data/work/png/attention/`) 원본 PDF와 대조할 때 참고할 것.
 2. `data`의 각 문서를 `html`로 파일로 변환한다.
    - 명령: `node src/cli.ts pdf2html <pdfPath> <baselineHtmlPath>`
    - 출력 위치: `data/work/before/{문서명}.html` (예: `data/work/before/attention.html`)

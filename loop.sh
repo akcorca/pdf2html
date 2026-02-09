@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Convert all PDFs to PNG once before entering the loop
+for pdf in data/*.pdf; do
+  doc="$(basename "${pdf%.pdf}")"
+  outdir="data/work/png/$doc"
+  if [ ! -d "$outdir" ]; then
+    node src/cli.ts pdf2png "$pdf" "$outdir"
+  fi
+done
+
 while true; do
   for pdf in data/*.pdf; do
     doc="$(basename "$pdf")"
