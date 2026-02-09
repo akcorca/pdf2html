@@ -80,4 +80,15 @@ describe("attention abstract same-row merge", () => {
       "<p>for both WSJ only and the semi-supervised setting.</p>",
     );
   });
+
+  it("removes soft-wrap hyphen artifacts for common -tion/-sion continuations", () => {
+    expect(attentionHtml).toContain(
+      "sequence modeling and transduction models in various tasks, allowing modeling of dependencies",
+    );
+    expect(attentionHtml).toContain(
+      "to the recurrent and convolutional layers commonly used for mapping one variable-length",
+    );
+    expect(attentionHtml).not.toContain("sequence modeling and transduc-tion models");
+    expect(attentionHtml).not.toContain("the recurrent and convolu-tional layers");
+  });
 });

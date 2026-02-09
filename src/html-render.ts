@@ -42,6 +42,8 @@ const HYPHEN_WRAP_MAX_LEFT_OFFSET_RATIO = 0.08;
 const HYPHEN_WRAP_MAX_CENTER_OFFSET_RATIO = 0.12;
 const HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO = 0.45;
 const HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO = 0.45;
+const HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN = /^(?:tion(?:al(?:ly)?|s)?|sion(?:al(?:ly)?|s)?)/u;
+const HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH = 3;
 const SAME_ROW_SENTENCE_SPLIT_END_PATTERN = /[.!?]["')\]]?$/;
 const SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN = /^[A-Z0-9(“‘"']/u;
 const SAME_ROW_SENTENCE_SPLIT_MAX_VERTICAL_DELTA_FONT_RATIO = 0.2;
@@ -833,9 +835,32 @@ function isHyphenWrapContinuationLine(
 }
 
 function mergeHyphenWrappedTexts(currentText: string, nextLineText: string): string {
-  const left = currentText.trimEnd().replace(/\s*-\s*$/, "-");
+  const trimmedLeft = currentText.trimEnd();
   const right = nextLineText.trimStart().replace(/^\s*-\s*/, "");
-  return normalizeSpacing(`${left}${right}`);
+  if (shouldDropHyphenForSoftWrap(trimmedLeft, right)) {
+    const joinedWithoutHyphen = trimmedLeft.replace(/\s*-\s*$/, "");
+    return normalizeSpacing(`${joinedWithoutHyphen}${right}`);
+  }
+  const joinedWithHyphen = trimmedLeft.replace(/\s*-\s*$/, "-");
+  return normalizeSpacing(`${joinedWithHyphen}${right}`);
+}
+
+function shouldDropHyphenForSoftWrap(leftText: string, rightText: string): boolean {
+  const leftFragmentMatch = /([A-Za-z]+)\s*-\s*$/.exec(leftText);
+  const rightFragmentMatch = /^([A-Za-z]+)/.exec(rightText);
+  if (!leftFragmentMatch || !rightFragmentMatch) return false;
+
+  const leftFragment = leftFragmentMatch[1] ?? "";
+  const rightFragment = rightFragmentMatch[1] ?? "";
+  if (
+    leftFragment.length < HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH ||
+    rightFragment.length < HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH
+  ) {
+    return false;
+  }
+  if (leftFragment !== leftFragment.toLowerCase()) return false;
+  if (rightFragment !== rightFragment.toLowerCase()) return false;
+  return HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN.test(rightFragment);
 }
 
 function consumeSameRowSentenceSplitParagraph(

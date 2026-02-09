@@ -392,8 +392,9 @@ describe("convertPdfToHtml", () => {
       "<p>Attention mechanisms have become an integral part of compelling sequence modeling and transduc-</p>",
     );
     expect(html).toContain(
-      "Attention mechanisms have become an integral part of compelling sequence modeling and transduc-tion models in various tasks, allowing modeling of dependencies without regard to their distance in",
+      "Attention mechanisms have become an integral part of compelling sequence modeling and transduction models in various tasks, allowing modeling of dependencies without regard to their distance in",
     );
+    expect(html).not.toContain("sequence modeling and transduc-tion models");
   });
 
   it("does not render detached lowercase math-subscripts as standalone paragraphs in attention.pdf", () => {
