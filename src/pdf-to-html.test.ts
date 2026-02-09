@@ -153,6 +153,14 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("moves numeric footnote URLs in respect.pdf to the end of the document", () => {
+    const referencesHeading = "<h2>References</h2>";
+    const footnoteUrl = "https://openai.com/product";
+    expect(respectHtml).toContain(referencesHeading);
+    expect(respectHtml).toContain(footnoteUrl);
+    expect(respectHtml.indexOf(footnoteUrl)).toBeGreaterThan(respectHtml.indexOf(referencesHeading));
+  });
+
   it("merges wrapped tft paper title lines into a single h1 heading", () => {
     expect(tftHtml).toContain(
       "<h1>Multifunctional Organic-Semiconductor Interfacial Layers for Solution-Processed Oxide-Semiconductor Thin-Film Transistor</h1>",

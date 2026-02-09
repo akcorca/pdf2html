@@ -1,11 +1,13 @@
 import type { TextLine } from "./pdf-types.ts";
 import { estimateBodyFontSize, normalizeSpacing } from "./text-lines.ts";
 
-const FOOTNOTE_MARKER_ONLY_PATTERN = /^(?:[*∗†‡§¶#])$/u;
-const FOOTNOTE_MARKER_PREFIX_PATTERN = /^(?:[*∗†‡§¶#])\s+.+$/u;
+const FOOTNOTE_SYMBOL_MARKER_ONLY_PATTERN = /^(?:[*∗†‡§¶#])$/u;
+const FOOTNOTE_SYMBOL_MARKER_PREFIX_PATTERN = /^(?:[*∗†‡§¶#])\s+.+$/u;
+const FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN = /^\(?\d{1,2}\)?[.)]?$/u;
 const FOOTNOTE_START_MAX_VERTICAL_RATIO = 0.38;
 const FOOTNOTE_BLOCK_MAX_VERTICAL_RATIO = 0.42;
-const FOOTNOTE_MARKER_MAX_FONT_RATIO = 0.82;
+const FOOTNOTE_SYMBOL_MARKER_MAX_FONT_RATIO = 0.82;
+const FOOTNOTE_NUMERIC_MARKER_MAX_FONT_RATIO = 0.65;
 const FOOTNOTE_TEXT_MAX_FONT_RATIO = 0.98;
 const FOOTNOTE_MIN_TEXT_LENGTH = 8;
 const FOOTNOTE_MAX_VERTICAL_GAP = 20;
@@ -78,10 +80,18 @@ function findFootnoteRangesOnPage(
 
 function isFootnoteStartMarkerLine(line: TextLine, bodyFontSize: number): boolean {
   if (line.y > line.pageHeight * FOOTNOTE_START_MAX_VERTICAL_RATIO) return false;
-  if (line.fontSize > bodyFontSize * FOOTNOTE_MARKER_MAX_FONT_RATIO) return false;
   const text = normalizeSpacing(line.text);
   if (text.length === 0) return false;
-  return FOOTNOTE_MARKER_ONLY_PATTERN.test(text) || FOOTNOTE_MARKER_PREFIX_PATTERN.test(text);
+  if (
+    FOOTNOTE_SYMBOL_MARKER_ONLY_PATTERN.test(text) ||
+    FOOTNOTE_SYMBOL_MARKER_PREFIX_PATTERN.test(text)
+  ) {
+    return line.fontSize <= bodyFontSize * FOOTNOTE_SYMBOL_MARKER_MAX_FONT_RATIO;
+  }
+  if (FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN.test(text)) {
+    return line.fontSize <= bodyFontSize * FOOTNOTE_NUMERIC_MARKER_MAX_FONT_RATIO;
+  }
+  return false;
 }
 
 function isLikelyFootnoteTextLine(line: TextLine, bodyFontSize: number): boolean {
