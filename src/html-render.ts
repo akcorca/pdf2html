@@ -404,6 +404,16 @@ function detectHeadingCandidate(
   return { kind: "named", level: namedHeadingLevel };
 }
 
+function isSemanticHeadingText(text: string): boolean {
+  return (
+    detectNumberedHeadingLevel(text) !== undefined || detectNamedSectionHeadingLevel(text) !== undefined
+  );
+}
+
+function isMetadataOrSemanticHeadingText(text: string): boolean {
+  return containsDocumentMetadata(text) || isSemanticHeadingText(text);
+}
+
 function consumeWrappedNumberedHeadingContinuation(
   lines: TextLine[],
   headingStartIndex: number,
@@ -448,10 +458,8 @@ function isNumberedHeadingContinuationLine(
 ): boolean {
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return false;
-  if (containsDocumentMetadata(normalized)) return false;
+  if (isMetadataOrSemanticHeadingText(normalized)) return false;
   if (!/[A-Za-z]/.test(normalized)) return false;
-  if (detectNumberedHeadingLevel(normalized) !== undefined) return false;
-  if (detectNamedSectionHeadingLevel(normalized) !== undefined) return false;
   if (/[.!?]$/.test(normalized)) return false;
   if (normalized.split(/\s+/).length > MAX_NUMBERED_HEADING_CONTINUATION_WORDS) return false;
   if (line.fontSize < bodyFontSize * MIN_NUMBERED_HEADING_CONTINUATION_FONT_RATIO) return false;
@@ -526,15 +534,12 @@ function isTitleContinuationLine(
 
 function isEligibleTitleContinuationText(text: string): boolean {
   if (text.length === 0) return false;
-  if (containsDocumentMetadata(text)) return false;
+  if (isMetadataOrSemanticHeadingText(text)) return false;
   const words = splitWords(text);
   const hasEnoughWords =
     words.length >= TITLE_CONTINUATION_MIN_WORD_COUNT || isLikelyShortTitleContinuation(words);
   if (!hasEnoughWords) return false;
-  return (
-    detectNumberedHeadingLevel(text) === undefined &&
-    detectNamedSectionHeadingLevel(text) === undefined
-  );
+  return true;
 }
 
 function getTitleContinuationVerticalDelta(
@@ -963,10 +968,8 @@ function parseAcknowledgementsBodyText(
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return undefined;
   if (!/[A-Za-z]/.test(normalized)) return undefined;
-  if (containsDocumentMetadata(normalized)) return undefined;
+  if (isMetadataOrSemanticHeadingText(normalized)) return undefined;
   if (parseBulletListItemText(normalized) !== undefined) return undefined;
-  if (detectNumberedHeadingLevel(normalized) !== undefined) return undefined;
-  if (detectNamedSectionHeadingLevel(normalized) !== undefined) return undefined;
   if (parseStandaloneUrlLine(normalized) !== undefined) return undefined;
   if (!isWithinAcknowledgementsBodyGeometry(line, headingLine)) return undefined;
   return normalized;
