@@ -1054,25 +1054,27 @@ function renderStandaloneLinkParagraph(
   startIndex: number,
 ): { html: string; nextIndex: number } | undefined {
   const footnoteMarker = parseStandaloneNumericFootnoteMarker(lines[startIndex].text);
-  if (footnoteMarker !== undefined) {
-    const linkedFootnote = consumeStandaloneUrl(lines, startIndex + 1, lines[startIndex]);
-    if (linkedFootnote !== undefined) {
-      const escaped = escapeHtml(linkedFootnote.url);
-      return {
-        html: `<p>${escapeHtml(footnoteMarker)} <a href="${escaped}">${escaped}</a>${escapeHtml(linkedFootnote.trailingPunctuation)}</p>`,
-        nextIndex: linkedFootnote.nextIndex,
-      };
-    }
-  }
-
-  const standaloneLink = consumeStandaloneUrl(lines, startIndex);
+  const linkStartIndex = footnoteMarker ? startIndex + 1 : startIndex;
+  const standaloneLink = consumeStandaloneUrl(
+    lines,
+    linkStartIndex,
+    footnoteMarker ? lines[startIndex] : undefined,
+  );
   if (standaloneLink === undefined) return undefined;
 
-  const escaped = escapeHtml(standaloneLink.url);
   return {
-    html: `<p><a href="${escaped}">${escaped}</a>${escapeHtml(standaloneLink.trailingPunctuation)}</p>`,
+    html: renderStandaloneLinkHtml(standaloneLink, footnoteMarker),
     nextIndex: standaloneLink.nextIndex,
   };
+}
+
+function renderStandaloneLinkHtml(
+  standaloneLink: { url: string; trailingPunctuation: string },
+  footnoteMarker: string | undefined,
+): string {
+  const escaped = escapeHtml(standaloneLink.url);
+  const markerPrefix = footnoteMarker ? `${escapeHtml(footnoteMarker)} ` : "";
+  return `<p>${markerPrefix}<a href="${escaped}">${escaped}</a>${escapeHtml(standaloneLink.trailingPunctuation)}</p>`;
 }
 
 function consumeStandaloneUrl(
@@ -1091,14 +1093,11 @@ function consumeStandaloneUrl(
     urlLine,
     expectedPageLine,
   );
-  if (merged === undefined) {
-    return {
-      url: baseUrl.url,
-      trailingPunctuation: baseUrl.trailingPunctuation,
-      nextIndex: startIndex + 1,
-    };
-  }
-  return { ...merged, nextIndex: startIndex + 2 };
+  const resolved = merged ?? {
+    url: baseUrl.url,
+    trailingPunctuation: baseUrl.trailingPunctuation,
+  };
+  return { ...resolved, nextIndex: startIndex + (merged ? 2 : 1) };
 }
 
 function isSamePage(line: TextLine, referenceLine: TextLine | undefined): boolean {
