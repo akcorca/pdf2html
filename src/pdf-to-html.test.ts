@@ -56,6 +56,12 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("removes repeated running-header title lines from clean.pdf body", () => {
+    expect(cleanHtml).not.toContain(
+      "<p>CleanAgent: Automating Data Standardization with LLM-based Agents</p>",
+    );
+  });
+
   it("merges single-word wrapped clean paper title continuation into h1", () => {
     expect(cleanHtml).toContain(
       "<h1>CleanAgent: Automating Data Standardization with LLM-based Agents</h1>",

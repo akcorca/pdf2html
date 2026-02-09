@@ -73,6 +73,17 @@ const FIRST_PAGE_VENUE_FOOTER_KEYWORD_PATTERN =
 const SPECIAL_TOKEN_ARTIFACT_PATTERN = /<\s*(?:pad|eos|bos|unk)\s*>/giu;
 const SPECIAL_TOKEN_ARTIFACT_MAX_FONT_RATIO = 0.96;
 const SPECIAL_TOKEN_ARTIFACT_MAX_WORDS_WITH_SINGLE_TOKEN = 4;
+const ALTERNATING_RUNNING_HEADER_MIN_PAGES = 2;
+const ALTERNATING_RUNNING_HEADER_MIN_PAGE_COVERAGE = 0.3;
+const ALTERNATING_RUNNING_HEADER_MIN_TEXT_LENGTH = 20;
+const ALTERNATING_RUNNING_HEADER_MAX_TEXT_LENGTH = 160;
+const ALTERNATING_RUNNING_HEADER_MIN_WORDS = 4;
+const ALTERNATING_RUNNING_HEADER_MAX_WORDS = 20;
+const ALTERNATING_RUNNING_HEADER_MAX_DIGIT_RATIO = 0.15;
+const ALTERNATING_RUNNING_HEADER_MAX_FONT_RATIO = 0.92;
+const ALTERNATING_RUNNING_HEADER_EDGE_MARGIN = 0.1;
+const ALTERNATING_RUNNING_HEADER_MIN_TOP_RATIO = 0.8;
+const ALTERNATING_RUNNING_HEADER_MAX_X_DRIFT_RATIO = 0.06;
 
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
@@ -81,6 +92,11 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   const repeatedEdgeTexts = findRepeatedEdgeTexts(lines, pageExtents);
   const strippedLines = stripArxivSubmissionStampAffixes(
     stripRepeatedEdgeTextAffixes(lines, repeatedEdgeTexts),
+  );
+  const alternatingRunningHeaderLines = findLikelyAlternatingRunningHeaderLines(
+    strippedLines,
+    pageExtents,
+    bodyFontSize,
   );
   const pageNumberLines = findLikelyPageNumberLines(strippedLines, pageExtents);
   const alphabeticAffiliationLines = findLikelyTopMatterAlphabeticAffiliationLines(
@@ -98,6 +114,7 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
         pageNumberLines,
         alphabeticAffiliationLines,
         inlineFigureLabelLines,
+        alternatingRunningHeaderLines,
       ),
   );
 }
@@ -110,6 +127,7 @@ function isRemovablePageArtifact(
   pageNumberLines: Set<TextLine>,
   alphabeticAffiliationLines: Set<TextLine>,
   inlineFigureLabelLines: Set<TextLine>,
+  alternatingRunningHeaderLines: Set<TextLine>,
 ): boolean {
   if (line.text.length === 0) return true;
   if (isLikelyStandaloneSymbolArtifact(line, bodyFontSize)) return true;
@@ -121,6 +139,7 @@ function isRemovablePageArtifact(
   if (isLikelyFirstPageVenueFooterLine(line, bodyFontSize)) return true;
   if (alphabeticAffiliationLines.has(line)) return true;
   if (inlineFigureLabelLines.has(line)) return true;
+  if (alternatingRunningHeaderLines.has(line)) return true;
   if (repeatedEdgeTexts.has(line.text)) return true;
   if (pageNumberLines.has(line)) return true;
   return isStandaloneCitationMarker(line.text);
@@ -317,6 +336,124 @@ function stripArxivSubmissionStampAffixes(lines: TextLine[]): TextLine[] {
     const stripped = stripArxivSubmissionStampAffixesFromText(line.text);
     return stripped === line.text ? line : { ...line, text: stripped };
   });
+}
+
+function findLikelyAlternatingRunningHeaderLines(
+  lines: TextLine[],
+  pageExtents: Map<number, PageVerticalExtent>,
+  bodyFontSize: number,
+): Set<TextLine> {
+  if (lines.length === 0) return new Set<TextLine>();
+  const totalPages = new Set(lines.map((line) => line.pageIndex)).size;
+  if (totalPages < 3) return new Set<TextLine>();
+
+  const linesByText = new Map<string, TextLine[]>();
+  for (const line of lines) {
+    const existing = linesByText.get(line.text);
+    if (existing) existing.push(line);
+    else linesByText.set(line.text, [line]);
+  }
+
+  const result = new Set<TextLine>();
+  for (const [text, occurrences] of linesByText) {
+    const candidateLines = selectAlternatingRunningHeaderGroupLines(
+      text,
+      occurrences,
+      totalPages,
+      pageExtents,
+      bodyFontSize,
+    );
+    if (!candidateLines) continue;
+    for (const line of candidateLines) result.add(line);
+  }
+  return result;
+}
+
+function selectAlternatingRunningHeaderGroupLines(
+  text: string,
+  occurrences: TextLine[],
+  totalPages: number,
+  pageExtents: Map<number, PageVerticalExtent>,
+  bodyFontSize: number,
+): TextLine[] | undefined {
+  if (!isLikelyAlternatingRunningHeaderText(text)) return undefined;
+  const pageIndexes = getUniqueSortedPageIndexes(occurrences);
+  if (!hasMinimumAlternatingPageCoverage(pageIndexes, totalPages)) return undefined;
+  if (!sharesSinglePageParity(pageIndexes)) return undefined;
+  if (
+    !occurrences.every((line) =>
+      isLikelyAlternatingRunningHeaderLine(line, pageExtents, bodyFontSize),
+    )
+  ) {
+    return undefined;
+  }
+  if (!hasStableHorizontalAlignment(occurrences)) return undefined;
+  return occurrences;
+}
+
+function getUniqueSortedPageIndexes(lines: TextLine[]): number[] {
+  return [...new Set(lines.map((line) => line.pageIndex))].sort((left, right) => left - right);
+}
+
+function hasMinimumAlternatingPageCoverage(pageIndexes: number[], totalPages: number): boolean {
+  if (pageIndexes.length < ALTERNATING_RUNNING_HEADER_MIN_PAGES) return false;
+  return (
+    pageIndexes.length / Math.max(totalPages, 1) >= ALTERNATING_RUNNING_HEADER_MIN_PAGE_COVERAGE
+  );
+}
+
+function isLikelyAlternatingRunningHeaderText(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  if (
+    normalized.length < ALTERNATING_RUNNING_HEADER_MIN_TEXT_LENGTH ||
+    normalized.length > ALTERNATING_RUNNING_HEADER_MAX_TEXT_LENGTH
+  ) {
+    return false;
+  }
+  if (!/[A-Za-z]/.test(normalized)) return false;
+  if (/(?:https?:\/\/|www\.)/iu.test(normalized)) return false;
+  if (/[.!?]$/.test(normalized)) return false;
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length < ALTERNATING_RUNNING_HEADER_MIN_WORDS) return false;
+  if (words.length > ALTERNATING_RUNNING_HEADER_MAX_WORDS) return false;
+  if (countSubstantiveChars(normalized) < ALTERNATING_RUNNING_HEADER_MIN_TEXT_LENGTH) {
+    return false;
+  }
+
+  const alphanumericCount = normalized.replace(/[^A-Za-z0-9]/g, "").length;
+  const digitCount = normalized.replace(/[^0-9]/g, "").length;
+  return digitCount / Math.max(alphanumericCount, 1) <= ALTERNATING_RUNNING_HEADER_MAX_DIGIT_RATIO;
+}
+
+function sharesSinglePageParity(pageIndexes: number[]): boolean {
+  if (pageIndexes.length < 2) return false;
+  const expectedParity = pageIndexes[0] % 2;
+  return pageIndexes.every((pageIndex) => pageIndex % 2 === expectedParity);
+}
+
+function isLikelyAlternatingRunningHeaderLine(
+  line: TextLine,
+  pageExtents: Map<number, PageVerticalExtent>,
+  bodyFontSize: number,
+): boolean {
+  if (line.pageHeight <= 0) return false;
+  if (line.fontSize > bodyFontSize * ALTERNATING_RUNNING_HEADER_MAX_FONT_RATIO) return false;
+  if (
+    !isNearPageEdge(line, pageExtents, ALTERNATING_RUNNING_HEADER_EDGE_MARGIN) &&
+    !isNearPhysicalPageEdge(line, ALTERNATING_RUNNING_HEADER_EDGE_MARGIN)
+  ) {
+    return false;
+  }
+  return line.y / line.pageHeight >= ALTERNATING_RUNNING_HEADER_MIN_TOP_RATIO;
+}
+
+function hasStableHorizontalAlignment(lines: TextLine[]): boolean {
+  if (lines.length < 2) return false;
+  const minX = Math.min(...lines.map((line) => line.x));
+  const maxX = Math.max(...lines.map((line) => line.x));
+  const pageWidth = Math.max(...lines.map((line) => line.pageWidth), 1);
+  return maxX - minX <= pageWidth * ALTERNATING_RUNNING_HEADER_MAX_X_DRIFT_RATIO;
 }
 
 function stripArxivSubmissionStampAffixesFromText(text: string): string {
