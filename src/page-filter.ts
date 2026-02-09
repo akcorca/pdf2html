@@ -38,6 +38,15 @@ const TOP_MATTER_SYMBOLIC_AFFILIATION_PATTERN = /^(?:[*∗†‡§¶#]\s*){2,}$/
 const TOP_MATTER_SYMBOLIC_AFFILIATION_MIN_VERTICAL_RATIO = 0.55;
 const TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_VERTICAL_RATIO = 0.72;
 const TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_FONT_RATIO = 0.82;
+const TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_PAGE_INDEX = 1;
+const TOP_MATTER_ALPHABETIC_AFFILIATION_MIN_VERTICAL_RATIO = 0.5;
+const TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_VERTICAL_RATIO = 0.8;
+const TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_FONT_RATIO = 0.98;
+const TOP_MATTER_ALPHABETIC_AFFILIATION_MIN_CLUSTER_SIZE = 3;
+const TOP_MATTER_ALPHABETIC_AFFILIATION_CLUSTER_X_TOLERANCE = 8;
+const TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_TOKENS = 16;
+const TOP_MATTER_ALPHABETIC_AFFILIATION_TOKEN_PATTERN = /^[a-z*]$/u;
+const TOP_MATTER_ALPHABETIC_AFFILIATION_SINGLE_TOKEN_PATTERN = /^[a-z]$/u;
 const INLINE_FIGURE_LABEL_MAX_FONT_RATIO = 0.72;
 const INLINE_FIGURE_LABEL_MIN_RIGHT_X_RATIO = 0.42;
 const INLINE_FIGURE_LABEL_MIN_VERTICAL_RATIO = 0.45;
@@ -59,6 +68,10 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
     stripRepeatedEdgeTextAffixes(lines, repeatedEdgeTexts),
   );
   const pageNumberLines = findLikelyPageNumberLines(strippedLines, pageExtents);
+  const alphabeticAffiliationLines = findLikelyTopMatterAlphabeticAffiliationLines(
+    strippedLines,
+    bodyFontSize,
+  );
   const inlineFigureLabelLines = findLikelyInlineFigureLabelLines(strippedLines, bodyFontSize);
   return strippedLines.filter(
     (line) =>
@@ -68,6 +81,7 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
         pageExtents,
         repeatedEdgeTexts,
         pageNumberLines,
+        alphabeticAffiliationLines,
         inlineFigureLabelLines,
       ),
   );
@@ -79,6 +93,7 @@ function isRemovablePageArtifact(
   pageExtents: Map<number, PageVerticalExtent>,
   repeatedEdgeTexts: Set<string>,
   pageNumberLines: Set<TextLine>,
+  alphabeticAffiliationLines: Set<TextLine>,
   inlineFigureLabelLines: Set<TextLine>,
 ): boolean {
   if (line.text.length === 0) return true;
@@ -86,6 +101,7 @@ function isRemovablePageArtifact(
   if (isLikelyPublisherPageCounterFooter(line, pageExtents)) return true;
   if (isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize)) return true;
   if (isLikelyTopMatterSymbolicAffiliationLine(line, bodyFontSize)) return true;
+  if (alphabeticAffiliationLines.has(line)) return true;
   if (inlineFigureLabelLines.has(line)) return true;
   if (repeatedEdgeTexts.has(line.text)) return true;
   if (pageNumberLines.has(line)) return true;
@@ -353,14 +369,25 @@ function findLikelyInlineFigureLabelLines(
   lines: TextLine[],
   bodyFontSize: number,
 ): Set<TextLine> {
+  return collectQualifiedPageCandidates(
+    lines,
+    (line, pageLines) => isLikelyInlineFigureLabelLine(line, pageLines, bodyFontSize),
+    (candidates) => candidates.length >= DENSE_INLINE_FIGURE_LABEL_MIN_LINES,
+  );
+}
+
+function collectQualifiedPageCandidates(
+  lines: TextLine[],
+  isCandidate: (line: TextLine, pageLines: TextLine[]) => boolean,
+  shouldKeep: (candidates: TextLine[], pageLines: TextLine[]) => boolean,
+): Set<TextLine> {
   if (lines.length === 0) return new Set<TextLine>();
   const byPage = groupLinesByPage(lines);
   const result = new Set<TextLine>();
   for (const pageLines of byPage.values()) {
-    const candidates = pageLines.filter((line) =>
-      isLikelyInlineFigureLabelLine(line, pageLines, bodyFontSize),
-    );
-    if (candidates.length < DENSE_INLINE_FIGURE_LABEL_MIN_LINES) continue;
+    const candidates = pageLines.filter((line) => isCandidate(line, pageLines));
+    if (candidates.length === 0) continue;
+    if (!shouldKeep(candidates, pageLines)) continue;
     for (const line of candidates) result.add(line);
   }
   return result;
@@ -468,4 +495,54 @@ function isLikelyTopMatterSymbolicAffiliationLine(
 
   const normalized = normalizeSpacing(line.text);
   return TOP_MATTER_SYMBOLIC_AFFILIATION_PATTERN.test(normalized);
+}
+
+function findLikelyTopMatterAlphabeticAffiliationLines(
+  lines: TextLine[],
+  bodyFontSize: number,
+): Set<TextLine> {
+  return collectQualifiedPageCandidates(
+    lines,
+    (line) => isLikelyTopMatterAlphabeticAffiliationCandidate(line, bodyFontSize),
+    (candidates) => hasAlphabeticAffiliationCluster(candidates),
+  );
+}
+
+function hasAlphabeticAffiliationCluster(candidates: TextLine[]): boolean {
+  const singleLetterCandidates = candidates.filter((line) =>
+    TOP_MATTER_ALPHABETIC_AFFILIATION_SINGLE_TOKEN_PATTERN.test(
+      normalizeSpacing(line.text).toLowerCase(),
+    ),
+  );
+  if (singleLetterCandidates.length < TOP_MATTER_ALPHABETIC_AFFILIATION_MIN_CLUSTER_SIZE) {
+    return false;
+  }
+  return singleLetterCandidates.some((line) => {
+    const nearbyCount = singleLetterCandidates.filter(
+      (other) =>
+        Math.abs(other.x - line.x) <= TOP_MATTER_ALPHABETIC_AFFILIATION_CLUSTER_X_TOLERANCE,
+    ).length;
+    return nearbyCount >= TOP_MATTER_ALPHABETIC_AFFILIATION_MIN_CLUSTER_SIZE;
+  });
+}
+
+function isLikelyTopMatterAlphabeticAffiliationCandidate(
+  line: TextLine,
+  bodyFontSize: number,
+): boolean {
+  if (line.pageIndex > TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_PAGE_INDEX) return false;
+  if (line.pageHeight <= 0) return false;
+  const verticalRatio = line.y / line.pageHeight;
+  if (verticalRatio < TOP_MATTER_ALPHABETIC_AFFILIATION_MIN_VERTICAL_RATIO) return false;
+  if (verticalRatio > TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_VERTICAL_RATIO) return false;
+  if (line.fontSize > bodyFontSize * TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_FONT_RATIO) return false;
+
+  const tokens = normalizeSpacing(line.text).toLowerCase().split(/[\s,;:]+/).filter(Boolean);
+  if (tokens.length === 0 || tokens.length > TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_TOKENS) {
+    return false;
+  }
+  if (!tokens.every((token) => TOP_MATTER_ALPHABETIC_AFFILIATION_TOKEN_PATTERN.test(token))) {
+    return false;
+  }
+  return tokens.some((token) => TOP_MATTER_ALPHABETIC_AFFILIATION_SINGLE_TOKEN_PATTERN.test(token));
 }
