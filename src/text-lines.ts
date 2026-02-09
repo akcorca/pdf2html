@@ -68,23 +68,29 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const sorted = lines.sort((left, right) =>
     compareLinesForReadingOrder(left, right, multiColumnPageIndexes, columnMajorPageIndexes),
   );
-  const reorderedTopLevel = reorderMisorderedTopLevelHeadings(sorted);
-  const reorderedWithLeftHeadingPromotion = reorderLeftColumnTopLevelHeadings(
-    reorderedTopLevel,
-    multiColumnPageIndexes,
-  );
-  const reorderedNumberedHeadings = reorderMisorderedNumberedHeadings(
-    reorderedWithLeftHeadingPromotion,
-    multiColumnPageIndexes,
-  );
-  const reorderedHeadingPairs = reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
-    reorderedNumberedHeadings,
-    multiColumnPageIndexes,
-  );
-  return reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
-    reorderedHeadingPairs,
-    multiColumnPageIndexes,
-  );
+  return applyReadingOrderReorders(sorted, multiColumnPageIndexes);
+}
+
+function applyReadingOrderReorders(
+  lines: TextLine[],
+  multiColumnPageIndexes: Set<number>,
+): TextLine[] {
+  const reorderSteps: Array<(currentLines: TextLine[]) => TextLine[]> = [
+    reorderMisorderedTopLevelHeadings,
+    (currentLines) => reorderLeftColumnTopLevelHeadings(currentLines, multiColumnPageIndexes),
+    (currentLines) => reorderMisorderedNumberedHeadings(currentLines, multiColumnPageIndexes),
+    (currentLines) =>
+      reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
+        currentLines,
+        multiColumnPageIndexes,
+      ),
+    (currentLines) =>
+      reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
+        currentLines,
+        multiColumnPageIndexes,
+      ),
+  ];
+  return reorderSteps.reduce((currentLines, reorder) => reorder(currentLines), lines);
 }
 
 function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColumn: boolean } {
@@ -289,21 +295,12 @@ function reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
   const reordered = [...lines];
   for (let index = 0; index < reordered.length - 1; index += 1) {
     const heading = reordered[index];
-    if (!multiColumnPageIndexes.has(heading.pageIndex)) continue;
-    if (!isLikelyColumnHeadingLine(heading.text)) continue;
-    if (classifyMultiColumnLine(heading) !== "left") continue;
-    if (!/[a-z]/u.test(normalizeSpacing(heading.text))) continue;
+    if (!isLeftColumnHeadingEligibleForBodyContinuation(heading, multiColumnPageIndexes)) {
+      continue;
+    }
 
     const rightBodyCandidate = reordered[index + 1];
-    if (!rightBodyCandidate) continue;
-    if (rightBodyCandidate.pageIndex !== heading.pageIndex) continue;
-    if (classifyMultiColumnLine(rightBodyCandidate) !== "right") continue;
-    if (!isLikelyNearRowBodyLine(rightBodyCandidate)) continue;
-    if (isLikelyColumnHeadingLine(rightBodyCandidate.text)) continue;
-
-    const rightBodyText = normalizeSpacing(rightBodyCandidate.text);
-    if (!LEFT_HEADING_RIGHT_BODY_START_PATTERN.test(rightBodyText)) continue;
-    if (LEFT_HEADING_RIGHT_BODY_END_PUNCTUATION_PATTERN.test(rightBodyText)) continue;
+    if (!isRightColumnBodyCandidateAfterLeftHeading(rightBodyCandidate, heading)) continue;
 
     const leftContinuationIndex = findLeftBodyContinuationAfterHeading(
       reordered,
@@ -316,6 +313,30 @@ function reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
     index += 1;
   }
   return reordered;
+}
+
+function isLeftColumnHeadingEligibleForBodyContinuation(
+  heading: TextLine,
+  multiColumnPageIndexes: Set<number>,
+): boolean {
+  if (!multiColumnPageIndexes.has(heading.pageIndex)) return false;
+  if (!isLikelyColumnHeadingLine(heading.text)) return false;
+  if (classifyMultiColumnLine(heading) !== "left") return false;
+  return /[a-z]/u.test(normalizeSpacing(heading.text));
+}
+
+function isRightColumnBodyCandidateAfterLeftHeading(
+  candidate: TextLine | undefined,
+  heading: TextLine,
+): boolean {
+  if (!candidate) return false;
+  if (candidate.pageIndex !== heading.pageIndex) return false;
+  if (classifyMultiColumnLine(candidate) !== "right") return false;
+  if (!isLikelyNearRowBodyLine(candidate)) return false;
+  if (isLikelyColumnHeadingLine(candidate.text)) return false;
+  const candidateText = normalizeSpacing(candidate.text);
+  if (!LEFT_HEADING_RIGHT_BODY_START_PATTERN.test(candidateText)) return false;
+  return !LEFT_HEADING_RIGHT_BODY_END_PUNCTUATION_PATTERN.test(candidateText);
 }
 
 function findLeftBodyContinuationAfterHeading(

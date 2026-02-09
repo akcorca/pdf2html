@@ -89,6 +89,14 @@ const ALTERNATING_RUNNING_HEADER_EDGE_MARGIN = 0.1;
 const ALTERNATING_RUNNING_HEADER_MIN_TOP_RATIO = 0.8;
 const ALTERNATING_RUNNING_HEADER_MAX_X_DRIFT_RATIO = 0.06;
 const MAX_AFFIX_STRIP_ITERATIONS = 3;
+const ARXIV_SUBMISSION_STAMP_PREFIX_PATTERN = new RegExp(
+  `^${ARXIV_SUBMISSION_STAMP_PATTERN.source}`,
+  "i",
+);
+const ARXIV_SUBMISSION_STAMP_SUFFIX_PATTERN = new RegExp(
+  `${ARXIV_SUBMISSION_STAMP_PATTERN.source}$`,
+  "i",
+);
 
 interface StripAffixIterationResult {
   text: string;
@@ -489,52 +497,37 @@ function hasStableHorizontalAlignment(lines: TextLine[]): boolean {
 }
 
 function stripArxivSubmissionStampAffixesFromText(text: string): string {
-  const prefixPattern = new RegExp(`^${ARXIV_SUBMISSION_STAMP_PATTERN.source}`, "i");
-  const suffixPattern = new RegExp(`${ARXIV_SUBMISSION_STAMP_PATTERN.source}$`, "i");
   return stripAffixesIteratively(text, (current) => {
-    let next = current;
-    let changed = false;
-
-    const prefixMatch = prefixPattern.exec(next);
-    if (prefixMatch) {
-      const strippedPrefix = stripTextPrefix(next, prefixMatch[0]);
-      if (strippedPrefix !== next) {
-        next = strippedPrefix;
-        changed = true;
-      }
-    }
-
-    const suffixMatch = suffixPattern.exec(next);
-    if (suffixMatch) {
-      const strippedSuffix = stripTextSuffix(next, suffixMatch[0]);
-      if (strippedSuffix !== next) {
-        next = strippedSuffix;
-        changed = true;
-      }
-    }
-
-    return { text: next, changed };
+    const matchedAffixes: string[] = [];
+    const prefixMatch = ARXIV_SUBMISSION_STAMP_PREFIX_PATTERN.exec(current);
+    if (prefixMatch?.[0]) matchedAffixes.push(prefixMatch[0]);
+    const suffixMatch = ARXIV_SUBMISSION_STAMP_SUFFIX_PATTERN.exec(current);
+    if (suffixMatch?.[0]) matchedAffixes.push(suffixMatch[0]);
+    return stripTextAffixes(current, matchedAffixes);
   });
 }
 
 function stripEdgeTextAffixes(text: string, edgeTexts: string[]): string {
-  return stripAffixesIteratively(text, (current) => {
-    let next = current;
-    let changed = false;
-    for (const edgeText of edgeTexts) {
-      const strippedPrefix = stripTextPrefix(next, edgeText);
-      if (strippedPrefix !== next) {
-        next = strippedPrefix;
-        changed = true;
-      }
-      const strippedSuffix = stripTextSuffix(next, edgeText);
-      if (strippedSuffix !== next) {
-        next = strippedSuffix;
-        changed = true;
-      }
+  return stripAffixesIteratively(text, (current) => stripTextAffixes(current, edgeTexts));
+}
+
+function stripTextAffixes(text: string, affixes: string[]): StripAffixIterationResult {
+  let next = text;
+  let changed = false;
+  for (const affix of affixes) {
+    if (affix.length === 0) continue;
+    const strippedPrefix = stripTextPrefix(next, affix);
+    if (strippedPrefix !== next) {
+      next = strippedPrefix;
+      changed = true;
     }
-    return { text: next, changed };
-  });
+    const strippedSuffix = stripTextSuffix(next, affix);
+    if (strippedSuffix !== next) {
+      next = strippedSuffix;
+      changed = true;
+    }
+  }
+  return { text: next, changed };
 }
 
 function stripAffixesIteratively(
