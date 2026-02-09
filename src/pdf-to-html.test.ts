@@ -308,6 +308,18 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("keeps 2.1 body text before the right-column 2.2 heading in respect.pdf", () => {
+    const section21 = "<h3>2.1 Politeness and Respect</h3>";
+    const section21BodyStart = "<p>Humans are highly sensitive to politeness and re-</p>";
+    const section22 = "<h3>2.2 LLMs and Prompt Engineering</h3>";
+
+    expect(respectHtml).toContain(section21);
+    expect(respectHtml).toContain(section21BodyStart);
+    expect(respectHtml).toContain(section22);
+    expect(respectHtml.indexOf(section21)).toBeLessThan(respectHtml.indexOf(section21BodyStart));
+    expect(respectHtml.indexOf(section21BodyStart)).toBeLessThan(respectHtml.indexOf(section22));
+  });
+
   it("moves numeric footnote URLs in respect.pdf to the end of the document", () => {
     const referencesHeading = "<h2>References</h2>";
     const footnoteUrl = "https://openai.com/product";

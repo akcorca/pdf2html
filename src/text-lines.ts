@@ -267,6 +267,8 @@ function reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
     const rightHeading = reordered[index + 1];
     if (!leftHeading || !rightHeading) continue;
     if (leftHeading.pageIndex !== rightHeading.pageIndex) continue;
+    if (!isLikelyColumnHeadingLine(leftHeading.text)) continue;
+    if (!isLikelyColumnHeadingLine(rightHeading.text)) continue;
     if (classifyMultiColumnLine(leftHeading) !== "left") continue;
     if (classifyMultiColumnLine(rightHeading) !== "right") continue;
 
@@ -285,7 +287,17 @@ function reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
       if (classifyMultiColumnLine(continuationLine) !== "left") break;
       if (!isLikelyNearRowBodyLine(continuationLine)) break;
       if (isLikelyColumnHeadingLine(continuationLine.text)) break;
-      if (continuationLine.y <= leftHeading.y) break;
+      if (
+        !isValidLeftHeadingPairContinuationVerticalOrder(
+          continuationLine,
+          leftHeading,
+          rightHeading,
+          continuationInsertionIndex,
+          index,
+        )
+      ) {
+        break;
+      }
       continuationStart += 1;
     }
 
@@ -513,8 +525,6 @@ function findLeftContinuationInsertionIndexForHeadingPair(
   if (
     leftPath !== undefined &&
     rightPath !== undefined &&
-    hasDottedSubsectionHeadingMarker(leftHeading.text) &&
-    hasDottedSubsectionHeadingMarker(rightHeading.text) &&
     isSequentialSiblingSubsectionPair(leftPath, rightPath)
   ) {
     return leftHeadingIndex + 1;
@@ -527,6 +537,25 @@ function findLeftContinuationInsertionIndexForHeadingPair(
   if (leftTopLevel === undefined || rightTopLevel === undefined) return undefined;
   if (leftTopLevel + 1 !== rightTopLevel) return undefined;
   return leftHeadingIndex;
+}
+
+function isValidLeftHeadingPairContinuationVerticalOrder(
+  continuationLine: TextLine,
+  leftHeading: TextLine,
+  rightHeading: TextLine,
+  continuationInsertionIndex: number,
+  leftHeadingIndex: number,
+): boolean {
+  if (continuationInsertionIndex === leftHeadingIndex + 1) {
+    const rightHeadingDelta = rightHeading.y - leftHeading.y;
+    const continuationDelta = continuationLine.y - leftHeading.y;
+    if (rightHeadingDelta === 0) {
+      return continuationDelta < 0;
+    }
+    if (continuationDelta === 0) return false;
+    return Math.sign(continuationDelta) === Math.sign(rightHeadingDelta);
+  }
+  return continuationLine.y > leftHeading.y;
 }
 
 function isSequentialSiblingSubsectionPair(leftPath: number[], rightPath: number[]): boolean {
