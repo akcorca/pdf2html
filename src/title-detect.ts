@@ -14,6 +14,7 @@ import {
   TOP_MATTER_TITLE_LOOKBACK_LINES,
 } from "./pdf-types.ts";
 import {
+  countWords,
   computePageVerticalExtents,
   estimateBodyFontSize,
   groupLinesByPage,
@@ -71,7 +72,7 @@ function isTitleCandidate(
   if (line.fontSize < minFontSize) return false;
   if (line.text.length < 8) return false;
   if (/[.!?]$/.test(line.text)) return false;
-  const wordCount = line.text.split(/\s+/).filter((part) => part.length > 0).length;
+  const wordCount = countWords(line.text);
   if (wordCount < MIN_TOP_MATTER_TITLE_WORD_COUNT) return false;
   const relativeY = getRelativeVerticalPosition(line, extents);
   if (relativeY < TITLE_MIN_RELATIVE_VERTICAL_POSITION) return false;
@@ -139,7 +140,7 @@ function isLikelyTopMatterTitleLine(text: string): boolean {
   if (containsDocumentMetadata(normalized)) return false;
   if (/[.!?]$/.test(normalized)) return false;
   if (!/[A-Za-z]/.test(normalized)) return false;
-  const wordCount = normalized.split(" ").filter((p) => p.length > 0).length;
+  const wordCount = countWords(normalized);
   if (wordCount < MIN_TOP_MATTER_TITLE_WORD_COUNT) return false;
   const commaCount = (normalized.match(/,/g) ?? []).length;
   if (commaCount > MAX_TOP_MATTER_TITLE_COMMA_COUNT) return false;

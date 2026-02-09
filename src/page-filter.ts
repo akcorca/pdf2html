@@ -15,6 +15,7 @@ import {
   MAX_RUNNING_LABEL_WORDS,
 } from "./pdf-types.ts";
 import {
+  countWords,
   computePageVerticalExtents,
   estimateBodyFontSize,
   groupLinesByPage,
@@ -297,7 +298,7 @@ function isLikelyRunningLabelText(text: string): boolean {
   if (normalized.length > MAX_RUNNING_LABEL_LENGTH) return false;
   if (!/[A-Za-z]/.test(normalized)) return false;
   if (/\d/.test(normalized)) return false;
-  const wordCount = normalized.split(" ").filter((p) => p.length > 0).length;
+  const wordCount = countWords(normalized);
   if (wordCount > MAX_RUNNING_LABEL_WORDS) return false;
   if (!/^[A-Za-z\s&/-]+$/.test(normalized)) return false;
   const alphaOnly = normalized.replace(/[^A-Za-z]/g, "");

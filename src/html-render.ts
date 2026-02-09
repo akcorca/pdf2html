@@ -1,6 +1,6 @@
 // biome-ignore lint/nursery/noExcessiveLinesPerFile: HTML rendering heuristics are intentionally grouped.
 import type { TextLine } from "./pdf-types.ts";
-import { estimateBodyFontSize, normalizeSpacing } from "./text-lines.ts";
+import { estimateBodyFontSize, normalizeSpacing, splitWords } from "./text-lines.ts";
 import { containsDocumentMetadata, findTitleLine } from "./title-detect.ts";
 import { detectNamedSectionHeadingLevel, detectNumberedHeadingLevel } from "./heading-detect.ts";
 
@@ -506,7 +506,7 @@ function isTitleContinuationLine(
 function isEligibleTitleContinuationText(text: string): boolean {
   if (text.length === 0) return false;
   if (containsDocumentMetadata(text)) return false;
-  const words = text.split(" ").filter((token) => token.length > 0);
+  const words = splitWords(text);
   const hasEnoughWords =
     words.length >= TITLE_CONTINUATION_MIN_WORD_COUNT || isLikelyShortTitleContinuation(words);
   if (!hasEnoughWords) return false;

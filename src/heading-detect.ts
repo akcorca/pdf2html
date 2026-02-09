@@ -5,7 +5,7 @@ import {
   MAX_TOP_LEVEL_SECTION_NUMBER,
   MIN_NUMBERED_HEADING_LENGTH,
 } from "./pdf-types.ts";
-import { normalizeSpacing } from "./text-lines.ts";
+import { countWords, normalizeSpacing, splitWords } from "./text-lines.ts";
 import { containsDocumentMetadata } from "./title-detect.ts";
 
 const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
@@ -66,7 +66,7 @@ function isValidHeadingText(text: string, sectionNumber: string): boolean {
   if (!/^[A-Z]/.test(text)) return false;
   if (!/[A-Za-z]/.test(text)) return false;
   if (isLikelyFlowLabelText(text)) return false;
-  const wordCount = text.split(/\s+/).filter((p) => p.length > 0).length;
+  const wordCount = countWords(text);
   if (wordCount > MAX_NUMBERED_HEADING_WORDS) return false;
   const hasMeaningful = text
     .split(/[^A-Za-z-]+/)
@@ -79,7 +79,7 @@ function isValidHeadingText(text: string, sectionNumber: string): boolean {
 
 function isLikelyScoredTableRow(text: string): boolean {
   if (!TRAILING_TABULAR_SCORE_PATTERN.test(text)) return false;
-  const tokens = text.split(/\s+/).filter((part) => part.length > 0);
+  const tokens = splitWords(text);
   if (tokens.length < 4) return false;
   const scoreToken = tokens[tokens.length - 1];
   const score = Number.parseFloat(scoreToken);
@@ -89,7 +89,7 @@ function isLikelyScoredTableRow(text: string): boolean {
 }
 
 function isLikelyFlowLabelText(text: string): boolean {
-  const tokens = text.split(/\s+/).filter((part) => part.length > 0);
+  const tokens = splitWords(text);
   if (tokens.length !== 3) return false;
   if (!/^\d{1,2}$/.test(tokens[1])) return false;
   const left = tokens[0].replace(/[^A-Za-z]/g, "");

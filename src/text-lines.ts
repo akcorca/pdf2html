@@ -807,7 +807,7 @@ function isLikelyColumnHeadingText(headingText: string): boolean {
 }
 
 function tokenizeHeadingWords(text: string): string[] {
-  return text.split(/\s+/).filter((token) => token.length > 0);
+  return splitWords(text);
 }
 
 function classifyMultiColumnLine(line: TextLine): "left" | "right" | "spanning" {
@@ -1122,6 +1122,14 @@ function collapseDuplicatedSentencePrefix(text: string): string {
 
 export function normalizeSpacing(text: string): string {
   return text.replace(/\s+/g, " ").trim();
+}
+
+export function splitWords(text: string): string[] {
+  return text.split(/\s+/).filter((token) => token.length > 0);
+}
+
+export function countWords(text: string): number {
+  return splitWords(text).length;
 }
 
 export function groupLinesByPage(lines: TextLine[]): Map<number, TextLine[]> {
