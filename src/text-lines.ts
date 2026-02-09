@@ -39,17 +39,25 @@ const MISORDERED_TOP_LEVEL_HEADING_MAX_Y_DELTA_FONT_RATIO = 3.2;
 const MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO = 12;
 const MAX_REORDER_HEADING_DIGIT_RATIO = 0.34;
 const MIN_MIDPOINT_RECOVERY_GAP_RATIO = 0.05;
+const MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE = 10;
+const MIN_COLUMN_MAJOR_VERTICAL_SPAN_RATIO = 0.2;
 
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
   const multiColumnPageIndexes = new Set<number>();
+  const columnMajorPageIndexes = new Set<number>();
   for (const page of document.pages) {
     const collectedPage = collectPageLines(page);
     lines.push(...collectedPage.lines);
-    if (collectedPage.isMultiColumn) multiColumnPageIndexes.add(page.pageIndex);
+    if (collectedPage.isMultiColumn) {
+      multiColumnPageIndexes.add(page.pageIndex);
+      if (shouldPreferColumnMajorOrdering(collectedPage.lines)) {
+        columnMajorPageIndexes.add(page.pageIndex);
+      }
+    }
   }
   const sorted = lines.sort((left, right) =>
-    compareLinesForReadingOrder(left, right, multiColumnPageIndexes),
+    compareLinesForReadingOrder(left, right, multiColumnPageIndexes, columnMajorPageIndexes),
   );
   const reorderedTopLevel = reorderMisorderedTopLevelHeadings(sorted, multiColumnPageIndexes);
   return reorderMisorderedNumberedHeadings(reorderedTopLevel, multiColumnPageIndexes);
@@ -95,11 +103,16 @@ function compareLinesForReadingOrder(
   left: TextLine,
   right: TextLine,
   multiColumnPageIndexes: Set<number>,
+  columnMajorPageIndexes: Set<number>,
 ): number {
   if (left.pageIndex !== right.pageIndex) return left.pageIndex - right.pageIndex;
 
   if (multiColumnPageIndexes.has(left.pageIndex)) {
-    const columnOrder = compareMultiColumnLineOrder(left, right);
+    const columnOrder = compareMultiColumnLineOrder(
+      left,
+      right,
+      columnMajorPageIndexes.has(left.pageIndex),
+    );
     if (columnOrder !== 0) return columnOrder;
   }
 
@@ -107,21 +120,64 @@ function compareLinesForReadingOrder(
   return left.x - right.x;
 }
 
-function compareMultiColumnLineOrder(left: TextLine, right: TextLine): number {
+function compareMultiColumnLineOrder(
+  left: TextLine,
+  right: TextLine,
+  preferColumnMajor: boolean,
+): number {
   if (isLikelyColumnHeadingLine(left.text) && isLikelyColumnHeadingLine(right.text)) {
-    const leftColumn = classifyMultiColumnLine(left);
-    const rightColumn = classifyMultiColumnLine(right);
-    if (leftColumn === "spanning" || rightColumn === "spanning") return 0;
-    if (leftColumn === rightColumn) return 0;
-    return leftColumn === "left" ? -1 : 1;
+    return compareByMultiColumnSide(classifyMultiColumnLine(left), classifyMultiColumnLine(right));
+  }
+
+  if (preferColumnMajor) {
+    const columnMajorOrder = compareColumnMajorBodyLineOrder(left, right);
+    if (columnMajorOrder !== 0) return columnMajorOrder;
   }
 
   if (!isLikelyNearRowBodyPair(left, right)) return 0;
-  const leftColumn = classifyNearRowBodyColumn(left);
-  const rightColumn = classifyNearRowBodyColumn(right);
+  return compareByNearRowBodyColumn(left, right);
+}
+
+function compareColumnMajorBodyLineOrder(left: TextLine, right: TextLine): number {
+  if (!isLikelyColumnMajorBodyLine(left) || !isLikelyColumnMajorBodyLine(right)) return 0;
+  return compareByNearRowBodyColumn(left, right);
+}
+
+function compareByMultiColumnSide(
+  leftColumn: "left" | "right" | "spanning",
+  rightColumn: "left" | "right" | "spanning",
+): number {
   if (leftColumn === "spanning" || rightColumn === "spanning") return 0;
   if (leftColumn === rightColumn) return 0;
   return leftColumn === "left" ? -1 : 1;
+}
+
+function compareByNearRowBodyColumn(left: TextLine, right: TextLine): number {
+  return compareByMultiColumnSide(classifyNearRowBodyColumn(left), classifyNearRowBodyColumn(right));
+}
+
+function isLikelyColumnMajorBodyLine(line: TextLine): boolean {
+  if (!isLikelyNearRowBodyLine(line)) return false;
+  return !isLikelyColumnHeadingLine(line.text);
+}
+
+function shouldPreferColumnMajorOrdering(lines: TextLine[]): boolean {
+  const bodyLines = lines.filter((line) => isLikelyColumnMajorBodyLine(line));
+  const leftLines = bodyLines.filter((line) => classifyNearRowBodyColumn(line) === "left");
+  const rightLines = bodyLines.filter((line) => classifyNearRowBodyColumn(line) === "right");
+  if (leftLines.length < MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE) return false;
+  if (rightLines.length < MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE) return false;
+  if (estimatePageVerticalSpanRatio(leftLines) < MIN_COLUMN_MAJOR_VERTICAL_SPAN_RATIO) return false;
+  if (estimatePageVerticalSpanRatio(rightLines) < MIN_COLUMN_MAJOR_VERTICAL_SPAN_RATIO) return false;
+  return true;
+}
+
+function estimatePageVerticalSpanRatio(lines: TextLine[]): number {
+  if (lines.length === 0) return 0;
+  const minY = Math.min(...lines.map((line) => line.y));
+  const maxY = Math.max(...lines.map((line) => line.y));
+  const pageHeight = Math.max(lines[0]?.pageHeight ?? 1, 1);
+  return (maxY - minY) / pageHeight;
 }
 
 function reorderMisorderedTopLevelHeadings(

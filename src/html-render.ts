@@ -48,6 +48,14 @@ const SAME_ROW_SENTENCE_SPLIT_MAX_X_DELTA_RATIO = 0.14;
 const SAME_ROW_SENTENCE_SPLIT_MAX_START_WIDTH_RATIO = 0.45;
 const STANDALONE_CAPTION_LABEL_PATTERN =
   /^(?:Figure|Fig\.?|Table|Algorithm|Eq(?:uation)?\.?)\s+\d+[A-Za-z]?[.:]?$/iu;
+const BODY_PARAGRAPH_FULL_WIDTH_RATIO = 0.85;
+const BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE = 0.75;
+const BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO = 2.0;
+const BODY_PARAGRAPH_MAX_FONT_DELTA = 0.8;
+const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.05;
+const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.12;
+const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[A-Za-z0-9("'"'[]/u;
+const BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN = /^\[\d+\]/;
 
 interface HeadingCandidate {
   kind: "named" | "numbered";
@@ -88,6 +96,7 @@ export function escapeHtml(value: string): string {
 function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): string[] {
   const bodyLines: string[] = [];
   const bodyFontSize = estimateBodyFontSize(lines);
+  const pageTypicalWidths = computePageTypicalBodyWidths(lines, bodyFontSize);
   const hasDottedSubsectionHeadings = lines.some((line) =>
     DOTTED_SUBSECTION_HEADING_PATTERN.test(normalizeSpacing(line.text)),
   );
@@ -183,6 +192,20 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     if (renderedStandaloneLink !== undefined) {
       bodyLines.push(renderedStandaloneLink.html);
       index = renderedStandaloneLink.nextIndex;
+      continue;
+    }
+
+    const bodyParagraph = consumeBodyParagraph(
+      lines,
+      index,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+      pageTypicalWidths,
+    );
+    if (bodyParagraph !== undefined) {
+      bodyLines.push(`<p>${escapeHtml(bodyParagraph.text)}</p>`);
+      index = bodyParagraph.nextIndex;
       continue;
     }
 
@@ -897,4 +920,123 @@ function isValidHttpUrl(value: string): boolean {
   } catch {
     return false;
   }
+}
+
+function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): Map<number, number> {
+  const pageWidths = new Map<number, number[]>();
+  for (const line of lines) {
+    if (Math.abs(line.fontSize - bodyFontSize) > 1.0) continue;
+    if (normalizeSpacing(line.text).length < 20) continue;
+    const existing = pageWidths.get(line.pageIndex);
+    if (existing) {
+      existing.push(line.estimatedWidth);
+    } else {
+      pageWidths.set(line.pageIndex, [line.estimatedWidth]);
+    }
+  }
+  const result = new Map<number, number>();
+  for (const [pageIndex, widths] of pageWidths) {
+    if (widths.length < 5) continue;
+    widths.sort((a, b) => a - b);
+    const percentileIndex = Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE);
+    result.set(pageIndex, widths[percentileIndex]);
+  }
+  return result;
+}
+
+function consumeBodyParagraph(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  pageTypicalWidths: Map<number, number>,
+): { text: string; nextIndex: number } | undefined {
+  const startLine = lines[startIndex];
+  const typicalWidth = pageTypicalWidths.get(startLine.pageIndex);
+  if (typicalWidth === undefined) return undefined;
+
+  const startNormalized = parseParagraphMergeCandidateText(
+    startLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  );
+  if (startNormalized === undefined) return undefined;
+  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
+  if (STANDALONE_CAPTION_LABEL_PATTERN.test(startNormalized)) return undefined;
+  if (startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO) return undefined;
+
+  const parts = [startNormalized];
+  let previousLine = startLine;
+  let nextIndex = startIndex + 1;
+
+  while (nextIndex < lines.length) {
+    const candidate = lines[nextIndex];
+    if (!isBodyParagraphContinuationLine(
+      candidate,
+      previousLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )) {
+      break;
+    }
+    const candidateNormalized = normalizeSpacing(candidate.text);
+    const previousText = parts[parts.length - 1];
+    if (isHyphenWrappedLineText(previousText)) {
+      parts[parts.length - 1] = mergeHyphenWrappedTexts(previousText, candidateNormalized);
+    } else {
+      parts.push(candidateNormalized);
+    }
+    const isFullWidth = candidate.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO;
+    previousLine = candidate;
+    nextIndex += 1;
+    if (!isFullWidth) break;
+  }
+
+  if (parts.length <= 1 && nextIndex === startIndex + 1) return undefined;
+  return { text: normalizeSpacing(parts.join(" ")), nextIndex };
+}
+
+function isBodyParagraphContinuationLine(
+  line: TextLine,
+  previousLine: TextLine,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const normalized = parseSamePageParagraphMergeCandidateText(
+    line,
+    previousLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    BODY_PARAGRAPH_CONTINUATION_START_PATTERN,
+  );
+  if (normalized === undefined) return false;
+  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized)) return false;
+  if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
+
+  if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
+
+  const verticalGap = previousLine.y - line.y;
+  const maxVerticalGap = Math.max(
+    previousLine.fontSize * BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO,
+    previousLine.fontSize + 10,
+  );
+  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+
+  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const leftOffset = Math.abs(line.x - previousLine.x);
+  if (
+    centerOffset > line.pageWidth * BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO &&
+    leftOffset > line.pageWidth * BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO
+  ) {
+    return false;
+  }
+
+  return true;
 }

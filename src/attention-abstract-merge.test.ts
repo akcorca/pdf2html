@@ -18,13 +18,13 @@ describe("attention abstract same-row merge", () => {
     attentionHtml = await readFile(outputPath, "utf8");
   });
 
-  it("merges sentence splits that were incorrectly broken on the same visual row", () => {
+  it("merges abstract sentences into body paragraphs", () => {
     expect(attentionHtml).toContain(
-      "<p>entirely. Experiments on two machine translation tasks show these models to</p>",
+      "dispensing with recurrence and convolutions entirely.</p>",
     );
     expect(attentionHtml).not.toContain("<p>entirely.</p>");
-    expect(attentionHtml).not.toContain(
-      "<p>Experiments on two machine translation tasks show these models to</p>",
+    expect(attentionHtml).toContain(
+      "<p>Experiments on two machine translation tasks show these models to",
     );
   });
 });

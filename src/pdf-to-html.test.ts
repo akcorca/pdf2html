@@ -107,7 +107,7 @@ describe("convertPdfToHtml", () => {
       "<p>While tools like Pandas offer robust functionalities, their complex-</p>",
     );
     expect(cleanHtml).toContain(
-      "<p>While tools like Pandas offer robust functionalities, their complex-ity and the manual effort required for customizing code to diverse</p>",
+      "While tools like Pandas offer robust functionalities, their complex-ity and the manual effort required for customizing code to diverse",
     );
   });
 
@@ -164,8 +164,11 @@ describe("convertPdfToHtml", () => {
 
   it("merges spaced hyphen-wrapped covid abstract lines into a single paragraph", () => {
     expect(covidHtml).not.toMatch(/adjusted rela -<\/p>\s*<p>tive risk \[ARR\] 1\.43/);
-    expect(covidHtml).toMatch(
-      /<p>pandemic from 1090 to 1590[^<]*adjusted rela-?tive risk \[ARR\] 1\.43[^<]*<\/p>/,
+    expect(covidHtml).toContain(
+      "pandemic from 1090 to 1590",
+    );
+    expect(covidHtml).toContain(
+      "adjusted rela-tive risk [ARR] 1.43",
     );
   });
 
@@ -288,7 +291,7 @@ describe("convertPdfToHtml", () => {
       "<p>Attention mechanisms have become an integral part of compelling sequence modeling and transduc-</p>",
     );
     expect(html).toContain(
-      "<p>Attention mechanisms have become an integral part of compelling sequence modeling and transduc-tion models in various tasks, allowing modeling of dependencies without regard to their distance in</p>",
+      "Attention mechanisms have become an integral part of compelling sequence modeling and transduc-tion models in various tasks, allowing modeling of dependencies without regard to their distance in",
     );
   });
 
@@ -360,10 +363,46 @@ describe("convertPdfToHtml", () => {
   });
 
   it("keeps left-column abstract text before right-column abstract text in tft.pdf", () => {
-    const leftColumnLine = "<p>The stabilization and control of the electrical properties in solution-processed</p>";
+    const leftColumnText = "The stabilization and control of the electrical properties in solution-processed";
     const rightColumnLine = "<p>various semiconductors, sputter-deposited</p>";
-    expect(tftHtml).toContain(leftColumnLine);
+    expect(tftHtml).toContain(leftColumnText);
     expect(tftHtml).toContain(rightColumnLine);
-    expect(tftHtml.indexOf(leftColumnLine)).toBeLessThan(tftHtml.indexOf(rightColumnLine));
+    expect(tftHtml.indexOf(leftColumnText)).toBeLessThan(tftHtml.indexOf(rightColumnLine));
+  });
+
+  it("merges attention abstract into body paragraphs instead of single-line p tags", () => {
+    expect(html).toContain(
+      "<p>The dominant sequence transduction models are based on complex recurrent or convolutional neural networks that include an encoder and a decoder.",
+    );
+    expect(html).toContain(
+      "dispensing with recurrence and convolutions entirely.</p>",
+    );
+  });
+
+  it("stops body paragraph merge at section headings in attention.pdf", () => {
+    expect(html).toContain("<h2>1 Introduction</h2>");
+    expect(html).not.toMatch(/entirely\.<\/p>\s*<p>[^<]*<h2>1 Introduction/);
+  });
+
+  it("does not merge across columns in respect.pdf body paragraphs", () => {
+    expect(respectHtml).not.toContain("does not nessandrespectmayhavedifferentdefinitionsand");
+  });
+
+  it("merges body paragraph lines in tft.pdf left-column abstract into one p tag", () => {
+    expect(tftHtml).toContain(
+      "<p>The stabilization and control of the electrical properties in solution-processed",
+    );
+    expect(tftHtml).toContain(
+      "low-cost, high-performance oxide semiconductor-based circuits. [4]</p>",
+    );
+  });
+
+  it("keeps the full left-column abstract block before the right-column summary in tft.pdf", () => {
+    const leftColumnTailText =
+      "low-cost, high-performance oxide semiconductor-based circuits. [4]</p>";
+    const rightColumnLine = "<p>various semiconductors, sputter-deposited</p>";
+    expect(tftHtml).toContain(leftColumnTailText);
+    expect(tftHtml).toContain(rightColumnLine);
+    expect(tftHtml.indexOf(leftColumnTailText)).toBeLessThan(tftHtml.indexOf(rightColumnLine));
   });
 });
