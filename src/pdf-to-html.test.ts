@@ -60,6 +60,13 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).not.toContain("<h2>1 Historical 5 Historical</h2>");
   });
 
+  it("strips arXiv submission-stamp prefixes from clean.pdf body lines", () => {
+    expect(cleanHtml).not.toMatch(
+      /arXiv:\d{4}\.\d{4,5}v\d+\s+\[[^\]]+\]\s+\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/,
+    );
+    expect(cleanHtml).toContain("scientist inputs their requirement to standardize “Admission Date”");
+  });
+
   it("removes repeated running headers and standalone page number lines", () => {
     expect(covidHtml).not.toContain("<p>Thrombosis Research 202 (2021) 17–23</p>");
     expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);

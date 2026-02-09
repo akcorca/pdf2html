@@ -30,7 +30,9 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   const bodyFontSize = estimateBodyFontSize(lines);
   const pageExtents = computePageVerticalExtents(lines);
   const repeatedEdgeTexts = findRepeatedEdgeTexts(lines, pageExtents);
-  const strippedLines = stripRepeatedEdgeTextAffixes(lines, repeatedEdgeTexts);
+  const strippedLines = stripArxivSubmissionStampAffixes(
+    stripRepeatedEdgeTextAffixes(lines, repeatedEdgeTexts),
+  );
   const pageNumberLines = findLikelyPageNumberLines(strippedLines, pageExtents);
   return strippedLines.filter((line) => {
     if (line.text.length === 0) return false;
@@ -197,6 +199,42 @@ function stripRepeatedEdgeTextAffixes(
     const stripped = stripEdgeTextAffixes(line.text, edgeTexts);
     return stripped === line.text ? line : { ...line, text: stripped };
   });
+}
+
+function stripArxivSubmissionStampAffixes(lines: TextLine[]): TextLine[] {
+  return lines.map((line) => {
+    const stripped = stripArxivSubmissionStampAffixesFromText(line.text);
+    return stripped === line.text ? line : { ...line, text: stripped };
+  });
+}
+
+function stripArxivSubmissionStampAffixesFromText(text: string): string {
+  let current = text;
+  for (let iteration = 0; iteration < 3; iteration += 1) {
+    let changed = false;
+
+    const prefixMatch = new RegExp(`^${ARXIV_SUBMISSION_STAMP_PATTERN.source}`, "i").exec(current);
+    if (prefixMatch) {
+      const strippedPrefix = stripTextPrefix(current, prefixMatch[0]);
+      if (strippedPrefix !== current) {
+        current = strippedPrefix;
+        changed = true;
+      }
+    }
+
+    const suffixMatch = new RegExp(`${ARXIV_SUBMISSION_STAMP_PATTERN.source}$`, "i").exec(current);
+    if (suffixMatch) {
+      const strippedSuffix = stripTextSuffix(current, suffixMatch[0]);
+      if (strippedSuffix !== current) {
+        current = strippedSuffix;
+        changed = true;
+      }
+    }
+
+    current = normalizeSpacing(current);
+    if (!changed) break;
+  }
+  return current;
 }
 
 function stripEdgeTextAffixes(text: string, edgeTexts: string[]): string {
