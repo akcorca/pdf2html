@@ -65,6 +65,10 @@ const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.05;
 const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.12;
 const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[A-Za-z0-9("'"'[]/u;
 const BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN = /^\[\d+\]/;
+const REFERENCE_ENTRY_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.8;
+const REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA = 0.8;
+const REFERENCE_ENTRY_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.08;
+const REFERENCE_ENTRY_CONTINUATION_MAX_CENTER_OFFSET_RATIO = 0.12;
 const BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN =
   /^\[\d+(?:\s*,\s*\d+)*\]\s*[,;:]\s+[A-Za-z(“‘"']/u;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_WIDTH_RATIO = 0.55;
@@ -325,6 +329,89 @@ function addConsumedIndexes(
   }
 }
 
+function consumeReferenceEntryParagraph(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): ConsumedParagraph | undefined {
+  const startLine = lines[startIndex];
+  const startNormalized = parseParagraphMergeCandidateText(startLine, {
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  });
+  if (startNormalized === undefined) return undefined;
+  if (!BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
+
+  const parts = [startNormalized];
+  let previousLine = startLine;
+  let nextIndex = startIndex + 1;
+
+  while (nextIndex < lines.length) {
+    const candidate = lines[nextIndex];
+    if (!isReferenceEntryContinuationLine(
+      candidate,
+      previousLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )) {
+      break;
+    }
+    const candidateText = normalizeSpacing(candidate.text);
+    appendBodyParagraphPart(parts, candidateText);
+    previousLine = candidate;
+    nextIndex += 1;
+  }
+
+  if (parts.length <= 1) return undefined;
+  return { text: normalizeSpacing(parts.join(" ")), nextIndex };
+}
+
+function isReferenceEntryContinuationLine(
+  line: TextLine,
+  previousLine: TextLine,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (line.pageIndex !== previousLine.pageIndex) return false;
+  if (line === titleLine) return false;
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return false;
+  // Stop at the next reference entry
+  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized)) return false;
+  // Stop at headings
+  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+    return false;
+  }
+  if (containsDocumentMetadata(normalized)) return false;
+  // Font size must be similar
+  if (Math.abs(line.fontSize - startLine.fontSize) > REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA) {
+    return false;
+  }
+  // Vertical gap check
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    previousLine.fontSize,
+    REFERENCE_ENTRY_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
+  );
+  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
+  // Horizontal alignment check
+  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const leftOffset = Math.abs(line.x - startLine.x);
+  if (
+    centerOffset > line.pageWidth * REFERENCE_ENTRY_CONTINUATION_MAX_CENTER_OFFSET_RATIO &&
+    leftOffset > line.pageWidth * REFERENCE_ENTRY_CONTINUATION_MAX_LEFT_OFFSET_RATIO
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function consumeParagraph(
   lines: TextLine[],
   startIndex: number,
@@ -334,6 +421,13 @@ function consumeParagraph(
   pageTypicalWidths: Map<number, number>,
 ): ConsumedParagraph | undefined {
   return (
+    consumeReferenceEntryParagraph(
+      lines,
+      startIndex,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    ) ??
     consumeBodyParagraph(
       lines,
       startIndex,

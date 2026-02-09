@@ -467,6 +467,24 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("<p>tensorflow/tensor2tensor .</p>");
   });
 
+  it("merges multi-line reference entries into single paragraphs in attention.pdf", () => {
+    // [4] should be merged into one <p> instead of two separate <p> tags
+    expect(html).toContain(
+      "Jianpeng Cheng, Li Dong, and Mirella Lapata. Long short-term memory-networks for machine reading.",
+    );
+    // [5] continuation line should be merged with the entry start
+    expect(html).toContain(
+      "Kyunghyun Cho, Bart van Merrienboer, Caglar Gulcehre, Fethi Bougares, Holger Schwenk, and Yoshua Bengio.",
+    );
+    // Continuation lines should not appear as standalone <p> tags
+    expect(html).not.toContain(
+      "<p>reading. arXiv preprint arXiv:1601.06733 , 2016.</p>",
+    );
+    expect(html).not.toContain(
+      "<p>and Yoshua Bengio. Learning phrase representations using rnn encoder-decoder for statistical machine translation. CoRR , abs/1406.1078, 2014.</p>",
+    );
+  });
+
   it("removes attention-visualization special-token artifact lines in attention.pdf", () => {
     expect(html).not.toContain("&lt;EOS&gt;");
     expect(html).not.toContain("&lt;pad&gt;");
