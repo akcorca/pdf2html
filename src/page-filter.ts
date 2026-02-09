@@ -26,6 +26,10 @@ const STANDALONE_CITATION_MARKER_PATTERN =
   /^(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*$/;
 const PAGE_COUNTER_PATTERN = /\(\d+\s+of\s+\d+\)/i;
 const DOMAIN_LIKE_TOKEN_PATTERN = /\b(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/;
+const TOP_MATTER_AFFILIATION_INDEX_PATTERN = /^[\d\s,.;:()[\]{}+\-]+$/;
+const TOP_MATTER_AFFILIATION_MIN_VERTICAL_RATIO = 0.72;
+const TOP_MATTER_AFFILIATION_MAX_FONT_RATIO = 0.82;
+const TOP_MATTER_AFFILIATION_MIN_INDEX_TOKENS = 2;
 
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
@@ -40,6 +44,7 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
     if (line.text.length === 0) return false;
     if (isLikelyArxivSubmissionStamp(line, bodyFontSize)) return false;
     if (isLikelyPublisherPageCounterFooter(line, pageExtents)) return false;
+    if (isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize)) return false;
     if (repeatedEdgeTexts.has(line.text)) return false;
     if (pageNumberLines.has(line)) return false;
     if (isStandaloneCitationMarker(line.text)) return false;
@@ -287,4 +292,22 @@ function isLikelyPublisherPageCounterFooter(
   if (!PAGE_COUNTER_PATTERN.test(normalized)) return false;
   if (!DOMAIN_LIKE_TOKEN_PATTERN.test(normalized)) return false;
   return isNearPageEdge(line, pageExtents) || isNearPhysicalPageEdge(line);
+}
+
+function isLikelyTopMatterAffiliationIndexLine(
+  line: TextLine,
+  bodyFontSize: number,
+): boolean {
+  if (line.pageIndex !== 0) return false;
+  if (line.pageHeight <= 0) return false;
+  if (line.y / line.pageHeight < TOP_MATTER_AFFILIATION_MIN_VERTICAL_RATIO) return false;
+  if (line.fontSize > bodyFontSize * TOP_MATTER_AFFILIATION_MAX_FONT_RATIO) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (!TOP_MATTER_AFFILIATION_INDEX_PATTERN.test(normalized)) return false;
+
+  const indexTokens = normalized.match(/\d+/g) ?? [];
+  if (indexTokens.length < TOP_MATTER_AFFILIATION_MIN_INDEX_TOKENS) return false;
+  if (!indexTokens.some((token) => token.length === 1)) return false;
+  return indexTokens.every((token) => token.length <= 2);
 }

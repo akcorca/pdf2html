@@ -128,6 +128,11 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).not.toMatch(/<h[2-6]>\d+\s+[^<]*\s\d+\.\d{2}<\/h[2-6]>/);
   });
 
+  it("removes standalone affiliation index marker lines in respect.pdf title block", () => {
+    expect(respectHtml).not.toContain("<p>1 1 1 1 , 2 , 3 2 , 3</p>");
+    expect(respectHtml).not.toContain("<p>1 2 3</p>");
+  });
+
   it("preserves left-to-right reading order for two-column section headings in respect.pdf", () => {
     const sectionHeading = "<h2>5 Results</h2>";
     const rightColumnSubheading = "<h4>5.1.2 Chinese</h4>";
