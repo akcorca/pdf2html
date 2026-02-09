@@ -566,21 +566,12 @@ function stripEdgeTextAffixes(text: string, edgeTexts: string[]): string {
 
 function stripTextAffixes(text: string, affixes: string[]): StripAffixIterationResult {
   let next = text;
-  let changed = false;
   for (const affix of affixes) {
     if (affix.length === 0) continue;
-    const strippedPrefix = stripTextPrefix(next, affix);
-    if (strippedPrefix !== next) {
-      next = strippedPrefix;
-      changed = true;
-    }
-    const strippedSuffix = stripTextSuffix(next, affix);
-    if (strippedSuffix !== next) {
-      next = strippedSuffix;
-      changed = true;
-    }
+    next = stripTextAffixBoundary(next, affix, "prefix");
+    next = stripTextAffixBoundary(next, affix, "suffix");
   }
-  return { text: next, changed };
+  return { text: next, changed: next !== text };
 }
 
 function stripAffixesIteratively(
@@ -596,18 +587,20 @@ function stripAffixesIteratively(
   return current;
 }
 
-function stripTextPrefix(text: string, prefix: string): string {
-  if (text === prefix) return "";
-  if (!text.startsWith(prefix)) return text;
-  const trailing = text.slice(prefix.length, prefix.length + 1);
-  return isEdgeTextBoundary(trailing) ? text.slice(prefix.length) : text;
-}
-
-function stripTextSuffix(text: string, suffix: string): string {
-  if (text === suffix) return "";
-  if (!text.endsWith(suffix)) return text;
-  const leading = text.slice(text.length - suffix.length - 1, text.length - suffix.length);
-  return isEdgeTextBoundary(leading) ? text.slice(0, text.length - suffix.length) : text;
+function stripTextAffixBoundary(
+  text: string,
+  affix: string,
+  boundary: "prefix" | "suffix",
+): string {
+  if (text === affix) return "";
+  if (boundary === "prefix") {
+    if (!text.startsWith(affix)) return text;
+    const trailing = text.slice(affix.length, affix.length + 1);
+    return isEdgeTextBoundary(trailing) ? text.slice(affix.length) : text;
+  }
+  if (!text.endsWith(affix)) return text;
+  const leading = text.slice(text.length - affix.length - 1, text.length - affix.length);
+  return isEdgeTextBoundary(leading) ? text.slice(0, text.length - affix.length) : text;
 }
 
 function isEdgeTextBoundary(character: string): boolean {
