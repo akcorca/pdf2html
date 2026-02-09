@@ -72,6 +72,12 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).toContain("<p>3 Historical</p>");
   });
 
+  it("merges wrapped numbered section headings in clean.pdf into a single semantic heading", () => {
+    expect(cleanHtml).toContain("<h2>2 TYPE-SPECIFIC STANDARDIZATION API DESIGN</h2>");
+    expect(cleanHtml).not.toContain("<h2>2 TYPE-SPECIFIC STANDARDIZATION API</h2>");
+    expect(cleanHtml).not.toContain("<p>DESIGN</p>");
+  });
+
   it("strips arXiv submission-stamp prefixes from clean.pdf body lines", () => {
     expect(cleanHtml).not.toMatch(
       /arXiv:\d{4}\.\d{4,5}v\d+\s+\[[^\]]+\]\s+\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/,
