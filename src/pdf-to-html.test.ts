@@ -105,4 +105,10 @@ describe("convertPdfToHtml", () => {
   it("removes repeated running-label header lines from tft.pdf", () => {
     expect(tftHtml).not.toContain("<p>COMMUNICATION</p>");
   });
+
+  it("removes standalone citation marker lines from tft.pdf", () => {
+    expect(tftHtml).not.toMatch(
+      /<p>(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*<\/p>/,
+    );
+  });
 });

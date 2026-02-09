@@ -22,6 +22,9 @@ import {
   normalizeSpacing,
 } from "./text-lines.ts";
 
+const STANDALONE_CITATION_MARKER_PATTERN =
+  /^(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*$/;
+
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
   const bodyFontSize = estimateBodyFontSize(lines);
@@ -34,6 +37,7 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
     if (isLikelyArxivSubmissionStamp(line, bodyFontSize)) return false;
     if (repeatedEdgeTexts.has(line.text)) return false;
     if (pageNumberLines.has(line)) return false;
+    if (isStandaloneCitationMarker(line.text)) return false;
     return true;
   });
 }
@@ -228,4 +232,8 @@ function stripTextSuffix(text: string, suffix: string): string {
 function isEdgeTextBoundary(character: string): boolean {
   if (character.length === 0) return true;
   return /[\s()[\]{}.,;:!?'"/-]/.test(character);
+}
+
+function isStandaloneCitationMarker(text: string): boolean {
+  return STANDALONE_CITATION_MARKER_PATTERN.test(normalizeSpacing(text));
 }
