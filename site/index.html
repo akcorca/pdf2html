@@ -44,22 +44,22 @@
   const htmlViewer = document.getElementById('html-viewer');
 
   function load(name) {
-    pdfViewer.src = 'pdf/' + name + '.pdf';
-    htmlViewer.src = 'html/' + name + '.html';
+    pdfViewer.src = `pdf/${name}.pdf`;
+    htmlViewer.src = `html/${name}.html`;
   }
 
   function init() {
     const params = new URLSearchParams(location.search);
     const doc = params.get('doc') || 'attention';
-    if (select.querySelector('option[value="' + doc + '"]')) {
+    if (select.querySelector(`option[value="${doc}"]`)) {
       select.value = doc;
     }
     load(select.value);
   }
 
-  select.addEventListener('change', function () {
+  select.addEventListener('change', () => {
     const name = select.value;
-    history.pushState(null, '', '?doc=' + name);
+    history.pushState(null, '', `?doc=${name}`);
     load(name);
   });
 

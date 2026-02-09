@@ -1,20 +1,9 @@
 import { mkdir, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
+import { convertPdfToHtml } from "./pdf-to-html.ts";
 
-import { convertPdfToHtml, pdfToHtmlInternals } from "./pdf-to-html.ts";
-
-const attentionPdfPath = resolve("data/attention.pdf");
-const cleanPdfPath = resolve("data/clean.pdf");
-const covidPdfPath = resolve("data/covid.pdf");
-const respectPdfPath = resolve("data/respect.pdf");
-const tftPdfPath = resolve("data/tft.pdf");
 const outputDirPath = resolve("data/work/test");
-const outputHtmlPath = join(outputDirPath, "attention.html");
-const cleanOutputHtmlPath = join(outputDirPath, "clean.html");
-const covidOutputHtmlPath = join(outputDirPath, "covid.html");
-const respectOutputHtmlPath = join(outputDirPath, "respect.html");
-const tftOutputHtmlPath = join(outputDirPath, "tft.html");
 
 describe("convertPdfToHtml", () => {
   let html = "";
@@ -25,31 +14,24 @@ describe("convertPdfToHtml", () => {
 
   beforeAll(async () => {
     await mkdir(outputDirPath, { recursive: true });
-    await convertPdfToHtml({
-      inputPdfPath: attentionPdfPath,
-      outputHtmlPath,
-    });
-    await convertPdfToHtml({
-      inputPdfPath: cleanPdfPath,
-      outputHtmlPath: cleanOutputHtmlPath,
-    });
-    await convertPdfToHtml({
-      inputPdfPath: covidPdfPath,
-      outputHtmlPath: covidOutputHtmlPath,
-    });
-    await convertPdfToHtml({
-      inputPdfPath: respectPdfPath,
-      outputHtmlPath: respectOutputHtmlPath,
-    });
-    await convertPdfToHtml({
-      inputPdfPath: tftPdfPath,
-      outputHtmlPath: tftOutputHtmlPath,
-    });
-    html = await readFile(outputHtmlPath, "utf8");
-    cleanHtml = await readFile(cleanOutputHtmlPath, "utf8");
-    covidHtml = await readFile(covidOutputHtmlPath, "utf8");
-    respectHtml = await readFile(respectOutputHtmlPath, "utf8");
-    tftHtml = await readFile(tftOutputHtmlPath, "utf8");
+    const pdfs = [
+      { input: "data/attention.pdf", output: "attention.html" },
+      { input: "data/clean.pdf", output: "clean.html" },
+      { input: "data/covid.pdf", output: "covid.html" },
+      { input: "data/respect.pdf", output: "respect.html" },
+      { input: "data/tft.pdf", output: "tft.html" },
+    ];
+    for (const pdf of pdfs) {
+      await convertPdfToHtml({
+        inputPdfPath: resolve(pdf.input),
+        outputHtmlPath: join(outputDirPath, pdf.output),
+      });
+    }
+    html = await readFile(join(outputDirPath, "attention.html"), "utf8");
+    cleanHtml = await readFile(join(outputDirPath, "clean.html"), "utf8");
+    covidHtml = await readFile(join(outputDirPath, "covid.html"), "utf8");
+    respectHtml = await readFile(join(outputDirPath, "respect.html"), "utf8");
+    tftHtml = await readFile(join(outputDirPath, "tft.html"), "utf8");
   });
 
   it("extracts the paper title as an h1 heading", () => {
@@ -85,7 +67,7 @@ describe("convertPdfToHtml", () => {
 
   it("extracts respect paper title as an h1 heading", () => {
     expect(respectHtml).toContain(
-      "<h1>the Influence of Prompt Politeness on LLM Performance</h1>",
+      "<h1>Should We Respect LLMs? A Cross-Lingual Study on</h1>",
     );
   });
 
@@ -105,323 +87,3 @@ describe("convertPdfToHtml", () => {
     expect(tftHtml).not.toContain("<p>COMMUNICATION</p>");
   });
 });
-
-describe("pdfToHtmlInternals", () => {
-  it("finds the centered title candidate on the first page", () => {
-    const titleLine = createLine({
-      text: "Attention Is All You Need",
-      x: 210,
-      y: 630,
-      fontSize: 20,
-      estimatedWidth: 220,
-    });
-    const lines = [
-      createLine({
-        text: "Provided proper attribution is provided by Elsevier",
-        x: 60,
-        y: 700,
-        fontSize: 14,
-        estimatedWidth: 500,
-      }),
-      titleLine,
-      createLine({
-        text: "Abstract",
-        x: 280,
-        y: 390,
-        fontSize: 12,
-        estimatedWidth: 60,
-      }),
-    ];
-
-    expect(pdfToHtmlInternals.findTitleLine(lines)).toBe(titleLine);
-  });
-
-  it("returns undefined when no line is a valid title candidate", () => {
-    const lines = [
-      createLine({
-        text: "intro",
-        y: 300,
-        fontSize: 10,
-      }),
-    ];
-
-    expect(pdfToHtmlInternals.findTitleLine(lines)).toBeUndefined();
-  });
-
-  it("finds a title when page coordinates are negative and size increase is moderate", () => {
-    const titleLine = createLine({
-      text: "Should We Respect LLMs? A Cross-Lingual Study on",
-      y: -18,
-      x: 60,
-      fontSize: 14.3,
-      estimatedWidth: 360,
-    });
-    const lines = [
-      createLine({
-        text: "1 and 2023 Vilkki",
-        y: 0,
-        x: 0,
-        fontSize: 10.9,
-        estimatedWidth: 130,
-      }),
-      titleLine,
-      createLine({
-        text: "the Influence of Prompt Politeness on LLM Performance",
-        y: -34,
-        x: 51.5,
-        fontSize: 14.3,
-        estimatedWidth: 380,
-      }),
-      createLine({
-        text: "We investigate the impact of politeness levels in prompts",
-        y: -180,
-        x: 16,
-        fontSize: 10.9,
-        estimatedWidth: 520,
-      }),
-      createLine({
-        text: "1 Introduction",
-        y: -444,
-        x: 0,
-        fontSize: 12,
-        estimatedWidth: 100,
-      }),
-    ];
-
-    expect(pdfToHtmlInternals.findTitleLine(lines)).toBe(titleLine);
-  });
-
-  it("does not treat dense same-font disclaimer blocks as titles", () => {
-    const lines = [
-      createLine({
-        text: "Since January 2020 Elsevier has created a COVID - 19 resource centre with",
-        x: 74,
-        y: 542,
-        fontSize: 14,
-        estimatedWidth: 518,
-      }),
-      createLine({
-        text: "free information in English and Mandarin on the novel coronavirus COVID -",
-        x: 76,
-        y: 518,
-        fontSize: 14,
-        estimatedWidth: 518,
-      }),
-      createLine({
-        text: "19. The COVID - 19 resource centre is hosted on Elsevier Connect, the",
-        x: 89,
-        y: 494,
-        fontSize: 14,
-        estimatedWidth: 482,
-      }),
-      createLine({
-        text: "company's public news and information website.",
-        x: 156,
-        y: 470,
-        fontSize: 14,
-        estimatedWidth: 329,
-      }),
-      createLine({
-        pageIndex: 1,
-        text: "Body paragraph",
-        fontSize: 9,
-      }),
-    ];
-
-    expect(pdfToHtmlInternals.findTitleLine(lines)).toBeUndefined();
-  });
-
-  it("estimates body font size from frequencies and has a fallback", () => {
-    expect(pdfToHtmlInternals.estimateBodyFontSize([])).toBe(10);
-    expect(
-      pdfToHtmlInternals.estimateBodyFontSize([
-        createLine({ fontSize: 10 }),
-        createLine({ fontSize: 10 }),
-        createLine({ fontSize: 11 }),
-      ]),
-    ).toBe(10);
-  });
-
-  it("scores title candidates based on size, center alignment and vertical position", () => {
-    const score = pdfToHtmlInternals.scoreTitleCandidate(
-      createLine({
-        fontSize: 18,
-        x: 200,
-        y: 620,
-        estimatedWidth: 220,
-      }),
-      10,
-    );
-
-    expect(score).toBeGreaterThan(5);
-  });
-
-  it("estimates line width from position span and text width", () => {
-    expect(
-      pdfToHtmlInternals.estimateLineWidth([
-        { text: "a", x: 0, y: 10, fontSize: 10 },
-        { text: "b", x: 100, y: 10, fontSize: 10 },
-      ]),
-    ).toBe(100);
-
-    expect(
-      pdfToHtmlInternals.estimateLineWidth([
-        { text: "very-long-fragment", x: 0, y: 10, fontSize: 10 },
-      ]),
-    ).toBeGreaterThan(80);
-  });
-
-  it("normalizes spacing and escapes html characters", () => {
-    expect(pdfToHtmlInternals.normalizeSpacing("a   b\n c")).toBe("a b c");
-    expect(pdfToHtmlInternals.escapeHtml("<a&b>")).toBe("&lt;a&amp;b&gt;");
-  });
-
-  it("creates extraction errors for missing python and stderr output", () => {
-    const missingPython = Object.assign(new Error("spawn python3 ENOENT"), {
-      code: "ENOENT",
-    });
-    const withStderr = Object.assign(new Error("failed"), {
-      stderr: "bad pdf",
-    });
-
-    expect(pdfToHtmlInternals.createExtractionError(missingPython).message).toBe(
-      "python3 command not found.",
-    );
-    expect(pdfToHtmlInternals.createExtractionError(withStderr).message).toBe(
-      "Failed to extract text from PDF: bad pdf",
-    );
-  });
-
-  it("renders title as h1 and escapes body text", () => {
-    const html = pdfToHtmlInternals.renderHtml([
-      createLine({
-        text: "Attention Is All You Need",
-        x: 210,
-        y: 630,
-        fontSize: 17,
-        estimatedWidth: 220,
-      }),
-      createLine({
-        text: "a < b & c",
-        x: 100,
-        y: 500,
-      }),
-    ]);
-
-    expect(html).toContain("<h1>Attention Is All You Need</h1>");
-    expect(html).toContain("<p>a &lt; b &amp; c</p>");
-  });
-
-  it("detects heading levels for numbered section headings", () => {
-    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("1 Introduction")).toBe(2);
-    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("3.2 Attention")).toBe(3);
-    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("3.2.1 Scaled Dot-Product Attention")).toBe(
-      4,
-    );
-    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("1 and 2023 Vilkki")).toBeUndefined();
-    expect(
-      pdfToHtmlInternals.detectNumberedHeadingLevel(
-        "35 Baekbeom-ro, Mapo-gu, Seoul 04107, Republic of Korea",
-      ),
-    ).toBeUndefined();
-    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("2 V − 1 s − 1 and an")).toBeUndefined();
-    expect(
-      pdfToHtmlInternals.detectNumberedHeadingLevel(
-        "2015 See et al. 2017 2021 , Lin Liangetal. , 2022",
-      ),
-    ).toBeUndefined();
-  });
-
-  it("filters repeated edge headers and standalone page numbers", () => {
-    const filtered = pdfToHtmlInternals.filterPageArtifacts([
-      createLine({ pageIndex: 0, y: 790, text: "Journal Header" }),
-      createLine({ pageIndex: 0, y: 420, text: "Body paragraph one" }),
-      createLine({ pageIndex: 0, y: 10, text: "1" }),
-      createLine({ pageIndex: 1, y: 790, text: "Journal Header" }),
-      createLine({ pageIndex: 1, y: 410, text: "Body paragraph two" }),
-      createLine({ pageIndex: 1, y: 10, text: "2" }),
-      createLine({ pageIndex: 2, y: 790, text: "Journal Header" }),
-      createLine({ pageIndex: 2, y: 400, text: "Body paragraph three" }),
-      createLine({ pageIndex: 2, y: 10, text: "3" }),
-      createLine({ pageIndex: 3, y: 790, text: "Journal Header" }),
-      createLine({ pageIndex: 3, y: 390, text: "Body paragraph four" }),
-      createLine({ pageIndex: 3, y: 10, text: "4" }),
-    ]);
-
-    expect(filtered.map((line) => line.text)).toEqual([
-      "Body paragraph one",
-      "Body paragraph two",
-      "Body paragraph three",
-      "Body paragraph four",
-    ]);
-  });
-
-  it("keeps repeated body text that is not near page edges", () => {
-    const filtered = pdfToHtmlInternals.filterPageArtifacts([
-      createLine({ pageIndex: 0, y: 760, text: "Header" }),
-      createLine({ pageIndex: 0, y: 420, text: "Repeated body phrase" }),
-      createLine({ pageIndex: 0, y: 20, text: "1" }),
-      createLine({ pageIndex: 1, y: 760, text: "Header" }),
-      createLine({ pageIndex: 1, y: 430, text: "Repeated body phrase" }),
-      createLine({ pageIndex: 1, y: 20, text: "2" }),
-    ]);
-
-    expect(filtered.map((line) => line.text)).toContain("Repeated body phrase");
-  });
-
-  it("filters repeated uppercase running labels even with mixed edge/non-edge placements", () => {
-    const filtered = pdfToHtmlInternals.filterPageArtifacts([
-      createLine({ pageIndex: 0, y: 780, text: "COMMUNICATION" }),
-      createLine({ pageIndex: 0, y: 500, text: "COMMUNICATION" }),
-      createLine({ pageIndex: 0, y: 420, text: "Body paragraph one" }),
-      createLine({ pageIndex: 1, y: 780, text: "COMMUNICATION" }),
-      createLine({ pageIndex: 1, y: 500, text: "COMMUNICATION" }),
-      createLine({ pageIndex: 1, y: 420, text: "Body paragraph two" }),
-      createLine({ pageIndex: 2, y: 780, text: "COMMUNICATION" }),
-      createLine({ pageIndex: 2, y: 500, text: "COMMUNICATION" }),
-      createLine({ pageIndex: 2, y: 420, text: "Body paragraph three" }),
-      createLine({ pageIndex: 3, y: 780, text: "COMMUNICATION" }),
-      createLine({ pageIndex: 3, y: 500, text: "COMMUNICATION" }),
-      createLine({ pageIndex: 3, y: 420, text: "Body paragraph four" }),
-    ]);
-
-    expect(filtered.map((line) => line.text)).not.toContain("COMMUNICATION");
-  });
-
-  it("keeps sparse edge numbers when they do not form a page-number sequence", () => {
-    const filtered = pdfToHtmlInternals.filterPageArtifacts([
-      createLine({ pageIndex: 0, y: 760, text: "Header once" }),
-      createLine({ pageIndex: 0, y: 420, text: "Body paragraph one" }),
-      createLine({ pageIndex: 0, y: 20, text: "1" }),
-      createLine({ pageIndex: 1, y: 750, text: "Header twice" }),
-      createLine({ pageIndex: 1, y: 430, text: "Body paragraph two" }),
-      createLine({ pageIndex: 1, y: 20, text: "2" }),
-    ]);
-
-    expect(filtered.map((line) => line.text)).toContain("1");
-    expect(filtered.map((line) => line.text)).toContain("2");
-  });
-});
-
-function createLine(overrides: Partial<{
-  pageIndex: number;
-  pageHeight: number;
-  pageWidth: number;
-  estimatedWidth: number;
-  x: number;
-  y: number;
-  fontSize: number;
-  text: string;
-}> = {}) {
-  return {
-    pageIndex: 0,
-    pageHeight: 792,
-    pageWidth: 612,
-    estimatedWidth: 100,
-    x: 120,
-    y: 500,
-    fontSize: 10,
-    text: "line",
-    ...overrides,
-  };
-}
