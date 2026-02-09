@@ -18,8 +18,16 @@ describe("covid numbered heading order", () => {
     covidHtml = await readFile(outputPath, "utf8");
   });
 
-  it("does not place 2.2 subsection heading before its parent 2. section heading", () => {
-    expect(covidHtml).toContain("<h2>2. Methods</h2>");
-    expect(covidHtml).not.toMatch(/<h3>2\.2\. Death data<\/h3>[\s\S]*<h2>2\. Methods<\/h2>/);
+  it("keeps 2.2 subsection heading after 2.1 and renders it as semantic heading", () => {
+    const methodsHeading = "<h2>2. Methods</h2>";
+    const dataCollectionHeading = "<h3>2.1. Data collection</h3>";
+    const deathDataHeading = "<h3>2.2. Death data</h3>";
+
+    expect(covidHtml).toContain(methodsHeading);
+    expect(covidHtml).toContain(dataCollectionHeading);
+    expect(covidHtml).toContain(deathDataHeading);
+    expect(covidHtml.indexOf(methodsHeading)).toBeLessThan(covidHtml.indexOf(dataCollectionHeading));
+    expect(covidHtml.indexOf(dataCollectionHeading)).toBeLessThan(covidHtml.indexOf(deathDataHeading));
+    expect(covidHtml).not.toContain("<p>2.2. Death data</p>");
   });
 });

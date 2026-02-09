@@ -35,8 +35,10 @@ const MULTI_COLUMN_NEAR_ROW_LEFT_MAX_RATIO = 0.42;
 const MULTI_COLUMN_NEAR_ROW_RIGHT_MIN_RATIO = 0.58;
 const MISORDERED_TOP_LEVEL_HEADING_LOOKAHEAD = 18;
 const MISORDERED_NUMBERED_HEADING_LOOKAHEAD = 18;
+const MISORDERED_NUMBERED_HEADING_FALLBACK_LOOKAHEAD = 96;
 const MISORDERED_TOP_LEVEL_HEADING_MAX_Y_DELTA_FONT_RATIO = 3.2;
 const MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO = 12;
+const MISORDERED_NUMBERED_HEADING_FALLBACK_MAX_Y_DELTA_FONT_RATIO = 48;
 const MAX_REORDER_HEADING_DIGIT_RATIO = 0.34;
 const MIN_MIDPOINT_RECOVERY_GAP_RATIO = 0.05;
 const MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE = 10;
@@ -182,15 +184,11 @@ function estimatePageVerticalSpanRatio(lines: TextLine[]): number {
 
 function reorderMisorderedTopLevelHeadings(
   lines: TextLine[],
-  multiColumnPageIndexes: Set<number>,
+  _multiColumnPageIndexes: Set<number>,
 ): TextLine[] {
   const reordered = [...lines];
   for (let index = 0; index < reordered.length; index += 1) {
-    const promotionIndex = findTopLevelHeadingPromotionIndex(
-      reordered,
-      index,
-      multiColumnPageIndexes,
-    );
+    const promotionIndex = findTopLevelHeadingPromotionIndex(reordered, index);
     if (promotionIndex === undefined) continue;
     promoteLine(reordered, promotionIndex, index);
     index += 1;
@@ -218,10 +216,9 @@ function reorderMisorderedNumberedHeadings(
 function findTopLevelHeadingPromotionIndex(
   lines: TextLine[],
   currentIndex: number,
-  multiColumnPageIndexes: Set<number>,
 ): number | undefined {
   const current = lines[currentIndex];
-  if (!isRightColumnHeadingCandidate(current, multiColumnPageIndexes)) return undefined;
+  if (!isRightColumnHeadingCandidate(current)) return undefined;
   const currentHeadingNumber = getTopLevelHeadingNumber(current.text);
   if (currentHeadingNumber === undefined) return undefined;
 
@@ -249,24 +246,27 @@ function findNumberedHeadingPromotionIndex(
   multiColumnPageIndexes: Set<number>,
 ): number | undefined {
   const current = lines[currentIndex];
-  if (!isRightColumnHeadingCandidate(current, multiColumnPageIndexes)) return undefined;
+  if (!isRightColumnHeadingCandidate(current)) return undefined;
   const currentPath = parseNumberedHeadingPathForReorder(current.text);
   if (!currentPath) return undefined;
+  const isDetectedMultiColumnPage = multiColumnPageIndexes.has(current.pageIndex);
+  const lookahead = isDetectedMultiColumnPage
+    ? MISORDERED_NUMBERED_HEADING_LOOKAHEAD
+    : MISORDERED_NUMBERED_HEADING_FALLBACK_LOOKAHEAD;
+  const maxYDeltaFontRatio = isDetectedMultiColumnPage
+    ? MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO
+    : MISORDERED_NUMBERED_HEADING_FALLBACK_MAX_Y_DELTA_FONT_RATIO;
 
   return findPromotionIndexWithinLookahead(
     lines,
     currentIndex,
-    MISORDERED_NUMBERED_HEADING_LOOKAHEAD,
+    lookahead,
     (candidate) => {
       if (classifyMultiColumnLine(candidate) !== "left") return false;
       const candidatePath = parseNumberedHeadingPathForReorder(candidate.text);
       if (!candidatePath) return false;
       if (!shouldPromoteNumberedHeadingCandidate(candidatePath, currentPath)) return false;
-      return isWithinVerticalHeadingRange(
-        current,
-        candidate,
-        MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO,
-      );
+      return isWithinVerticalHeadingRange(current, candidate, maxYDeltaFontRatio);
     },
   );
 }
@@ -288,11 +288,8 @@ function findPromotionIndexWithinLookahead(
   return undefined;
 }
 
-function isRightColumnHeadingCandidate(
-  line: TextLine,
-  multiColumnPageIndexes: Set<number>,
-): boolean {
-  return multiColumnPageIndexes.has(line.pageIndex) && classifyMultiColumnLine(line) === "right";
+function isRightColumnHeadingCandidate(line: TextLine): boolean {
+  return classifyMultiColumnLine(line) === "right";
 }
 
 function isWithinVerticalHeadingRange(
