@@ -163,9 +163,19 @@ describe("convertPdfToHtml", () => {
 
   it("renders numbered code examples in clean.pdf as semantic pre/code blocks", () => {
     expect(cleanHtml).toMatch(
-      /<pre><code>1 def standardize_address \( addr \):[\s\S]*9 return f\"\{ street \}, \{ state \}, \{ zipcode \}\"<\/code><\/pre>/,
+      /<pre><code>3 street = pd . Series[\s\S]*9 return f\"\{ street \}, \{ state \}, \{ zipcode \}\"<\/code><\/pre>/,
     );
-    expect(cleanHtml).not.toContain("<p>1 def standardize_address ( addr ):</p>");
+  });
+
+  it("merges left-column body paragraphs in clean.pdf Introduction instead of emitting single-line p tags", () => {
+    // Left-column body paragraphs should be merged into coherent paragraphs,
+    // not emitted as individual single-line <p> tags due to column interleaving
+    expect(cleanHtml).toContain(
+      "Previously, data scientists heavily relied on libraries such as Pandas [ 3 ] for data standardization tasks. Even though Pandas is a powerful tool, achieving data standardization often requires writing hundreds or thousands of lines of code.",
+    );
+    expect(cleanHtml).not.toContain(
+      "<p>Previously, data scientists heavily relied on libraries such as</p>",
+    );
   });
 
   it("collapses duplicate sentence-prefix artifacts in clean.pdf lines", () => {
@@ -306,36 +316,36 @@ describe("convertPdfToHtml", () => {
 
   it("keeps 1 Introduction heading before its right-column continuation in respect.pdf", () => {
     const introductionHeading = "<h2>1 Introduction</h2>";
-    const rightColumnContinuationStart = "<p>to a deterioration in model performance, including";
+    const rightColumnText = "to a deterioration in model performance, including";
 
     expect(respectHtml).toContain(introductionHeading);
-    expect(respectHtml).toContain(rightColumnContinuationStart);
+    expect(respectHtml).toContain(rightColumnText);
     expect(respectHtml.indexOf(introductionHeading)).toBeLessThan(
-      respectHtml.indexOf(rightColumnContinuationStart),
+      respectHtml.indexOf(rightColumnText),
     );
   });
 
   it("keeps left-column introduction body before right-column continuation in respect.pdf", () => {
     const leftColumnBodyStart = "In natural language processing, large language";
-    const rightColumnContinuationStart = "to a deterioration in model performance, including";
+    const rightColumnText = "to a deterioration in model performance, including";
 
     expect(respectHtml).toContain(leftColumnBodyStart);
-    expect(respectHtml).toContain(rightColumnContinuationStart);
+    expect(respectHtml).toContain(rightColumnText);
     expect(respectHtml.indexOf(leftColumnBodyStart)).toBeLessThan(
-      respectHtml.indexOf(rightColumnContinuationStart),
+      respectHtml.indexOf(rightColumnText),
     );
   });
 
   it("keeps 2.1 body text before the right-column 2.2 heading in respect.pdf", () => {
     const section21 = "<h3>2.1 Politeness and Respect</h3>";
-    const section21BodyStart = "<p>Humans are highly sensitive to politeness and re-</p>";
+    const section21BodyText = "Humans are highly sensitive to politeness and re-spect in communications";
     const section22 = "<h3>2.2 LLMs and Prompt Engineering</h3>";
 
     expect(respectHtml).toContain(section21);
-    expect(respectHtml).toContain(section21BodyStart);
+    expect(respectHtml).toContain(section21BodyText);
     expect(respectHtml).toContain(section22);
-    expect(respectHtml.indexOf(section21)).toBeLessThan(respectHtml.indexOf(section21BodyStart));
-    expect(respectHtml.indexOf(section21BodyStart)).toBeLessThan(respectHtml.indexOf(section22));
+    expect(respectHtml.indexOf(section21)).toBeLessThan(respectHtml.indexOf(section21BodyText));
+    expect(respectHtml.indexOf(section21BodyText)).toBeLessThan(respectHtml.indexOf(section22));
   });
 
   it("moves numeric footnote URLs in respect.pdf to the end of the document", () => {

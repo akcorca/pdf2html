@@ -43,6 +43,7 @@ const MAX_REORDER_HEADING_DIGIT_RATIO = 0.34;
 const MIN_MIDPOINT_RECOVERY_GAP_RATIO = 0.05;
 const MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE = 10;
 const MIN_COLUMN_MAJOR_VERTICAL_SPAN_RATIO = 0.2;
+const CROSS_COLUMN_SPANNING_OVERSHOOT_RATIO = 0.25;
 const ADJACENT_RIGHT_BODY_HEADING_LOOKBACK = 6;
 const ADJACENT_RIGHT_BODY_HEADING_MAX_Y_DELTA_FONT_RATIO = 2.8;
 const FIRST_TOP_LEVEL_HEADING_RIGHT_BODY_REORDER_LOOKBACK = 14;
@@ -70,20 +71,59 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
   const multiColumnPageIndexes = new Set<number>();
   const columnMajorPageIndexes = new Set<number>();
+  const collectedPages: Array<{
+    pageIndex: number;
+    lines: TextLine[];
+    columnSplitX: number | undefined;
+  }> = [];
   for (const page of document.pages) {
     const collectedPage = collectPageLines(page);
     lines.push(...collectedPage.lines);
     if (collectedPage.isMultiColumn) {
       multiColumnPageIndexes.add(page.pageIndex);
-      if (shouldPreferColumnMajorOrdering(collectedPage.lines)) {
-        columnMajorPageIndexes.add(page.pageIndex);
-      }
+      collectedPages.push({
+        pageIndex: page.pageIndex,
+        lines: collectedPage.lines,
+        columnSplitX: collectedPage.columnSplitX,
+      });
     }
   }
+
+  const documentColumnSplitX = computeDocumentColumnSplitX(collectedPages);
+  const pageColumnSplitXs = new Map<number, number>();
+  for (const cp of collectedPages) {
+    const effectiveSplitX = documentColumnSplitX ?? cp.columnSplitX;
+    if (effectiveSplitX !== undefined) {
+      pageColumnSplitXs.set(cp.pageIndex, effectiveSplitX);
+    }
+    if (shouldPreferColumnMajorOrdering(cp.lines, effectiveSplitX)) {
+      columnMajorPageIndexes.add(cp.pageIndex);
+    }
+  }
+
   const sorted = lines.sort((left, right) =>
-    compareLinesForReadingOrder(left, right, multiColumnPageIndexes, columnMajorPageIndexes),
+    compareLinesForReadingOrder(
+      left,
+      right,
+      multiColumnPageIndexes,
+      columnMajorPageIndexes,
+      pageColumnSplitXs,
+    ),
   );
   return applyReadingOrderReorders(sorted, multiColumnPageIndexes);
+}
+
+function computeDocumentColumnSplitX(
+  pages: Array<{ columnSplitX: number | undefined }>,
+): number | undefined {
+  const splitXs = pages.map((p) => p.columnSplitX).filter((x): x is number => x !== undefined);
+  return medianOrUndefined(splitXs);
+}
+
+function medianOrUndefined(values: number[]): number | undefined {
+  if (values.length === 0) return undefined;
+  values.sort((a, b) => a - b);
+  return values[Math.floor(values.length / 2)];
 }
 
 function applyReadingOrderReorders(
@@ -113,25 +153,24 @@ function applyReadingOrderReorders(
   return reorderSteps.reduce((currentLines, reorderStep) => reorderStep(currentLines), lines);
 }
 
-function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColumn: boolean } {
+function collectPageLines(
+  page: ExtractedPage,
+): { lines: TextLine[]; isMultiColumn: boolean; columnSplitX: number | undefined } {
   const buckets = bucketFragments(page);
   const splitByColumn = isLikelyMultiColumnPage(buckets, page.width);
   const lines: TextLine[] = [];
+  const columnGapMidpoints: number[] = [];
 
   for (const [bucket, bucketFragments] of buckets) {
     const sorted = [...bucketFragments].sort((left, right) => left.x - right.x);
-    const breakIndexes = findColumnBreakIndexes(sorted, page.width);
-    const bridgedBreakIndexes = findBridgedColumnBreakIndexes(sorted, page.width);
-    const effectiveBreakIndexes = mergeColumnBreakIndexes(breakIndexes, bridgedBreakIndexes);
-    const shouldSplitByColumns =
-      splitByColumn ||
-      shouldForceSplitHeadingPrefixedRow(sorted, effectiveBreakIndexes) ||
-      bridgedBreakIndexes.length > 0;
-    const groups = shouldSplitByColumns
-      ? splitFragmentsByColumnBreaks(sorted, page.width, effectiveBreakIndexes, {
-          allowMidpointFallback: splitByColumn,
-        })
-      : [sorted];
+    const { groups, breakIndexes } = splitRowIntoGroups(sorted, page.width, splitByColumn);
+
+    if (splitByColumn) {
+      for (const breakIndex of breakIndexes) {
+        const rightFragment = sorted[breakIndex + 1];
+        if (rightFragment) columnGapMidpoints.push(rightFragment.x);
+      }
+    }
 
     for (const fragments of groups) {
       const text = collapseDuplicatedSentencePrefix(
@@ -152,7 +191,27 @@ function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColu
     }
   }
 
-  return { lines, isMultiColumn: splitByColumn };
+  return { lines, isMultiColumn: splitByColumn, columnSplitX: medianOrUndefined(columnGapMidpoints) };
+}
+
+function splitRowIntoGroups(
+  sorted: ExtractedFragment[],
+  pageWidth: number,
+  splitByColumn: boolean,
+): { groups: ExtractedFragment[][]; breakIndexes: number[] } {
+  const breakIndexes = findColumnBreakIndexes(sorted, pageWidth);
+  const bridgedBreakIndexes = findBridgedColumnBreakIndexes(sorted, pageWidth);
+  const effectiveBreakIndexes = mergeColumnBreakIndexes(breakIndexes, bridgedBreakIndexes);
+  const shouldSplit =
+    splitByColumn ||
+    shouldForceSplitHeadingPrefixedRow(sorted, effectiveBreakIndexes) ||
+    bridgedBreakIndexes.length > 0;
+  const groups = shouldSplit
+    ? splitFragmentsByColumnBreaks(sorted, pageWidth, effectiveBreakIndexes, {
+        allowMidpointFallback: splitByColumn,
+      })
+    : [sorted];
+  return { groups, breakIndexes };
 }
 
 function compareLinesForReadingOrder(
@@ -160,6 +219,7 @@ function compareLinesForReadingOrder(
   right: TextLine,
   multiColumnPageIndexes: Set<number>,
   columnMajorPageIndexes: Set<number>,
+  pageColumnSplitXs: Map<number, number>,
 ): number {
   if (left.pageIndex !== right.pageIndex) return left.pageIndex - right.pageIndex;
 
@@ -168,6 +228,7 @@ function compareLinesForReadingOrder(
       left,
       right,
       columnMajorPageIndexes.has(left.pageIndex),
+      pageColumnSplitXs.get(left.pageIndex),
     );
     if (columnOrder !== 0) return columnOrder;
   }
@@ -180,13 +241,14 @@ function compareMultiColumnLineOrder(
   left: TextLine,
   right: TextLine,
   preferColumnMajor: boolean,
+  columnSplitX: number | undefined,
 ): number {
   if (isLikelyColumnHeadingLine(left.text) && isLikelyColumnHeadingLine(right.text)) {
     return compareByMultiColumnSide(classifyMultiColumnLine(left), classifyMultiColumnLine(right));
   }
 
   if (preferColumnMajor) {
-    const columnMajorOrder = compareColumnMajorBodyLineOrder(left, right);
+    const columnMajorOrder = compareColumnMajorBodyLineOrder(left, right, columnSplitX);
     if (columnMajorOrder !== 0) return columnMajorOrder;
   }
 
@@ -194,9 +256,16 @@ function compareMultiColumnLineOrder(
   return compareByNearRowBodyColumn(left, right);
 }
 
-function compareColumnMajorBodyLineOrder(left: TextLine, right: TextLine): number {
+function compareColumnMajorBodyLineOrder(
+  left: TextLine,
+  right: TextLine,
+  columnSplitX: number | undefined,
+): number {
   if (!isLikelyColumnMajorBodyLine(left) || !isLikelyColumnMajorBodyLine(right)) return 0;
-  return compareByNearRowBodyColumn(left, right);
+  return compareByMultiColumnSide(
+    classifyColumnByDetectedSplit(left, columnSplitX),
+    classifyColumnByDetectedSplit(right, columnSplitX),
+  );
 }
 
 function compareByMultiColumnSide(
@@ -217,10 +286,14 @@ function isLikelyColumnMajorBodyLine(line: TextLine): boolean {
   return !isLikelyColumnHeadingLine(line.text);
 }
 
-function shouldPreferColumnMajorOrdering(lines: TextLine[]): boolean {
+function shouldPreferColumnMajorOrdering(
+  lines: TextLine[],
+  columnSplitX: number | undefined,
+): boolean {
   const bodyLines = lines.filter((line) => isLikelyColumnMajorBodyLine(line));
-  const leftLines = bodyLines.filter((line) => classifyNearRowBodyColumn(line) === "left");
-  const rightLines = bodyLines.filter((line) => classifyNearRowBodyColumn(line) === "right");
+  const classify = (line: TextLine) => classifyColumnByDetectedSplit(line, columnSplitX);
+  const leftLines = bodyLines.filter((line) => classify(line) === "left");
+  const rightLines = bodyLines.filter((line) => classify(line) === "right");
   if (leftLines.length < MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE) return false;
   if (rightLines.length < MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE) return false;
   if (estimatePageVerticalSpanRatio(leftLines) < MIN_COLUMN_MAJOR_VERTICAL_SPAN_RATIO) return false;
@@ -1156,6 +1229,23 @@ function isLikelyNearRowBodyLine(line: TextLine): boolean {
   if (relativeY >= MULTI_COLUMN_NEAR_ROW_TOP_Y_RATIO) return false;
   if (relativeY <= MULTI_COLUMN_NEAR_ROW_BOTTOM_Y_RATIO) return false;
   return true;
+}
+
+function classifyColumnByDetectedSplit(
+  line: TextLine,
+  columnSplitX: number | undefined,
+): "left" | "right" | "spanning" {
+  if (columnSplitX === undefined) return classifyNearRowBodyColumn(line);
+  const pageWidth = Math.max(line.pageWidth, 1);
+  if (line.estimatedWidth / pageWidth >= MULTI_COLUMN_SPANNING_LINE_WIDTH_RATIO) return "spanning";
+  const rightEdge = line.x + line.estimatedWidth;
+  const rightColumnWidth = pageWidth - columnSplitX;
+  if (
+    line.x < columnSplitX * 0.5 &&
+    rightEdge > columnSplitX + rightColumnWidth * CROSS_COLUMN_SPANNING_OVERSHOOT_RATIO
+  )
+    return "spanning";
+  return line.x < columnSplitX ? "left" : "right";
 }
 
 function classifyNearRowBodyColumn(line: TextLine): "left" | "right" | "spanning" {
