@@ -42,9 +42,14 @@ export function collectGeneratedPngFiles(
   fileNames: string[],
   outputPrefix: string,
 ): string[] {
+  const parsePageNumber = createGeneratedPngPageNumberParser(outputPrefix);
   return fileNames
-    .filter((fileName) => isGeneratedPngFile(fileName, outputPrefix))
-    .sort((left, right) => compareByPageNumber(left, right, outputPrefix));
+    .map((fileName) => ({ fileName, pageNumber: parsePageNumber(fileName) }))
+    .filter(
+      (entry): entry is { fileName: string; pageNumber: number } => entry.pageNumber !== undefined,
+    )
+    .sort((left, right) => left.pageNumber - right.pageNumber || left.fileName.localeCompare(right.fileName))
+    .map((entry) => entry.fileName);
 }
 
 export async function convertPdfToPng({
@@ -113,32 +118,15 @@ function createDefaultDependencies(): ConvertPdfToPngDependencies {
   };
 }
 
-function isGeneratedPngFile(fileName: string, outputPrefix: string): boolean {
-  const expression = new RegExp(`^${escapeRegExp(outputPrefix)}-\\d+\\.png$`);
-  return expression.test(fileName);
-}
-
-function compareByPageNumber(
-  left: string,
-  right: string,
+function createGeneratedPngPageNumberParser(
   outputPrefix: string,
-): number {
-  const leftNumber = extractPageNumber(left, outputPrefix);
-  const rightNumber = extractPageNumber(right, outputPrefix);
-
-  if (leftNumber !== rightNumber) {
-    return leftNumber - rightNumber;
-  }
-
-  return left.localeCompare(right);
-}
-
-function extractPageNumber(fileName: string, outputPrefix: string): number {
-  const expression = new RegExp(
-    `^${escapeRegExp(outputPrefix)}-(\\d+)\\.png$`,
-  );
-  const match = expression.exec(fileName);
-  return match ? Number.parseInt(match[1], 10) : Number.POSITIVE_INFINITY;
+): (fileName: string) => number | undefined {
+  const expression = new RegExp(`^${escapeRegExp(outputPrefix)}-(\\d+)\\.png$`);
+  return (fileName: string) => {
+    const match = expression.exec(fileName);
+    if (!match) return undefined;
+    return Number.parseInt(match[1], 10);
+  };
 }
 
 function escapeRegExp(input: string): string {
