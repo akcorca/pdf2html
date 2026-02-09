@@ -60,6 +60,11 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).not.toContain("<h2>1 Historical 5 Historical</h2>");
   });
 
+  it("does not treat tiny flowchart step labels as numbered section headings in clean.pdf", () => {
+    expect(cleanHtml).not.toContain("<h2>3 Historical</h2>");
+    expect(cleanHtml).toContain("<p>3 Historical</p>");
+  });
+
   it("strips arXiv submission-stamp prefixes from clean.pdf body lines", () => {
     expect(cleanHtml).not.toMatch(
       /arXiv:\d{4}\.\d{4,5}v\d+\s+\[[^\]]+\]\s+\d{1,2}\s+[A-Za-z]{3}\s+\d{4}/,

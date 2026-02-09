@@ -6,7 +6,7 @@ import {
   MAX_TOP_LEVEL_SECTION_NUMBER,
   MIN_NUMBERED_HEADING_LENGTH,
 } from "./pdf-types.ts";
-import { normalizeSpacing } from "./text-lines.ts";
+import { estimateBodyFontSize, normalizeSpacing } from "./text-lines.ts";
 import { containsDocumentMetadata, findTitleLine } from "./title-detect.ts";
 
 const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
@@ -26,6 +26,7 @@ const TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO = 0.12;
 const TITLE_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.03;
 const TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.2;
 const TITLE_CONTINUATION_MIN_WORD_COUNT = 3;
+const MIN_NUMBERED_HEADING_FONT_RATIO = 0.85;
 
 export function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
@@ -53,6 +54,7 @@ export function escapeHtml(value: string): string {
 
 function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): string[] {
   const bodyLines: string[] = [];
+  const bodyFontSize = estimateBodyFontSize(lines);
   let index = 0;
   while (index < lines.length) {
     const currentLine = lines[index];
@@ -63,7 +65,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       continue;
     }
 
-    const headingTag = renderHeadingTag(currentLine);
+    const headingTag = renderHeadingTag(currentLine, bodyFontSize);
     if (headingTag !== undefined) {
       bodyLines.push(headingTag);
       index += 1;
@@ -83,11 +85,16 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   return bodyLines;
 }
 
-function renderHeadingTag(line: TextLine): string | undefined {
-  const headingLevel =
-    detectNumberedHeadingLevel(line.text) ?? detectNamedSectionHeadingLevel(line.text);
-  if (headingLevel === undefined) return undefined;
-  return `<h${headingLevel}>${escapeHtml(line.text)}</h${headingLevel}>`;
+function renderHeadingTag(line: TextLine, bodyFontSize: number): string | undefined {
+  const numberedHeadingLevel = detectNumberedHeadingLevel(line.text);
+  if (numberedHeadingLevel !== undefined) {
+    if (line.fontSize < bodyFontSize * MIN_NUMBERED_HEADING_FONT_RATIO) return undefined;
+    return `<h${numberedHeadingLevel}>${escapeHtml(line.text)}</h${numberedHeadingLevel}>`;
+  }
+
+  const namedHeadingLevel = detectNamedSectionHeadingLevel(line.text);
+  if (namedHeadingLevel === undefined) return undefined;
+  return `<h${namedHeadingLevel}>${escapeHtml(line.text)}</h${namedHeadingLevel}>`;
 }
 
 function consumeTitleLines(
