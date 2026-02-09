@@ -223,36 +223,29 @@ function estimatePageVerticalSpanRatio(lines: TextLine[]): number {
 function reorderMisorderedTopLevelHeadings(
   lines: TextLine[],
 ): TextLine[] {
-  return reorderLinesByPromotion(lines, {
-    startIndex: 0,
-    moveDirection: "forward",
-    skipNextAfterPromotion: true,
-    findPromotionIndex: (reordered, index) => findTopLevelHeadingPromotionIndex(reordered, index),
-  });
+  return reorderLinesByForwardPromotion(
+    lines,
+    (reordered, index) => findTopLevelHeadingPromotionIndex(reordered, index),
+    { skipNextAfterPromotion: true },
+  );
 }
 
 function reorderMisorderedNumberedHeadings(
   lines: TextLine[],
   multiColumnPageIndexes: Set<number>,
 ): TextLine[] {
-  return reorderLinesByPromotion(lines, {
-    startIndex: 0,
-    moveDirection: "forward",
-    findPromotionIndex: (reordered, index) =>
-      findNumberedHeadingPromotionIndex(reordered, index, multiColumnPageIndexes),
-  });
+  return reorderLinesByForwardPromotion(lines, (reordered, index) =>
+    findNumberedHeadingPromotionIndex(reordered, index, multiColumnPageIndexes),
+  );
 }
 
 function reorderLeftColumnTopLevelHeadings(
   lines: TextLine[],
   multiColumnPageIndexes: Set<number>,
 ): TextLine[] {
-  return reorderLinesByPromotion(lines, {
-    startIndex: 1,
-    moveDirection: "backward",
-    findPromotionIndex: (reordered, index) =>
-      findLeftColumnTopLevelHeadingPromotionIndex(reordered, index, multiColumnPageIndexes),
-  });
+  return reorderLinesByBackwardPromotion(lines, 1, (reordered, index) =>
+    findLeftColumnTopLevelHeadingPromotionIndex(reordered, index, multiColumnPageIndexes),
+  );
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: heading-pair recovery heuristics are evaluated in one pass.
@@ -566,28 +559,32 @@ function isSequentialSiblingSubsectionPair(leftPath: number[], rightPath: number
   return leftLast + 1 === rightLast;
 }
 
-interface ReorderLinesByPromotionInput {
-  startIndex: number;
-  moveDirection: "forward" | "backward";
-  findPromotionIndex: (lines: TextLine[], currentIndex: number) => number | undefined;
-  skipNextAfterPromotion?: boolean;
-}
+type PromotionIndexFinder = (lines: TextLine[], currentIndex: number) => number | undefined;
 
-function reorderLinesByPromotion(
+function reorderLinesByForwardPromotion(
   lines: TextLine[],
-  input: ReorderLinesByPromotionInput,
+  findPromotionIndex: PromotionIndexFinder,
+  options?: { startIndex?: number; skipNextAfterPromotion?: boolean },
 ): TextLine[] {
   const reordered = [...lines];
-  for (let index = input.startIndex; index < reordered.length; index += 1) {
-    const promotionIndex = input.findPromotionIndex(reordered, index);
+  for (let index = options?.startIndex ?? 0; index < reordered.length; index += 1) {
+    const promotionIndex = findPromotionIndex(reordered, index);
     if (promotionIndex === undefined) continue;
+    promoteLine(reordered, promotionIndex, index);
+    if (options?.skipNextAfterPromotion) index += 1;
+  }
+  return reordered;
+}
 
-    if (input.moveDirection === "forward") {
-      promoteLine(reordered, promotionIndex, index);
-      if (input.skipNextAfterPromotion) index += 1;
-      continue;
-    }
-
+function reorderLinesByBackwardPromotion(
+  lines: TextLine[],
+  startIndex: number,
+  findPromotionIndex: PromotionIndexFinder,
+): TextLine[] {
+  const reordered = [...lines];
+  for (let index = startIndex; index < reordered.length; index += 1) {
+    const promotionIndex = findPromotionIndex(reordered, index);
+    if (promotionIndex === undefined) continue;
     promoteLine(reordered, index, promotionIndex);
   }
   return reordered;
