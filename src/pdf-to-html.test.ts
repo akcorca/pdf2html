@@ -107,8 +107,12 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).not.toMatch(/<h[2-6]>\d+\s+[^<]*\s\d+\.\d{2}<\/h[2-6]>/);
   });
 
-  it("extracts tft paper title as an h1 heading when font metadata is unreliable", () => {
-    expect(tftHtml).toContain("<h1>Multifunctional Organic-Semiconductor Interfacial</h1>");
+  it("merges wrapped tft paper title lines into a single h1 heading", () => {
+    expect(tftHtml).toContain(
+      "<h1>Multifunctional Organic-Semiconductor Interfacial Layers for Solution-Processed Oxide-Semiconductor Thin-Film Transistor</h1>",
+    );
+    expect(tftHtml).not.toContain("<p>Layers for Solution-Processed Oxide-Semiconductor</p>");
+    expect(tftHtml).not.toContain("<p>Thin-Film Transistor</p>");
   });
 
   it("renders numbered section headings in attention.pdf as semantic headings", () => {

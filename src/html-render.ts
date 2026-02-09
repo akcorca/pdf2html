@@ -23,6 +23,7 @@ const BULLET_LIST_ITEM_PATTERN = /^([•◦▪●○■□◆◇‣⁃∙·])\s+
 const MIN_LIST_CONTINUATION_INDENT = 6;
 const TITLE_CONTINUATION_MAX_FONT_DELTA = 0.6;
 const TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO = 0.12;
+const TITLE_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.03;
 const TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.2;
 const TITLE_CONTINUATION_MIN_WORD_COUNT = 3;
 
@@ -116,8 +117,11 @@ function isTitleContinuationLine(
   const text = normalizeSpacing(line.text);
   if (text.length === 0) return false;
   if (containsDocumentMetadata(text)) return false;
-  if (!/^[a-z]/.test(text)) return false;
-  if (text.split(" ").filter((token) => token.length > 0).length < TITLE_CONTINUATION_MIN_WORD_COUNT) {
+  const words = text.split(" ").filter((token) => token.length > 0);
+  if (
+    words.length < TITLE_CONTINUATION_MIN_WORD_COUNT &&
+    !isLikelyShortTitleContinuation(words)
+  ) {
     return false;
   }
   if (
@@ -141,7 +145,16 @@ function isTitleContinuationLine(
   const titleCenter = getLineCenter(titleLine);
   const lineCenter = getLineCenter(line);
   const maxCenterOffset = titleLine.pageWidth * TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO;
-  return Math.abs(titleCenter - lineCenter) <= maxCenterOffset;
+  const maxLeftOffset = titleLine.pageWidth * TITLE_CONTINUATION_MAX_LEFT_OFFSET_RATIO;
+  return (
+    Math.abs(titleCenter - lineCenter) <= maxCenterOffset ||
+    Math.abs(line.x - titleLine.x) <= maxLeftOffset
+  );
+}
+
+function isLikelyShortTitleContinuation(words: string[]): boolean {
+  if (words.length !== 2) return false;
+  return words.every((word) => /^[A-Z][A-Za-z0-9'-]*$/.test(word));
 }
 
 function getLineCenter(line: TextLine): number {
