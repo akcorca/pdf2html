@@ -38,6 +38,7 @@ const DOMAIN_LIKE_TOKEN_PATTERN = /\b(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/;
 const AUTHOR_RUNNING_LABEL_PATTERN = /\bet\s+al\.?$/iu;
 const AUTHOR_RUNNING_LABEL_MIN_PAGE_COVERAGE = 0.45;
 const AUTHOR_RUNNING_LABEL_MIN_PAGE_COUNT = 4;
+const MIN_REPEATED_EDGE_OCCURRENCE_RATIO = 0.85;
 const TOP_MATTER_AFFILIATION_INDEX_PATTERN = /^[\d\s,.;:()[\]{}+-]+$/;
 const TOP_MATTER_AFFILIATION_MIN_VERTICAL_RATIO = 0.72;
 const TOP_MATTER_AFFILIATION_MAX_FONT_RATIO = 0.82;
@@ -92,6 +93,13 @@ const MAX_AFFIX_STRIP_ITERATIONS = 3;
 interface StripAffixIterationResult {
   text: string;
   changed: boolean;
+}
+
+interface RepeatedEdgeCoverage {
+  pageCount: number;
+  pageCoverage: number;
+  edgeRatio: number;
+  edgePageCoverage: number;
 }
 
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
@@ -203,39 +211,49 @@ function updateExistingStat(
   if (nearBroad) stat.broadEdgePageIndexes.add(pageIndex);
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: repeated-edge text heuristics are evaluated in one place.
 function selectRepeatedEdgeTexts(
   stats: Map<string, RepeatedEdgeTextStat>,
   totalPages: number,
 ): Set<string> {
   const result = new Set<string>();
   for (const [text, stat] of stats) {
-    if (stat.pageIndexes.size < MIN_REPEATED_EDGE_TEXT_PAGES) continue;
-    const pageCoverage = stat.pageIndexes.size / Math.max(totalPages, 1);
-    const edgeRatio = stat.edgeOccurrences / stat.totalOccurrences;
-    const edgePageCoverage =
-      stat.broadEdgePageIndexes.size / Math.max(stat.pageIndexes.size, 1);
-    if (isLikelyAuthorRunningLabelText(text)) {
-      if (
-        stat.pageIndexes.size >= AUTHOR_RUNNING_LABEL_MIN_PAGE_COUNT &&
-        pageCoverage >= AUTHOR_RUNNING_LABEL_MIN_PAGE_COVERAGE &&
-        edgeRatio >= 0.85 &&
-        edgePageCoverage >= MIN_RUNNING_LABEL_EDGE_PAGE_COVERAGE
-      ) {
-        result.add(text);
-        continue;
-      }
-    }
-    if (pageCoverage < MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE) continue;
-    if (edgeRatio >= 0.85) {
-      result.add(text);
-      continue;
-    }
-    if (edgePageCoverage >= MIN_RUNNING_LABEL_EDGE_PAGE_COVERAGE && isLikelyRunningLabelText(text)) {
+    const coverage = computeRepeatedEdgeCoverage(stat, totalPages);
+    if (coverage.pageCount < MIN_REPEATED_EDGE_TEXT_PAGES) continue;
+    if (isRepeatedAuthorRunningLabel(text, coverage) || isRepeatedEdgeLabel(text, coverage)) {
       result.add(text);
     }
   }
   return result;
+}
+
+function computeRepeatedEdgeCoverage(
+  stat: RepeatedEdgeTextStat,
+  totalPages: number,
+): RepeatedEdgeCoverage {
+  const pageCount = stat.pageIndexes.size;
+  return {
+    pageCount,
+    pageCoverage: pageCount / Math.max(totalPages, 1),
+    edgeRatio: stat.edgeOccurrences / Math.max(stat.totalOccurrences, 1),
+    edgePageCoverage: stat.broadEdgePageIndexes.size / Math.max(pageCount, 1),
+  };
+}
+
+function isRepeatedAuthorRunningLabel(text: string, coverage: RepeatedEdgeCoverage): boolean {
+  if (!isLikelyAuthorRunningLabelText(text)) return false;
+  return (
+    coverage.pageCount >= AUTHOR_RUNNING_LABEL_MIN_PAGE_COUNT &&
+    coverage.pageCoverage >= AUTHOR_RUNNING_LABEL_MIN_PAGE_COVERAGE &&
+    coverage.edgeRatio >= MIN_REPEATED_EDGE_OCCURRENCE_RATIO &&
+    coverage.edgePageCoverage >= MIN_RUNNING_LABEL_EDGE_PAGE_COVERAGE
+  );
+}
+
+function isRepeatedEdgeLabel(text: string, coverage: RepeatedEdgeCoverage): boolean {
+  if (coverage.pageCoverage < MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE) return false;
+  if (coverage.edgeRatio >= MIN_REPEATED_EDGE_OCCURRENCE_RATIO) return true;
+  if (coverage.edgePageCoverage < MIN_RUNNING_LABEL_EDGE_PAGE_COVERAGE) return false;
+  return isLikelyRunningLabelText(text);
 }
 
 function isLikelyAuthorRunningLabelText(text: string): boolean {
