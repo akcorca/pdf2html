@@ -17,6 +17,7 @@ const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
   ["conclusion", 2],
   ["conclusions", 2],
   ["discussion", 2],
+  ["experimental section", 2],
   ["references", 2],
 ]);
 
