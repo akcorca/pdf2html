@@ -12,25 +12,25 @@ const FOOTNOTE_TEXT_MAX_FONT_RATIO = 0.98;
 const FOOTNOTE_MIN_TEXT_LENGTH = 8;
 const FOOTNOTE_MAX_VERTICAL_GAP = 20;
 
-interface FootnoteRange {
-  startIndex: number;
-  endIndex: number;
-}
+const FOOTNOTE_START_MARKER_RULES = [
+  {
+    pattern: FOOTNOTE_SYMBOL_MARKER_ONLY_PATTERN,
+    maxFontRatio: FOOTNOTE_SYMBOL_MARKER_MAX_FONT_RATIO,
+  },
+  {
+    pattern: FOOTNOTE_SYMBOL_MARKER_PREFIX_PATTERN,
+    maxFontRatio: FOOTNOTE_SYMBOL_MARKER_MAX_FONT_RATIO,
+  },
+  {
+    pattern: FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN,
+    maxFontRatio: FOOTNOTE_NUMERIC_MARKER_MAX_FONT_RATIO,
+  },
+] as const;
 
 export function movePageFootnotesToDocumentEnd(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
   const bodyFontSize = estimateBodyFontSize(lines);
-  const pageGroups = groupLinesByPage(lines);
-  const moved = new Set<TextLine>();
-
-  for (const pageLines of pageGroups.values()) {
-    const ranges = findFootnoteRangesOnPage(pageLines, bodyFontSize);
-    for (const range of ranges) {
-      for (let index = range.startIndex; index < range.endIndex; index += 1) {
-        moved.add(pageLines[index]);
-      }
-    }
-  }
+  const moved = collectFootnoteLines(lines, bodyFontSize);
 
   if (moved.size === 0) return lines;
   const bodyLines: TextLine[] = [];
@@ -45,31 +45,40 @@ export function movePageFootnotesToDocumentEnd(lines: TextLine[]): TextLine[] {
   return [...bodyLines, ...mergeStandaloneFootnoteMarkerLines(footnoteLines, bodyFontSize)];
 }
 
-function findFootnoteRangesOnPage(
+function collectFootnoteLines(lines: TextLine[], bodyFontSize: number): Set<TextLine> {
+  const pageGroups = groupLinesByPage(lines);
+  const moved = new Set<TextLine>();
+  for (const pageLines of pageGroups.values()) {
+    addFootnoteLinesOnPage(moved, pageLines, bodyFontSize);
+  }
+  return moved;
+}
+
+function addFootnoteLinesOnPage(
+  moved: Set<TextLine>,
   pageLines: TextLine[],
   bodyFontSize: number,
-): FootnoteRange[] {
-  const ranges: FootnoteRange[] = [];
+): void {
   let index = 0;
 
   while (index < pageLines.length - 1) {
-    const range = findFootnoteRangeStartingAt(pageLines, index, bodyFontSize);
-    if (range === undefined) {
+    const endIndex = findFootnoteRangeEndIndex(pageLines, index, bodyFontSize);
+    if (endIndex === undefined) {
       index += 1;
       continue;
     }
-    ranges.push(range);
-    index = range.endIndex;
+    for (let rangeIndex = index; rangeIndex < endIndex; rangeIndex += 1) {
+      moved.add(pageLines[rangeIndex]);
+    }
+    index = endIndex;
   }
-
-  return ranges;
 }
 
-function findFootnoteRangeStartingAt(
+function findFootnoteRangeEndIndex(
   pageLines: TextLine[],
   startIndex: number,
   bodyFontSize: number,
-): FootnoteRange | undefined {
+): number | undefined {
   const markerLine = pageLines[startIndex];
   if (!isFootnoteStartMarkerLine(markerLine, bodyFontSize)) return undefined;
 
@@ -85,29 +94,26 @@ function findFootnoteRangeStartingAt(
     endIndex += 1;
   }
 
-  return { startIndex, endIndex };
+  return endIndex;
 }
 
 function isFootnoteStartMarkerLine(line: TextLine, bodyFontSize: number): boolean {
   if (line.y > line.pageHeight * FOOTNOTE_START_MAX_VERTICAL_RATIO) return false;
   const text = normalizeSpacing(line.text);
   if (text.length === 0) return false;
-  if (
-    FOOTNOTE_SYMBOL_MARKER_ONLY_PATTERN.test(text) ||
-    FOOTNOTE_SYMBOL_MARKER_PREFIX_PATTERN.test(text)
-  ) {
-    return line.fontSize <= bodyFontSize * FOOTNOTE_SYMBOL_MARKER_MAX_FONT_RATIO;
+
+  for (const rule of FOOTNOTE_START_MARKER_RULES) {
+    if (rule.pattern.test(text) && line.fontSize <= bodyFontSize * rule.maxFontRatio) {
+      return true;
+    }
   }
-  if (FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN.test(text)) {
-    return line.fontSize <= bodyFontSize * FOOTNOTE_NUMERIC_MARKER_MAX_FONT_RATIO;
-  }
+
   return false;
 }
 
 function isLikelyFootnoteTextLine(line: TextLine, bodyFontSize: number): boolean {
   const text = getValidFootnoteBlockText(line, bodyFontSize);
-  if (!text || text.length < FOOTNOTE_MIN_TEXT_LENGTH) return false;
-  return /[A-Za-z]/.test(text);
+  return text !== undefined && text.length >= FOOTNOTE_MIN_TEXT_LENGTH && /[A-Za-z]/.test(text);
 }
 
 function isLikelyFootnoteContinuationLine(
@@ -144,12 +150,14 @@ function mergeStandaloneFootnoteMarkerLines(
   while (index < footnoteLines.length) {
     const markerLine = footnoteLines[index];
     const textLine = footnoteLines[index + 1];
+    const markerText = normalizeSpacing(markerLine.text);
     if (
       textLine !== undefined &&
       markerLine.pageIndex === textLine.pageIndex &&
-      isFootnoteMarkerOnlyText(normalizeSpacing(markerLine.text)) &&
+      isFootnoteMarkerOnlyText(markerText) &&
       isLikelyFootnoteTextLine(textLine, bodyFontSize)
     ) {
+      const textLineText = normalizeSpacing(textLine.text);
       merged.push({
         ...textLine,
         x: Math.min(markerLine.x, textLine.x),
@@ -157,7 +165,7 @@ function mergeStandaloneFootnoteMarkerLines(
           textLine.estimatedWidth,
           markerLine.estimatedWidth + textLine.estimatedWidth,
         ),
-        text: `${normalizeSpacing(markerLine.text)} ${normalizeSpacing(textLine.text)}`,
+        text: `${markerText} ${textLineText}`,
       });
       index += 2;
       continue;
