@@ -96,6 +96,10 @@ describe("convertPdfToHtml", () => {
   it("extracts tft paper title as an h1 heading when font metadata is unreliable", () => {
     expect(tftHtml).toContain("<h1>Multifunctional Organic-Semiconductor Interfacial</h1>");
   });
+
+  it("removes repeated running-label header lines from tft.pdf", () => {
+    expect(tftHtml).not.toContain("<p>COMMUNICATION</p>");
+  });
 });
 
 describe("pdfToHtmlInternals", () => {
@@ -339,6 +343,25 @@ describe("pdfToHtmlInternals", () => {
     ]);
 
     expect(filtered.map((line) => line.text)).toContain("Repeated body phrase");
+  });
+
+  it("filters repeated uppercase running labels even with mixed edge/non-edge placements", () => {
+    const filtered = pdfToHtmlInternals.filterPageArtifacts([
+      createLine({ pageIndex: 0, y: 780, text: "COMMUNICATION" }),
+      createLine({ pageIndex: 0, y: 500, text: "COMMUNICATION" }),
+      createLine({ pageIndex: 0, y: 420, text: "Body paragraph one" }),
+      createLine({ pageIndex: 1, y: 780, text: "COMMUNICATION" }),
+      createLine({ pageIndex: 1, y: 500, text: "COMMUNICATION" }),
+      createLine({ pageIndex: 1, y: 420, text: "Body paragraph two" }),
+      createLine({ pageIndex: 2, y: 780, text: "COMMUNICATION" }),
+      createLine({ pageIndex: 2, y: 500, text: "COMMUNICATION" }),
+      createLine({ pageIndex: 2, y: 420, text: "Body paragraph three" }),
+      createLine({ pageIndex: 3, y: 780, text: "COMMUNICATION" }),
+      createLine({ pageIndex: 3, y: 500, text: "COMMUNICATION" }),
+      createLine({ pageIndex: 3, y: 420, text: "Body paragraph four" }),
+    ]);
+
+    expect(filtered.map((line) => line.text)).not.toContain("COMMUNICATION");
   });
 
   it("keeps sparse edge numbers when they do not form a page-number sequence", () => {

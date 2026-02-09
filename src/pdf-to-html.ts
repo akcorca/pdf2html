@@ -12,6 +12,10 @@ const STANDALONE_PAGE_NUMBER_PATTERN = /^\d{1,4}$/;
 const MIN_REPEATED_EDGE_TEXT_PAGES = 4;
 const MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE = 0.6;
 const MIN_EDGE_TEXT_AFFIX_LENGTH = 12;
+const MIN_RUNNING_LABEL_EDGE_PAGE_COVERAGE = 0.8;
+const MIN_RUNNING_LABEL_LENGTH = 6;
+const MAX_RUNNING_LABEL_LENGTH = 40;
+const MAX_RUNNING_LABEL_WORDS = 4;
 const MIN_PAGE_NUMBER_SEQUENCE_PAGES = 3;
 const MIN_PAGE_NUMBER_SEQUENCE_COVERAGE = 0.5;
 const ARXIV_SUBMISSION_STAMP_PATTERN =
@@ -88,6 +92,8 @@ interface RepeatedEdgeTextStat {
   totalOccurrences: number;
   edgeOccurrences: number;
   pageIndexes: Set<number>;
+  edgePageIndexes: Set<number>;
+  broadEdgePageIndexes: Set<number>;
 }
 
 interface NumericEdgeLine {
@@ -519,20 +525,28 @@ function findRepeatedEdgeTexts(
   const stats = new Map<string, RepeatedEdgeTextStat>();
 
   for (const line of lines) {
+    const nearRelativeEdge = isNearPageEdge(line, pageExtents);
+    const nearBroadEdge = nearRelativeEdge || isNearPhysicalPageEdge(line);
     const existing = stats.get(line.text);
     if (existing) {
       existing.totalOccurrences += 1;
       existing.pageIndexes.add(line.pageIndex);
-      if (isNearPageEdge(line, pageExtents)) {
+      if (nearRelativeEdge) {
         existing.edgeOccurrences += 1;
+        existing.edgePageIndexes.add(line.pageIndex);
+      }
+      if (nearBroadEdge) {
+        existing.broadEdgePageIndexes.add(line.pageIndex);
       }
       continue;
     }
 
     stats.set(line.text, {
       totalOccurrences: 1,
-      edgeOccurrences: isNearPageEdge(line, pageExtents) ? 1 : 0,
+      edgeOccurrences: nearRelativeEdge ? 1 : 0,
       pageIndexes: new Set([line.pageIndex]),
+      edgePageIndexes: nearRelativeEdge ? new Set([line.pageIndex]) : new Set<number>(),
+      broadEdgePageIndexes: nearBroadEdge ? new Set([line.pageIndex]) : new Set<number>(),
     });
   }
 
@@ -543,12 +557,22 @@ function findRepeatedEdgeTexts(
     }
 
     const edgeRatio = stat.edgeOccurrences / stat.totalOccurrences;
-    if (edgeRatio < 0.85) {
+    const pageCoverage = stat.pageIndexes.size / Math.max(totalPages, 1);
+    if (pageCoverage < MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE) {
       continue;
     }
 
-    const pageCoverage = stat.pageIndexes.size / Math.max(totalPages, 1);
-    if (pageCoverage < MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE) {
+    if (edgeRatio >= 0.85) {
+      repeatedEdgeTexts.add(text);
+      continue;
+    }
+
+    const edgePageCoverage =
+      stat.broadEdgePageIndexes.size / Math.max(stat.pageIndexes.size, 1);
+    if (edgePageCoverage < MIN_RUNNING_LABEL_EDGE_PAGE_COVERAGE) {
+      continue;
+    }
+    if (!isLikelyRunningLabelText(text)) {
       continue;
     }
 
@@ -558,6 +582,36 @@ function findRepeatedEdgeTexts(
   return repeatedEdgeTexts;
 }
 
+function isLikelyRunningLabelText(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  if (normalized.length < MIN_RUNNING_LABEL_LENGTH) {
+    return false;
+  }
+  if (normalized.length > MAX_RUNNING_LABEL_LENGTH) {
+    return false;
+  }
+  if (!/[A-Za-z]/.test(normalized)) {
+    return false;
+  }
+  if (/\d/.test(normalized)) {
+    return false;
+  }
+
+  const wordCount = normalized.split(" ").filter((part) => part.length > 0).length;
+  if (wordCount > MAX_RUNNING_LABEL_WORDS) {
+    return false;
+  }
+
+  if (!/^[A-Za-z\s&/-]+$/.test(normalized)) {
+    return false;
+  }
+
+  const alphaOnly = normalized.replace(/[^A-Za-z]/g, "");
+  const uppercaseRatio =
+    alphaOnly.length > 0 ? alphaOnly.replace(/[^A-Z]/g, "").length / alphaOnly.length : 0;
+  return uppercaseRatio >= 0.9;
+}
+
 function isNearPageEdge(
   line: TextLine,
   pageExtents: Map<number, PageVerticalExtent>,
@@ -565,6 +619,23 @@ function isNearPageEdge(
 ): boolean {
   const relativeY = getRelativeVerticalPosition(line, pageExtents);
   return relativeY <= edgeMargin || relativeY >= 1 - edgeMargin;
+}
+
+function isNearPhysicalPageEdge(
+  line: TextLine,
+  edgeMargin: number = PAGE_EDGE_MARGIN,
+): boolean {
+  if (line.pageHeight <= 0) {
+    return false;
+  }
+
+  const absoluteBottomBoundary = line.pageHeight * edgeMargin;
+  if (line.y >= 0 && line.y <= absoluteBottomBoundary) {
+    return true;
+  }
+
+  const absoluteTopBoundary = line.pageHeight * (1 - edgeMargin);
+  return line.y <= line.pageHeight && line.y >= absoluteTopBoundary;
 }
 
 function getRelativeVerticalPosition(
