@@ -126,6 +126,13 @@ interface RepeatedEdgeCoverage {
   edgePageCoverage: number;
 }
 
+interface PageArtifactContext {
+  bodyFontSize: number;
+  pageExtents: Map<number, PageVerticalExtent>;
+  repeatedEdgeTexts: Set<string>;
+  removableLineSets: ReadonlyArray<Set<TextLine>>;
+}
+
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
   const bodyFontSize = estimateBodyFontSize(lines);
@@ -149,35 +156,43 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
     strippedLines,
     bodyFontSize,
   );
-  return strippedLines.filter(
-    (line) =>
-      !isRemovablePageArtifact(
-        line,
-        bodyFontSize,
-        pageExtents,
-        repeatedEdgeTexts,
-        pageNumberLines,
-        alphabeticAffiliationLines,
-        inlineFigureLabelLines,
-        firstPageInlineFigureCaptionLines,
-        alternatingRunningHeaderLines,
-      ),
-  );
+  const context: PageArtifactContext = {
+    bodyFontSize,
+    pageExtents,
+    repeatedEdgeTexts,
+    removableLineSets: [
+      pageNumberLines,
+      alphabeticAffiliationLines,
+      inlineFigureLabelLines,
+      firstPageInlineFigureCaptionLines,
+      alternatingRunningHeaderLines,
+    ],
+  };
+
+  return strippedLines.filter((line) => !isRemovablePageArtifact(line, context));
 }
 
-function isRemovablePageArtifact(
+function isRemovablePageArtifact(line: TextLine, context: PageArtifactContext): boolean {
+  if (line.text.length === 0) return true;
+  if (hasAnyRemovableLineMatch(line, context.removableLineSets)) return true;
+  if (context.repeatedEdgeTexts.has(line.text)) return true;
+  if (isStandaloneCitationMarker(line.text)) return true;
+  return isLikelyIntrinsicArtifact(line, context.bodyFontSize, context.pageExtents);
+}
+
+function hasAnyRemovableLineMatch(
+  line: TextLine,
+  removableLineSets: ReadonlyArray<Set<TextLine>>,
+): boolean {
+  return removableLineSets.some((removableLines) => removableLines.has(line));
+}
+
+function isLikelyIntrinsicArtifact(
   line: TextLine,
   bodyFontSize: number,
   pageExtents: Map<number, PageVerticalExtent>,
-  repeatedEdgeTexts: Set<string>,
-  pageNumberLines: Set<TextLine>,
-  alphabeticAffiliationLines: Set<TextLine>,
-  inlineFigureLabelLines: Set<TextLine>,
-  firstPageInlineFigureCaptionLines: Set<TextLine>,
-  alternatingRunningHeaderLines: Set<TextLine>,
 ): boolean {
   return (
-    line.text.length === 0 ||
     isLikelyStandaloneSymbolArtifact(line, bodyFontSize) ||
     isLikelyArxivSubmissionStamp(line, bodyFontSize) ||
     isLikelyStandaloneDoiMetadataLine(line) ||
@@ -186,14 +201,7 @@ function isRemovablePageArtifact(
     isLikelyPublisherImprintFooterLine(line, bodyFontSize, pageExtents) ||
     isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize) ||
     isLikelyTopMatterSymbolicAffiliationLine(line, bodyFontSize) ||
-    isLikelyFirstPageVenueFooterLine(line, bodyFontSize) ||
-    alphabeticAffiliationLines.has(line) ||
-    inlineFigureLabelLines.has(line) ||
-    firstPageInlineFigureCaptionLines.has(line) ||
-    alternatingRunningHeaderLines.has(line) ||
-    repeatedEdgeTexts.has(line.text) ||
-    pageNumberLines.has(line) ||
-    isStandaloneCitationMarker(line.text)
+    isLikelyFirstPageVenueFooterLine(line, bodyFontSize)
   );
 }
 
