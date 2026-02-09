@@ -51,10 +51,14 @@ const LEFT_HEADING_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO = 3.6;
 const LEFT_HEADING_RIGHT_BODY_START_PATTERN = /^[a-z]/u;
 const LEFT_HEADING_RIGHT_BODY_END_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
 const RIGHT_HEADING_LEFT_BODY_CONTINUATION_LOOKAHEAD = 8;
-const RIGHT_HEADING_LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO = 2.8;
-const RIGHT_HEADING_LEFT_BODY_MAX_LEFT_OFFSET_RATIO = 0.06;
-const RIGHT_HEADING_LEFT_BODY_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"']/u;
-const RIGHT_HEADING_LEFT_BODY_END_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
+const RIGHT_BODY_LEFT_CONTINUATION_LOOKAHEAD = 10;
+const LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO = 2.8;
+const LEFT_BODY_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.06;
+const LEFT_BODY_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"']/u;
+const LEFT_BODY_CONTINUATION_END_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
+const RIGHT_BODY_MIN_PROSE_WORD_COUNT = 6;
+const RIGHT_BODY_MIN_PROSE_CHAR_COUNT = 28;
+const RIGHT_BODY_CODE_LIKE_PATTERN = /[#=(){}\[\]<>]|^\d{1,3}\s+\S/u;
 const MAX_COLUMN_BREAK_BRIDGE_LOOKAHEAD = 2;
 const COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS = 1;
 const DUPLICATED_SENTENCE_PREFIX_PATTERN = /^([A-Z][^.!?]{1,80}[.!?])\s+\1(\s+.+)$/u;
@@ -87,6 +91,7 @@ function applyReadingOrderReorders(
   reordered = reorderLeftColumnTopLevelHeadings(reordered, multiColumnPageIndexes);
   reordered = reorderMisorderedNumberedHeadings(reordered, multiColumnPageIndexes);
   reordered = reorderRightColumnHeadingsAfterLeftBodyContinuations(reordered);
+  reordered = reorderRightColumnBodyAfterLeftBodyContinuations(reordered, multiColumnPageIndexes);
   reordered = reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
     reordered,
     multiColumnPageIndexes,
@@ -335,19 +340,59 @@ function reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
 function reorderRightColumnHeadingsAfterLeftBodyContinuations(
   lines: TextLine[],
 ): TextLine[] {
+  return reorderRightColumnLinesAfterLeftBodyContinuations(lines, {
+    lookahead: RIGHT_HEADING_LEFT_BODY_CONTINUATION_LOOKAHEAD,
+    isDeferredRightLine: isRightColumnHeadingEligibleForLeftContinuationDeferral,
+    isLeftLineBeforeDeferredRightLine: isLeftBodyLineBeforeDeferredRightHeading,
+    isLeftContinuationAfterDeferredRightLine: isLeftBodyContinuationAfterDeferredRightHeading,
+  });
+}
+
+function reorderRightColumnBodyAfterLeftBodyContinuations(
+  lines: TextLine[],
+  multiColumnPageIndexes: Set<number>,
+): TextLine[] {
+  return reorderRightColumnLinesAfterLeftBodyContinuations(lines, {
+    lookahead: RIGHT_BODY_LEFT_CONTINUATION_LOOKAHEAD,
+    isDeferredRightLine: (line) =>
+      isRightColumnBodyEligibleForLeftContinuationDeferral(line, multiColumnPageIndexes),
+    isLeftLineBeforeDeferredRightLine: isLeftProseBodyLineBeforeDeferredRightBody,
+    isLeftContinuationAfterDeferredRightLine: isLeftProseBodyContinuationAfterDeferredRightBody,
+  });
+}
+
+interface RightLineDeferralRule {
+  lookahead: number;
+  isDeferredRightLine: (line: TextLine) => boolean;
+  isLeftLineBeforeDeferredRightLine: (
+    candidate: TextLine | undefined,
+    deferredRightLine: TextLine,
+  ) => candidate is TextLine;
+  isLeftContinuationAfterDeferredRightLine: (
+    candidate: TextLine | undefined,
+    previousLeftLine: TextLine,
+    deferredRightLine: TextLine,
+  ) => candidate is TextLine;
+}
+
+function reorderRightColumnLinesAfterLeftBodyContinuations(
+  lines: TextLine[],
+  rule: RightLineDeferralRule,
+): TextLine[] {
   const reordered = [...lines];
   for (let index = 1; index < reordered.length - 1; index += 1) {
-    const heading = reordered[index];
-    if (!isRightColumnHeadingEligibleForLeftContinuationDeferral(heading)) continue;
+    const deferredRightLine = reordered[index];
+    if (!rule.isDeferredRightLine(deferredRightLine)) continue;
 
-    const previousLine = reordered[index - 1];
-    if (!isLeftBodyLineBeforeDeferredRightHeading(previousLine, heading)) continue;
+    const previousLeftLine = reordered[index - 1];
+    if (!rule.isLeftLineBeforeDeferredRightLine(previousLeftLine, deferredRightLine)) continue;
 
-    const insertionIndex = findDeferredRightHeadingInsertionIndex(
+    const insertionIndex = findDeferredRightLineInsertionIndex(
       reordered,
       index,
-      previousLine,
-      heading,
+      previousLeftLine,
+      deferredRightLine,
+      rule,
     );
     if (insertionIndex === undefined) continue;
 
@@ -355,6 +400,108 @@ function reorderRightColumnHeadingsAfterLeftBodyContinuations(
     index = insertionIndex - 1;
   }
   return reordered;
+}
+
+function findDeferredRightLineInsertionIndex(
+  lines: TextLine[],
+  deferredRightLineIndex: number,
+  previousLeftLine: TextLine,
+  deferredRightLine: TextLine,
+  rule: RightLineDeferralRule,
+): number | undefined {
+  let insertionIndex = deferredRightLineIndex + 1;
+  let currentLeftLine = previousLeftLine;
+  let hasContinuation = false;
+  const maxScanIndex = Math.min(lines.length, deferredRightLineIndex + rule.lookahead + 1);
+
+  while (insertionIndex < maxScanIndex) {
+    const candidate = lines[insertionIndex];
+    if (
+      !rule.isLeftContinuationAfterDeferredRightLine(candidate, currentLeftLine, deferredRightLine)
+    ) {
+      break;
+    }
+    hasContinuation = true;
+    currentLeftLine = candidate;
+    insertionIndex += 1;
+    if (isLeftBodyContinuationTerminal(currentLeftLine)) break;
+  }
+
+  return hasContinuation ? insertionIndex : undefined;
+}
+
+function isRightColumnBodyEligibleForLeftContinuationDeferral(
+  bodyLine: TextLine,
+  multiColumnPageIndexes: Set<number>,
+): boolean {
+  if (!multiColumnPageIndexes.has(bodyLine.pageIndex)) return false;
+  if (classifyMultiColumnLine(bodyLine) !== "right") return false;
+  if (!isLikelyNearRowBodyLine(bodyLine)) return false;
+  if (isLikelyColumnHeadingLine(bodyLine.text)) return false;
+  return isLikelyProseBodyText(bodyLine.text);
+}
+
+function isLeftProseBodyLineBeforeDeferredRightBody(
+  candidate: TextLine | undefined,
+  rightBody: TextLine,
+): candidate is TextLine {
+  if (!candidate) return false;
+  if (candidate.pageIndex !== rightBody.pageIndex) return false;
+  if (classifyMultiColumnLine(candidate) !== "left") return false;
+  if (!isLikelyNearRowBodyLine(candidate)) return false;
+  if (isLikelyColumnHeadingLine(candidate.text)) return false;
+  if (!isLikelyProseBodyText(candidate.text)) return false;
+
+  const normalized = normalizeSpacing(candidate.text);
+  if (normalized.length === 0) return false;
+  if (LEFT_BODY_CONTINUATION_END_PUNCTUATION_PATTERN.test(normalized)) return false;
+
+  const verticalDelta = Math.abs(candidate.y - rightBody.y);
+  const maxVerticalDelta = computeVerticalDeltaThreshold(
+    candidate.fontSize,
+    rightBody.fontSize,
+    LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+    10,
+  );
+  return verticalDelta <= maxVerticalDelta;
+}
+
+function isLeftProseBodyContinuationAfterDeferredRightBody(
+  candidate: TextLine | undefined,
+  previousLeftLine: TextLine,
+  rightBody: TextLine,
+): candidate is TextLine {
+  if (!candidate) return false;
+  if (candidate.pageIndex !== rightBody.pageIndex) return false;
+  if (classifyMultiColumnLine(candidate) !== "left") return false;
+  if (!isLikelyNearRowBodyLine(candidate)) return false;
+  if (isLikelyColumnHeadingLine(candidate.text)) return false;
+  if (!isLikelyProseBodyText(candidate.text)) return false;
+
+  const normalized = normalizeSpacing(candidate.text);
+  if (!LEFT_BODY_CONTINUATION_START_PATTERN.test(normalized)) return false;
+
+  const verticalDelta = previousLeftLine.y - candidate.y;
+  const maxVerticalDelta = computeVerticalDeltaThreshold(
+    previousLeftLine.fontSize,
+    candidate.fontSize,
+    LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+    10,
+  );
+  if (verticalDelta <= 0 || verticalDelta > maxVerticalDelta) return false;
+
+  return (
+    Math.abs(candidate.x - previousLeftLine.x) <=
+    candidate.pageWidth * LEFT_BODY_CONTINUATION_MAX_LEFT_OFFSET_RATIO
+  );
+}
+
+function isLikelyProseBodyText(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  if (normalized.length < RIGHT_BODY_MIN_PROSE_CHAR_COUNT) return false;
+  if (RIGHT_BODY_CODE_LIKE_PATTERN.test(normalized)) return false;
+  if (!/[A-Za-z]/.test(normalized)) return false;
+  return splitWords(normalized).length >= RIGHT_BODY_MIN_PROSE_WORD_COUNT;
 }
 
 function isRightColumnHeadingEligibleForLeftContinuationDeferral(
@@ -374,6 +521,10 @@ function computeVerticalDeltaThreshold(
   return Math.max(maxFontSize * maxDeltaFontRatio, maxFontSize + minAbsolutePadding);
 }
 
+function isLeftBodyContinuationTerminal(line: TextLine): boolean {
+  return LEFT_BODY_CONTINUATION_END_PUNCTUATION_PATTERN.test(normalizeSpacing(line.text));
+}
+
 function isLeftBodyLineBeforeDeferredRightHeading(
   candidate: TextLine | undefined,
   heading: TextLine,
@@ -385,50 +536,16 @@ function isLeftBodyLineBeforeDeferredRightHeading(
 
   const normalized = normalizeSpacing(candidate.text);
   if (normalized.length === 0) return false;
-  if (RIGHT_HEADING_LEFT_BODY_END_PUNCTUATION_PATTERN.test(normalized)) return false;
+  if (LEFT_BODY_CONTINUATION_END_PUNCTUATION_PATTERN.test(normalized)) return false;
 
   const verticalDelta = Math.abs(candidate.y - heading.y);
   const maxVerticalDelta = computeVerticalDeltaThreshold(
     candidate.fontSize,
     heading.fontSize,
-    RIGHT_HEADING_LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+    LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
     10,
   );
   return verticalDelta <= maxVerticalDelta;
-}
-
-function findDeferredRightHeadingInsertionIndex(
-  lines: TextLine[],
-  headingIndex: number,
-  previousLeftLine: TextLine,
-  heading: TextLine,
-): number | undefined {
-  let insertionIndex = headingIndex + 1;
-  let currentLeftLine = previousLeftLine;
-  let hasContinuation = false;
-  const maxScanIndex = Math.min(
-    lines.length,
-    headingIndex + RIGHT_HEADING_LEFT_BODY_CONTINUATION_LOOKAHEAD + 1,
-  );
-
-  while (insertionIndex < maxScanIndex) {
-    const candidate = lines[insertionIndex];
-    if (!isLeftBodyContinuationAfterDeferredRightHeading(candidate, currentLeftLine, heading)) {
-      break;
-    }
-    hasContinuation = true;
-    currentLeftLine = candidate;
-    insertionIndex += 1;
-    if (
-      RIGHT_HEADING_LEFT_BODY_END_PUNCTUATION_PATTERN.test(
-        normalizeSpacing(currentLeftLine.text),
-      )
-    ) {
-      break;
-    }
-  }
-
-  return hasContinuation ? insertionIndex : undefined;
 }
 
 function isLeftBodyContinuationAfterDeferredRightHeading(
@@ -442,20 +559,20 @@ function isLeftBodyContinuationAfterDeferredRightHeading(
   if (isLikelyColumnHeadingLine(candidate.text)) return false;
 
   const normalized = normalizeSpacing(candidate.text);
-  if (!RIGHT_HEADING_LEFT_BODY_CONTINUATION_START_PATTERN.test(normalized)) return false;
+  if (!LEFT_BODY_CONTINUATION_START_PATTERN.test(normalized)) return false;
 
   const verticalDelta = previousLeftLine.y - candidate.y;
   const maxVerticalDelta = computeVerticalDeltaThreshold(
     previousLeftLine.fontSize,
     candidate.fontSize,
-    RIGHT_HEADING_LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+    LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
     10,
   );
   if (verticalDelta <= 0 || verticalDelta > maxVerticalDelta) return false;
 
   return (
     Math.abs(candidate.x - previousLeftLine.x) <=
-    candidate.pageWidth * RIGHT_HEADING_LEFT_BODY_MAX_LEFT_OFFSET_RATIO
+    candidate.pageWidth * LEFT_BODY_CONTINUATION_MAX_LEFT_OFFSET_RATIO
   );
 }
 
