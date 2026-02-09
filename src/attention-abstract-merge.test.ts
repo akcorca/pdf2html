@@ -58,4 +58,13 @@ describe("attention abstract same-row merge", () => {
       /portion of the<\/p>\s*<p>model<\/p>\s*<p>Penn Treebank \[ 25 \], about 40K training sentences\./,
     );
   });
+
+  it("merges short wrapped lead lines in the conclusion into one paragraph", () => {
+    expect(attentionHtml).toContain(
+      "On both WMT 2014 English-to-German and WMT 2014 English-to-French translation tasks, we achieve a new state of the art.",
+    );
+    expect(attentionHtml).not.toContain(
+      "<p>On both WMT 2014 English-to-German and WMT 2014</p>",
+    );
+  });
 });

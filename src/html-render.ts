@@ -61,6 +61,10 @@ const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[A-Za-z0-9("'"'[]/u;
 const BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN = /^\[\d+\]/;
 const BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN =
   /^\[\d+(?:\s*,\s*\d+)*\]\s*[,;:]\s+[A-Za-z(“‘"']/u;
+const BODY_PARAGRAPH_SHORT_LEAD_MIN_WIDTH_RATIO = 0.55;
+const BODY_PARAGRAPH_SHORT_LEAD_MIN_WORD_COUNT = 4;
+const BODY_PARAGRAPH_SHORT_LEAD_MIN_X_BACKSHIFT_RATIO = 0.08;
+const BODY_PARAGRAPH_SHORT_LEAD_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO = 0.25;
 const INLINE_MATH_BRIDGE_MAX_LOOKAHEAD = 4;
 const INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH = 24;
 const INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT = 8;
@@ -1315,7 +1319,22 @@ function consumeBodyParagraph(
   if (startNormalized === undefined) return undefined;
   if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(startNormalized)) return undefined;
-  if (startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO) return undefined;
+  const isStartFullWidth = startLine.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO;
+  if (
+    !isStartFullWidth &&
+    !isShortWrappedBodyParagraphLead(
+      lines,
+      startIndex,
+      startLine,
+      startNormalized,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+      typicalWidth,
+    )
+  ) {
+    return undefined;
+  }
 
   const parts = [startNormalized];
   let previousLine = startLine;
@@ -1377,6 +1396,54 @@ function consumeBodyParagraph(
 
   if (parts.length <= 1 && nextIndex === startIndex + 1) return undefined;
   return { text: normalizeSpacing(parts.join(" ")), nextIndex };
+}
+
+function isShortWrappedBodyParagraphLead(
+  lines: TextLine[],
+  startIndex: number,
+  startLine: TextLine,
+  startNormalized: string,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  typicalWidth: number,
+): boolean {
+  if (startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_SHORT_LEAD_MIN_WIDTH_RATIO) {
+    return false;
+  }
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(startNormalized)) return false;
+  if (splitWords(startNormalized).length < BODY_PARAGRAPH_SHORT_LEAD_MIN_WORD_COUNT) return false;
+
+  const previousLine = lines[startIndex - 1];
+  if (!previousLine || previousLine.pageIndex !== startLine.pageIndex) return false;
+  const maxSameRowDelta = Math.max(
+    startLine.fontSize * BODY_PARAGRAPH_SHORT_LEAD_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO,
+    1.5,
+  );
+  if (Math.abs(previousLine.y - startLine.y) > maxSameRowDelta) return false;
+  if (previousLine.x >= startLine.x) return false;
+
+  const previousText = normalizeSpacing(previousLine.text);
+  if (!INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+
+  const nextLine = lines[startIndex + 1];
+  if (!nextLine || nextLine.pageIndex !== startLine.pageIndex) return false;
+  if (nextLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO) return false;
+  if (
+    startLine.x - nextLine.x <
+    startLine.pageWidth * BODY_PARAGRAPH_SHORT_LEAD_MIN_X_BACKSHIFT_RATIO
+  ) {
+    return false;
+  }
+
+  return isBodyParagraphContinuationLine(
+    nextLine,
+    startLine,
+    startLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  );
 }
 
 function consumeTrailingSameRowSentenceContinuation(
