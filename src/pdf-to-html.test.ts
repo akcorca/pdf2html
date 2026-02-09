@@ -97,6 +97,13 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).not.toContain("<p>Input Table 𝑻</p>");
   });
 
+  it("removes wrapped first-page figure caption lines from clean.pdf abstract area", () => {
+    expect(cleanHtml).not.toContain(
+      "<p>Figure 1: An example of automatic data standardization pro-</p>",
+    );
+    expect(cleanHtml).not.toContain("<p>cess with CleanAgent.</p>");
+  });
+
   it("removes standalone symbol-only artifact lines from clean.pdf", () => {
     expect(cleanHtml).not.toContain("<p>!</p>");
     expect(cleanHtml).not.toContain("<p>)</p>");

@@ -70,13 +70,21 @@ const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_SUBSTANTIVE_CHARS = 8;
 const DENSE_INLINE_FIGURE_LABEL_MIN_LINES = 20;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_PATTERN = /^Figure\s+\d+[A-Za-z]?:\s+/u;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_END_PATTERN = /[.!?]["')\]]?$/;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_HYPHEN_WRAP_PATTERN = /-\s*$/;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_RIGHT_X_RATIO = 0.5;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_VERTICAL_RATIO = 0.45;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_VERTICAL_RATIO = 0.72;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WIDTH_RATIO = 0.42;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_HYPHEN_WRAP_MAX_WIDTH_RATIO = 0.5;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_FONT_RATIO = 1.08;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_SUBSTANTIVE_CHARS = 20;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WORDS = 14;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"']/u;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MIN_SUBSTANTIVE_CHARS = 8;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_Y_DELTA_FONT_RATIO = 2.6;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MIN_Y_DELTA = 8;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_X_DELTA_RATIO = 0.04;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_FONT_DELTA = 0.6;
 const FIRST_PAGE_VENUE_FOOTER_MAX_VERTICAL_RATIO = 0.12;
 const FIRST_PAGE_VENUE_FOOTER_MAX_FONT_RATIO = 0.96;
 const FIRST_PAGE_VENUE_FOOTER_MIN_SUBSTANTIVE_CHARS = 20;
@@ -625,9 +633,14 @@ function findLikelyFirstPageInlineFigureCaptionLines(
   const pageLines = groupLinesByPage(lines).get(0) ?? [];
   const result = new Set<TextLine>();
   for (const line of pageLines) {
-    if (isLikelyFirstPageInlineFigureCaptionLine(line, pageLines, bodyFontSize)) {
-      result.add(line);
-    }
+    if (!isLikelyFirstPageInlineFigureCaptionLine(line, pageLines, bodyFontSize)) continue;
+    result.add(line);
+    const continuation = findLikelyFirstPageInlineFigureCaptionContinuationLine(
+      line,
+      pageLines,
+      bodyFontSize,
+    );
+    if (continuation) result.add(continuation);
   }
   return result;
 }
@@ -643,7 +656,7 @@ function isLikelyFirstPageInlineFigureCaptionLine(
 
   const normalized = normalizeSpacing(line.text);
   if (!FIRST_PAGE_INLINE_FIGURE_CAPTION_PATTERN.test(normalized)) return false;
-  if (!FIRST_PAGE_INLINE_FIGURE_CAPTION_END_PATTERN.test(normalized)) return false;
+  if (!isLikelyFirstPageInlineFigureCaptionTerminatedLine(normalized)) return false;
   if (countSubstantiveChars(normalized) < FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_SUBSTANTIVE_CHARS) {
     return false;
   }
@@ -651,7 +664,10 @@ function isLikelyFirstPageInlineFigureCaptionLine(
 
   const relativeX = line.x / line.pageWidth;
   if (relativeX < FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_RIGHT_X_RATIO) return false;
-  if (line.estimatedWidth > line.pageWidth * FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WIDTH_RATIO) {
+  const maxWidthRatio = FIRST_PAGE_INLINE_FIGURE_CAPTION_HYPHEN_WRAP_PATTERN.test(normalized)
+    ? FIRST_PAGE_INLINE_FIGURE_CAPTION_HYPHEN_WRAP_MAX_WIDTH_RATIO
+    : FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WIDTH_RATIO;
+  if (line.estimatedWidth > line.pageWidth * maxWidthRatio) {
     return false;
   }
 
@@ -664,6 +680,66 @@ function isLikelyFirstPageInlineFigureCaptionLine(
   }
 
   return hasNearbyBodyLineInLeftColumn(line, pageLines, bodyFontSize);
+}
+
+function isLikelyFirstPageInlineFigureCaptionTerminatedLine(text: string): boolean {
+  return (
+    FIRST_PAGE_INLINE_FIGURE_CAPTION_END_PATTERN.test(text) ||
+    FIRST_PAGE_INLINE_FIGURE_CAPTION_HYPHEN_WRAP_PATTERN.test(text)
+  );
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: continuation matching is evaluated in one spatial pass.
+function findLikelyFirstPageInlineFigureCaptionContinuationLine(
+  captionLine: TextLine,
+  pageLines: TextLine[],
+  bodyFontSize: number,
+): TextLine | undefined {
+  const captionText = normalizeSpacing(captionLine.text);
+  if (!FIRST_PAGE_INLINE_FIGURE_CAPTION_HYPHEN_WRAP_PATTERN.test(captionText)) return undefined;
+
+  const maxYDelta = Math.max(
+    captionLine.fontSize * FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+    FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MIN_Y_DELTA,
+  );
+  let nearestContinuation: TextLine | undefined;
+  let nearestYDelta = Number.POSITIVE_INFINITY;
+  for (const candidate of pageLines) {
+    if (candidate === captionLine) continue;
+    if (candidate.pageIndex !== captionLine.pageIndex) continue;
+    if (candidate.pageWidth <= 0) continue;
+    const yDelta = captionLine.y - candidate.y;
+    if (yDelta <= 0 || yDelta > maxYDelta) continue;
+    if (candidate.x / candidate.pageWidth < FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_RIGHT_X_RATIO) continue;
+    if (
+      Math.abs(candidate.x - captionLine.x) >
+      candidate.pageWidth * FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_X_DELTA_RATIO
+    ) {
+      continue;
+    }
+    if (candidate.fontSize > bodyFontSize * FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_FONT_RATIO) continue;
+    if (
+      Math.abs(candidate.fontSize - captionLine.fontSize) >
+      FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_FONT_DELTA
+    ) {
+      continue;
+    }
+    const normalized = normalizeSpacing(candidate.text);
+    if (!FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_START_PATTERN.test(normalized)) continue;
+    if (!isLikelyFirstPageInlineFigureCaptionTerminatedLine(normalized)) continue;
+    if (
+      countSubstantiveChars(normalized) <
+      FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MIN_SUBSTANTIVE_CHARS
+    ) {
+      continue;
+    }
+    if (countWords(normalized) > FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WORDS) continue;
+    if (yDelta < nearestYDelta) {
+      nearestYDelta = yDelta;
+      nearestContinuation = candidate;
+    }
+  }
+  return nearestContinuation;
 }
 
 function collectQualifiedPageCandidates(
