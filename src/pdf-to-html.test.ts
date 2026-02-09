@@ -157,6 +157,10 @@ describe("convertPdfToHtml", () => {
     expect(tftHtml).not.toContain("<p>COMMUNICATION</p>");
   });
 
+  it("removes publisher page-counter footer lines from tft.pdf", () => {
+    expect(tftHtml).not.toMatch(/<p>[^<]*\(\d+\s+of\s+\d+\)[^<]*<\/p>/);
+  });
+
   it("removes standalone citation marker lines from tft.pdf", () => {
     expect(tftHtml).not.toMatch(
       /<p>(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*<\/p>/,
