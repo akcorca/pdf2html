@@ -48,6 +48,13 @@ const TOP_MATTER_SYMBOLIC_AFFILIATION_PATTERN = /^(?:[*∗†‡§¶#]\s*){2,}$/
 const TOP_MATTER_SYMBOLIC_AFFILIATION_MIN_VERTICAL_RATIO = 0.55;
 const TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_VERTICAL_RATIO = 0.72;
 const TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_FONT_RATIO = 0.82;
+const TOP_MATTER_CONTACT_EMAIL_PREFIX_PATTERN = /^e-?mail\s*:/iu;
+const TOP_MATTER_CONTACT_EMAIL_ADDRESS_PATTERN =
+  /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/u;
+const TOP_MATTER_CONTACT_EMAIL_MIN_VERTICAL_RATIO = 0.08;
+const TOP_MATTER_CONTACT_EMAIL_MAX_VERTICAL_RATIO = 0.35;
+const TOP_MATTER_CONTACT_EMAIL_MAX_FONT_RATIO = 0.96;
+const TOP_MATTER_CONTACT_EMAIL_MAX_WORDS = 10;
 const TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_PAGE_INDEX = 1;
 const TOP_MATTER_ALPHABETIC_AFFILIATION_MIN_VERTICAL_RATIO = 0.5;
 const TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_VERTICAL_RATIO = 0.8;
@@ -209,6 +216,7 @@ function isLikelyIntrinsicArtifact(
     isLikelyPublisherImprintFooterLine(line, bodyFontSize, pageExtents) ||
     isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize) ||
     isLikelyTopMatterSymbolicAffiliationLine(line, bodyFontSize) ||
+    isLikelyTopMatterContactEmailLine(line, bodyFontSize) ||
     isLikelyFirstPageVenueFooterLine(line, bodyFontSize)
   );
 }
@@ -931,6 +939,25 @@ function isLikelyTopMatterSymbolicAffiliationLine(
 
   const normalized = normalizeSpacing(line.text);
   return TOP_MATTER_SYMBOLIC_AFFILIATION_PATTERN.test(normalized);
+}
+
+function isLikelyTopMatterContactEmailLine(
+  line: TextLine,
+  bodyFontSize: number,
+): boolean {
+  if (line.pageIndex !== 0) return false;
+  if (line.pageHeight <= 0) return false;
+  const verticalRatio = line.y / line.pageHeight;
+  if (verticalRatio < TOP_MATTER_CONTACT_EMAIL_MIN_VERTICAL_RATIO) return false;
+  if (verticalRatio > TOP_MATTER_CONTACT_EMAIL_MAX_VERTICAL_RATIO) return false;
+  if (line.fontSize > bodyFontSize * TOP_MATTER_CONTACT_EMAIL_MAX_FONT_RATIO) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (!TOP_MATTER_CONTACT_EMAIL_PREFIX_PATTERN.test(normalized)) return false;
+
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length > TOP_MATTER_CONTACT_EMAIL_MAX_WORDS) return false;
+  return TOP_MATTER_CONTACT_EMAIL_ADDRESS_PATTERN.test(normalized);
 }
 
 function findLikelyTopMatterAlphabeticAffiliationLines(
