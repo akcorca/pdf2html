@@ -33,16 +33,23 @@ export function movePageFootnotesToDocumentEnd(lines: TextLine[]): TextLine[] {
   const moved = collectFootnoteLines(lines, bodyFontSize);
 
   if (moved.size === 0) return lines;
+  const { bodyLines, footnoteLines } = partitionFootnoteLines(lines, moved);
+  return [...bodyLines, ...mergeStandaloneFootnoteMarkerLines(footnoteLines, bodyFontSize)];
+}
+
+function partitionFootnoteLines(
+  lines: TextLine[],
+  moved: Set<TextLine>,
+): { bodyLines: TextLine[]; footnoteLines: TextLine[] } {
   const bodyLines: TextLine[] = [];
   const footnoteLines: TextLine[] = [];
+
   for (const line of lines) {
-    if (moved.has(line)) {
-      footnoteLines.push(line);
-      continue;
-    }
-    bodyLines.push(line);
+    if (moved.has(line)) footnoteLines.push(line);
+    else bodyLines.push(line);
   }
-  return [...bodyLines, ...mergeStandaloneFootnoteMarkerLines(footnoteLines, bodyFontSize)];
+
+  return { bodyLines, footnoteLines };
 }
 
 function collectFootnoteLines(lines: TextLine[], bodyFontSize: number): Set<TextLine> {
@@ -102,13 +109,9 @@ function isFootnoteStartMarkerLine(line: TextLine, bodyFontSize: number): boolea
   const text = normalizeSpacing(line.text);
   if (text.length === 0) return false;
 
-  for (const rule of FOOTNOTE_START_MARKER_RULES) {
-    if (rule.pattern.test(text) && line.fontSize <= bodyFontSize * rule.maxFontRatio) {
-      return true;
-    }
-  }
-
-  return false;
+  return FOOTNOTE_START_MARKER_RULES.some(
+    (rule) => rule.pattern.test(text) && line.fontSize <= bodyFontSize * rule.maxFontRatio,
+  );
 }
 
 function isLikelyFootnoteTextLine(line: TextLine, bodyFontSize: number): boolean {
@@ -149,24 +152,13 @@ function mergeStandaloneFootnoteMarkerLines(
 
   while (index < footnoteLines.length) {
     const markerLine = footnoteLines[index];
-    const textLine = footnoteLines[index + 1];
-    const markerText = normalizeSpacing(markerLine.text);
-    if (
-      textLine !== undefined &&
-      markerLine.pageIndex === textLine.pageIndex &&
-      isFootnoteMarkerOnlyText(markerText) &&
-      isLikelyFootnoteTextLine(textLine, bodyFontSize)
-    ) {
-      const textLineText = normalizeSpacing(textLine.text);
-      merged.push({
-        ...textLine,
-        x: Math.min(markerLine.x, textLine.x),
-        estimatedWidth: Math.max(
-          textLine.estimatedWidth,
-          markerLine.estimatedWidth + textLine.estimatedWidth,
-        ),
-        text: `${markerText} ${textLineText}`,
-      });
+    const mergedLine = mergeStandaloneMarkerLine(
+      markerLine,
+      footnoteLines[index + 1],
+      bodyFontSize,
+    );
+    if (mergedLine) {
+      merged.push(mergedLine);
       index += 2;
       continue;
     }
@@ -176,6 +168,30 @@ function mergeStandaloneFootnoteMarkerLines(
   }
 
   return merged;
+}
+
+function mergeStandaloneMarkerLine(
+  markerLine: TextLine,
+  textLine: TextLine | undefined,
+  bodyFontSize: number,
+): TextLine | undefined {
+  if (!textLine) return undefined;
+  if (markerLine.pageIndex !== textLine.pageIndex) return undefined;
+
+  const markerText = normalizeSpacing(markerLine.text);
+  if (!isFootnoteMarkerOnlyText(markerText)) return undefined;
+  if (!isLikelyFootnoteTextLine(textLine, bodyFontSize)) return undefined;
+
+  const textLineText = normalizeSpacing(textLine.text);
+  return {
+    ...textLine,
+    x: Math.min(markerLine.x, textLine.x),
+    estimatedWidth: Math.max(
+      textLine.estimatedWidth,
+      markerLine.estimatedWidth + textLine.estimatedWidth,
+    ),
+    text: `${markerText} ${textLineText}`,
+  };
 }
 
 function isFootnoteMarkerOnlyText(text: string): boolean {

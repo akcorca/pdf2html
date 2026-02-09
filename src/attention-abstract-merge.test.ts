@@ -3,7 +3,7 @@ import { join, resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { convertPdfToHtml } from "./pdf-to-html.ts";
 
-const outputDirPath = resolve("data/work/test");
+const outputDirPath = resolve("data/work/test/attention-abstract-merge");
 
 describe("attention abstract same-row merge", () => {
   let attentionHtml = "";
