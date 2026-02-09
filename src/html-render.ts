@@ -92,6 +92,11 @@ interface NumberedHeadingSectionInfo {
   depth: number;
 }
 
+interface ResolvedHeadingCandidate {
+  heading: HeadingCandidate;
+  numberedHeadingSectionInfo?: NumberedHeadingSectionInfo;
+}
+
 interface NumberedCodeLine {
   lineNumber: number;
   content: string;
@@ -145,8 +150,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   const consumedTitle: ConsumedTitleLineBlock | undefined = titleLine
     ? consumeTitleLines(lines, titleLine)
     : undefined;
-  const consumedNumberedHeadingContinuationIndexes = new Set<number>();
-  const consumedNumberedCodeBlockIndexes = new Set<number>();
+  const consumedBodyLineIndexes = new Set<number>();
   let index = consumedTitle?.startIndex ?? 0;
   while (index < lines.length) {
     if (consumedTitle && index === consumedTitle.startIndex) {
@@ -154,33 +158,20 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       index = consumedTitle.nextIndex;
       continue;
     }
-    if (
-      shouldSkipConsumedBodyLineIndex(
-        index,
-        consumedTitle,
-        consumedNumberedHeadingContinuationIndexes,
-        consumedNumberedCodeBlockIndexes,
-      )
-    ) {
+    if (shouldSkipConsumedBodyLineIndex(index, consumedTitle, consumedBodyLineIndexes)) {
       index += 1;
       continue;
     }
 
     const currentLine = lines[index];
-
-    let heading = detectHeadingCandidate(currentLine, bodyFontSize, hasDottedSubsectionHeadings);
-    const numberedHeadingSectionInfo =
-      heading?.kind === "numbered" ? parseNumberedHeadingSectionInfo(currentLine.text) : undefined;
-    if (
-      heading?.kind === "numbered" &&
-      numberedHeadingSectionInfo !== undefined &&
-      numberedHeadingSectionInfo.depth > 1 &&
-      !seenTopLevelNumberedSections.has(numberedHeadingSectionInfo.topLevelNumber)
-    ) {
-      heading = undefined;
-    }
-
-    if (heading !== undefined) {
+    const resolvedHeading = resolveHeadingCandidateForRendering(
+      currentLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+      seenTopLevelNumberedSections,
+    );
+    if (resolvedHeading !== undefined) {
+      const { heading, numberedHeadingSectionInfo } = resolvedHeading;
       let headingText = currentLine.text;
       if (heading.kind === "numbered") {
         const wrapped = consumeWrappedNumberedHeadingContinuation(
@@ -189,11 +180,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
           currentLine,
           bodyFontSize,
         );
-        addConsumedIndexes(
-          consumedNumberedHeadingContinuationIndexes,
-          wrapped.continuationIndexes,
-          index,
-        );
+        addConsumedIndexes(consumedBodyLineIndexes, wrapped.continuationIndexes, index);
         if (wrapped.continuationIndexes.length > 0) {
           headingText = wrapped.text;
         }
@@ -253,11 +240,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     );
     if (renderedNumberedCodeBlock !== undefined) {
       bodyLines.push(renderedNumberedCodeBlock.html);
-      addConsumedIndexes(
-        consumedNumberedCodeBlockIndexes,
-        renderedNumberedCodeBlock.consumedIndexes,
-        index,
-      );
+      addConsumedIndexes(consumedBodyLineIndexes, renderedNumberedCodeBlock.consumedIndexes, index);
       index += 1;
       continue;
     }
@@ -285,14 +268,12 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
 function shouldSkipConsumedBodyLineIndex(
   index: number,
   consumedTitle: Pick<ConsumedTitleLineBlock, "startIndex" | "nextIndex"> | undefined,
-  consumedNumberedHeadingContinuationIndexes: Set<number>,
-  consumedNumberedCodeBlockIndexes: Set<number>,
+  consumedBodyLineIndexes: Set<number>,
 ): boolean {
   if (consumedTitle && index > consumedTitle.startIndex && index < consumedTitle.nextIndex) {
     return true;
   }
-  if (consumedNumberedHeadingContinuationIndexes.has(index)) return true;
-  return consumedNumberedCodeBlockIndexes.has(index);
+  return consumedBodyLineIndexes.has(index);
 }
 
 function addConsumedIndexes(
@@ -348,6 +329,27 @@ function parseNumberedHeadingSectionInfo(text: string): NumberedHeadingSectionIn
   const topLevelNumber = Number.parseInt(sectionParts[0] ?? "", 10);
   if (!Number.isFinite(topLevelNumber)) return undefined;
   return { topLevelNumber, depth: sectionParts.length };
+}
+
+function resolveHeadingCandidateForRendering(
+  line: TextLine,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  seenTopLevelNumberedSections: Set<number>,
+): ResolvedHeadingCandidate | undefined {
+  const heading = detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings);
+  if (heading === undefined) return undefined;
+  if (heading.kind !== "numbered") return { heading };
+
+  const numberedHeadingSectionInfo = parseNumberedHeadingSectionInfo(line.text);
+  if (
+    numberedHeadingSectionInfo !== undefined &&
+    numberedHeadingSectionInfo.depth > 1 &&
+    !seenTopLevelNumberedSections.has(numberedHeadingSectionInfo.topLevelNumber)
+  ) {
+    return undefined;
+  }
+  return { heading, numberedHeadingSectionInfo };
 }
 
 function detectHeadingCandidate(
