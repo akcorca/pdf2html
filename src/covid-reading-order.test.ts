@@ -44,6 +44,17 @@ describe("covid numbered heading order", () => {
     expect(covidHtml.indexOf(leftBodyContinuation)).toBeLessThan(covidHtml.indexOf(deathDataHeading));
   });
 
+  it("renders inline research-in-context labels as semantic headings with body text", () => {
+    const inlineMergedLine = "<p>Research in context: Evidence before this study</p>";
+    const heading = "<h2>Research in context</h2>";
+    const body = "<p>Evidence before this study</p>";
+
+    expect(covidHtml).not.toContain(inlineMergedLine);
+    expect(covidHtml).toContain(heading);
+    expect(covidHtml).toContain(body);
+    expect(covidHtml.indexOf(heading)).toBeLessThan(covidHtml.indexOf(body));
+  });
+
   it("does not merge opposite-column lines into a single paragraph around the introduction transition", () => {
     expect(covidHtml).not.toContain("major cardio - on acute CV events");
   });

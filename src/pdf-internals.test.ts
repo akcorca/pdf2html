@@ -116,6 +116,7 @@ describe("pdfToHtmlInternals", () => {
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Abstract")).toBe(2);
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("References")).toBe(2);
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Conclusion")).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Research in context")).toBe(2);
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("In this work, we show")).toBeUndefined();
   });
 

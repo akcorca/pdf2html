@@ -7,6 +7,8 @@ import { detectNamedSectionHeadingLevel, detectNumberedHeadingLevel } from "./he
 const INLINE_ACKNOWLEDGEMENTS_HEADING_PATTERN =
   /^(acknowledg(?:e)?ments?)(?:(?:\s*[:\-–]\s*)|\s+)(.+)$/iu;
 const INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH = 8;
+const INLINE_NAMED_SECTION_HEADING_PATTERN = /^(.+?)(?:\s*[:\-–]\s*)(.+)$/u;
+const INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH = 8;
 const BULLET_LIST_ITEM_PATTERN = /^([•◦▪●○■□◆◇‣⁃∙·])\s+(.+)$/u;
 const MIN_LIST_CONTINUATION_INDENT = 6;
 const TITLE_CONTINUATION_MAX_FONT_DELTA = 0.6;
@@ -218,6 +220,16 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     if (inlineHeading !== undefined) {
       bodyLines.push(`<h${inlineHeading.level}>${escapeHtml(inlineHeading.heading)}</h${inlineHeading.level}>`);
       bodyLines.push(`<p>${escapeHtml(inlineHeading.body)}</p>`);
+      index += 1;
+      continue;
+    }
+
+    const inlineNamedSectionHeading = parseInlineNamedSectionHeading(currentLine.text);
+    if (inlineNamedSectionHeading !== undefined) {
+      bodyLines.push(
+        `<h${inlineNamedSectionHeading.level}>${escapeHtml(inlineNamedSectionHeading.heading)}</h${inlineNamedSectionHeading.level}>`,
+      );
+      bodyLines.push(`<p>${escapeHtml(inlineNamedSectionHeading.body)}</p>`);
       index += 1;
       continue;
     }
@@ -646,6 +658,26 @@ function parseInlineAcknowledgementsHeading(
   return { heading: headingText, body: bodyText, level: 2 };
 }
 
+function parseInlineNamedSectionHeading(
+  text: string,
+): { heading: string; body: string; level: number } | undefined {
+  const normalized = normalizeSpacing(text);
+  const match = INLINE_NAMED_SECTION_HEADING_PATTERN.exec(normalized);
+  if (!match) return undefined;
+
+  const headingText = normalizeSpacing(match[1]);
+  if (headingText.length === 0 || isStandaloneAcknowledgementsHeading(headingText)) {
+    return undefined;
+  }
+  const headingLevel = detectNamedSectionHeadingLevel(headingText);
+  if (headingLevel === undefined) return undefined;
+
+  const bodyText = match[2].trim();
+  if (bodyText.length < INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH) return undefined;
+  if (!/[A-Za-z]/.test(bodyText)) return undefined;
+  return { heading: headingText, body: bodyText, level: headingLevel };
+}
+
 function isStandaloneAcknowledgementsHeading(text: string): boolean {
   return STANDALONE_ACKNOWLEDGEMENTS_HEADING_PATTERN.test(normalizeSpacing(text));
 }
@@ -898,6 +930,7 @@ function parseParagraphMergeCandidateText(
   if (containsDocumentMetadata(normalized)) return undefined;
   if (parseBulletListItemText(normalized) !== undefined) return undefined;
   if (parseInlineAcknowledgementsHeading(normalized) !== undefined) return undefined;
+  if (parseInlineNamedSectionHeading(normalized) !== undefined) return undefined;
   if (parseStandaloneUrlLine(normalized) !== undefined) return undefined;
   if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
     return undefined;
