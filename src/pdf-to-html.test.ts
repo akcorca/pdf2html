@@ -196,4 +196,10 @@ describe("convertPdfToHtml", () => {
       /<p>(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*<\/p>/,
     );
   });
+
+  it("does not merge left and right column body text into one line for tft.pdf", () => {
+    expect(tftHtml).not.toContain(
+      "<p>opment of new semiconductors and innovative processing must be overcome for further applications in low-cost, large-</p>",
+    );
+  });
 });

@@ -9,6 +9,8 @@ import { normalizeSpacing } from "./text-lines.ts";
 import { containsDocumentMetadata } from "./title-detect.ts";
 
 const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
+  ["acknowledgement", 2],
+  ["acknowledgements", 2],
   ["abstract", 2],
   ["acknowledgment", 2],
   ["acknowledgments", 2],

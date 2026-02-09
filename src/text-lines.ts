@@ -1,3 +1,4 @@
+// biome-ignore lint/nursery/noExcessiveLinesPerFile: text-layout heuristics are kept together intentionally.
 import type {
   ExtractedDocument,
   ExtractedFragment,
@@ -46,10 +47,13 @@ function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColu
   for (const [bucket, bucketFragments] of buckets) {
     const sorted = [...bucketFragments].sort((left, right) => left.x - right.x);
     const breakIndexes = findColumnBreakIndexes(sorted, page.width);
-    const groups =
-      splitByColumn || shouldForceSplitHeadingPrefixedRow(sorted, breakIndexes)
-        ? splitFragmentsByColumnBreaks(sorted, page.width, breakIndexes)
-        : [sorted];
+    const shouldSplitByColumns =
+      splitByColumn || shouldForceSplitHeadingPrefixedRow(sorted, breakIndexes);
+    const groups = shouldSplitByColumns
+      ? splitFragmentsByColumnBreaks(sorted, page.width, breakIndexes, {
+          allowMidpointFallback: splitByColumn,
+        })
+      : [sorted];
 
     for (const fragments of groups) {
       const text = normalizeSpacing(fragments.map((f) => f.text).join(" "));
@@ -155,9 +159,16 @@ function splitFragmentsByColumnBreaks(
   fragments: ExtractedFragment[],
   pageWidth: number,
   precomputedBreakIndexes?: number[],
+  options?: { allowMidpointFallback?: boolean },
 ): ExtractedFragment[][] {
   const breakIndexes = precomputedBreakIndexes ?? findColumnBreakIndexes(fragments, pageWidth);
-  if (breakIndexes.length === 0) return [fragments];
+  if (breakIndexes.length === 0) {
+    if (options?.allowMidpointFallback) {
+      const midpointSplit = splitFragmentsByMidpoint(fragments, pageWidth);
+      if (midpointSplit) return midpointSplit;
+    }
+    return [fragments];
+  }
   const groups: ExtractedFragment[][] = [];
   let start = 0;
   for (const breakIndex of breakIndexes) {
@@ -166,6 +177,42 @@ function splitFragmentsByColumnBreaks(
   }
   groups.push(fragments.slice(start));
   return groups.filter((g) => g.length > 0);
+}
+
+function splitFragmentsByMidpoint(
+  fragments: ExtractedFragment[],
+  pageWidth: number,
+): ExtractedFragment[][] | undefined {
+  const splitX = pageWidth * MULTI_COLUMN_SPLIT_RATIO;
+  const leftColumn: ExtractedFragment[] = [];
+  const rightColumn: ExtractedFragment[] = [];
+
+  for (const fragment of fragments) {
+    const estimatedCenter = fragment.x + estimateTextWidth(fragment.text, fragment.fontSize) / 2;
+    if (estimatedCenter < splitX) {
+      leftColumn.push(fragment);
+    } else {
+      rightColumn.push(fragment);
+    }
+  }
+
+  if (leftColumn.length === 0 || rightColumn.length === 0) return undefined;
+  const leftSubstantiveChars = leftColumn.reduce(
+    (sum, fragment) => sum + countSubstantiveChars(fragment.text),
+    0,
+  );
+  const rightSubstantiveChars = rightColumn.reduce(
+    (sum, fragment) => sum + countSubstantiveChars(fragment.text),
+    0,
+  );
+  if (
+    leftSubstantiveChars < MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT ||
+    rightSubstantiveChars < MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT
+  ) {
+    return undefined;
+  }
+
+  return [leftColumn, rightColumn];
 }
 
 function shouldForceSplitHeadingPrefixedRow(

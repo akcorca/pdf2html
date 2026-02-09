@@ -26,7 +26,7 @@ const STANDALONE_CITATION_MARKER_PATTERN =
   /^(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*$/;
 const PAGE_COUNTER_PATTERN = /\(\d+\s+of\s+\d+\)/i;
 const DOMAIN_LIKE_TOKEN_PATTERN = /\b(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/;
-const TOP_MATTER_AFFILIATION_INDEX_PATTERN = /^[\d\s,.;:()[\]{}+\-]+$/;
+const TOP_MATTER_AFFILIATION_INDEX_PATTERN = /^[\d\s,.;:()[\]{}+-]+$/;
 const TOP_MATTER_AFFILIATION_MIN_VERTICAL_RATIO = 0.72;
 const TOP_MATTER_AFFILIATION_MAX_FONT_RATIO = 0.82;
 const TOP_MATTER_AFFILIATION_MIN_INDEX_TOKENS = 2;
