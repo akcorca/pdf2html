@@ -171,6 +171,11 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml.indexOf(footnoteUrl)).toBeGreaterThan(respectHtml.indexOf(referencesHeading));
   });
 
+  it("renders comma-containing numbered headings as semantic headings in respect.pdf", () => {
+    expect(respectHtml).toContain("<h3>4.1 Languages, LLMs, and Prompt</h3>");
+    expect(respectHtml).not.toContain("<p>4.1 Languages, LLMs, and Prompt</p>");
+  });
+
   it("merges wrapped tft paper title lines into a single h1 heading", () => {
     expect(tftHtml).toContain(
       "<h1>Multifunctional Organic-Semiconductor Interfacial Layers for Solution-Processed Oxide-Semiconductor Thin-Film Transistor</h1>",

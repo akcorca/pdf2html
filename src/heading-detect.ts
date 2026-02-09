@@ -42,7 +42,7 @@ export function detectNumberedHeadingLevel(text: string): number | undefined {
   }
 
   const headingText = match[2].trim();
-  if (!isValidHeadingText(headingText)) return undefined;
+  if (!isValidHeadingText(headingText, sectionNumber)) return undefined;
 
   const depth = sectionNumber.split(".").length;
   return Math.min(depth + 1, 6);
@@ -56,9 +56,9 @@ export function detectNamedSectionHeadingLevel(text: string): number | undefined
   return NAMED_SECTION_HEADING_LEVELS.get(normalized.toLowerCase());
 }
 
-function isValidHeadingText(text: string): boolean {
+function isValidHeadingText(text: string, sectionNumber: string): boolean {
   if (text.length < 2) return false;
-  if (text.includes(",")) return false;
+  if (text.includes(",") && !sectionNumber.includes(".")) return false;
   if (isLikelyScoredTableRow(text)) return false;
   if (/[.!?]$/.test(text)) return false;
   if (!/^[A-Z]/.test(text)) return false;
