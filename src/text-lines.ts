@@ -68,7 +68,14 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
     reorderedTopLevel,
     multiColumnPageIndexes,
   );
-  return reorderMisorderedNumberedHeadings(reorderedWithLeftHeadingPromotion, multiColumnPageIndexes);
+  const reorderedNumberedHeadings = reorderMisorderedNumberedHeadings(
+    reorderedWithLeftHeadingPromotion,
+    multiColumnPageIndexes,
+  );
+  return reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
+    reorderedNumberedHeadings,
+    multiColumnPageIndexes,
+  );
 }
 
 function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColumn: boolean } {
@@ -221,6 +228,47 @@ function reorderLeftColumnTopLevelHeadings(
     findPromotionIndex: (reordered, index) =>
       findLeftColumnTopLevelHeadingPromotionIndex(reordered, index, multiColumnPageIndexes),
   });
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: heading-pair recovery heuristics are evaluated in one pass.
+function reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
+  lines: TextLine[],
+  multiColumnPageIndexes: Set<number>,
+): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 0; index < reordered.length - 2; index += 1) {
+    const leftHeading = reordered[index];
+    const rightHeading = reordered[index + 1];
+    if (!leftHeading || !rightHeading) continue;
+    if (!multiColumnPageIndexes.has(leftHeading.pageIndex)) continue;
+    if (leftHeading.pageIndex !== rightHeading.pageIndex) continue;
+    if (classifyMultiColumnLine(leftHeading) !== "left") continue;
+    if (classifyMultiColumnLine(rightHeading) !== "right") continue;
+
+    const leftTopLevel = getTopLevelHeadingNumber(leftHeading.text);
+    const rightTopLevel = getTopLevelHeadingNumber(rightHeading.text);
+    if (leftTopLevel === undefined || rightTopLevel === undefined) continue;
+    if (leftTopLevel + 1 !== rightTopLevel) continue;
+
+    let continuationStart = index + 2;
+    while (continuationStart < reordered.length) {
+      const continuationLine = reordered[continuationStart];
+      if (continuationLine.pageIndex !== leftHeading.pageIndex) break;
+      if (classifyMultiColumnLine(continuationLine) !== "left") break;
+      if (!isLikelyNearRowBodyLine(continuationLine)) break;
+      if (isLikelyColumnHeadingLine(continuationLine.text)) break;
+      if (continuationLine.y <= leftHeading.y) break;
+      continuationStart += 1;
+    }
+
+    const continuationCount = continuationStart - (index + 2);
+    if (continuationCount === 0) continue;
+
+    const continuations = reordered.splice(index + 2, continuationCount);
+    reordered.splice(index, 0, ...continuations);
+    index += continuationCount;
+  }
+  return reordered;
 }
 
 interface ReorderLinesByPromotionInput {

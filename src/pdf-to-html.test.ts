@@ -119,6 +119,14 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml.indexOf(section3)).toBeLessThan(cleanHtml.indexOf(section4));
   });
 
+  it("keeps trailing left-column sentence before the next numbered section heading in clean.pdf", () => {
+    const trailingSentence = "develop even more advanced tools.";
+    const section3 = "<h2>3 CLEANAGENT WORKFLOW</h2>";
+    expect(cleanHtml).toContain(trailingSentence);
+    expect(cleanHtml).toContain(section3);
+    expect(cleanHtml.indexOf(trailingSentence)).toBeLessThan(cleanHtml.indexOf(section3));
+  });
+
   it("renders numbered code examples in clean.pdf as semantic pre/code blocks", () => {
     expect(cleanHtml).toMatch(
       /<pre><code>1 def standardize_address \( addr \):[\s\S]*9 return f\"\{ street \}, \{ state \}, \{ zipcode \}\"<\/code><\/pre>/,
