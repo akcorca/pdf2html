@@ -13,6 +13,10 @@ const MIN_REPEATED_EDGE_TEXT_PAGES = 4;
 const MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE = 0.6;
 const MIN_PAGE_NUMBER_SEQUENCE_PAGES = 3;
 const MIN_PAGE_NUMBER_SEQUENCE_COVERAGE = 0.5;
+const ARXIV_SUBMISSION_STAMP_PATTERN =
+  /\barXiv:\d{4}\.\d{4,5}(?:v\d+)?\s+\[[^\]]+\]\s+\d{1,2}\s+[A-Za-z]{3}\s+\d{4}\b/i;
+const ARXIV_SUBMISSION_STAMP_MIN_FONT_SIZE_DELTA = 6;
+const ARXIV_SUBMISSION_STAMP_MIN_FONT_SIZE_RATIO = 1.6;
 const DEFAULT_TITLE_MIN_FONT_SIZE_DELTA = 5;
 const DEFAULT_TITLE_MIN_FONT_SIZE_RATIO = 1.5;
 const NEGATIVE_COORD_TITLE_MIN_FONT_SIZE_DELTA = 2;
@@ -231,11 +235,16 @@ function filterPageArtifacts(lines: TextLine[]): TextLine[] {
     return lines;
   }
 
+  const bodyFontSize = estimateBodyFontSize(lines);
   const pageExtents = computePageVerticalExtents(lines);
   const repeatedEdgeTexts = findRepeatedEdgeTexts(lines, pageExtents);
   const pageNumberLines = findLikelyPageNumberLines(lines, pageExtents);
 
   return lines.filter((line) => {
+    if (isLikelyArxivSubmissionStamp(line, bodyFontSize)) {
+      return false;
+    }
+
     if (repeatedEdgeTexts.has(line.text)) {
       return false;
     }
@@ -246,6 +255,22 @@ function filterPageArtifacts(lines: TextLine[]): TextLine[] {
 
     return true;
   });
+}
+
+function isLikelyArxivSubmissionStamp(line: TextLine, bodyFontSize: number): boolean {
+  if (!ARXIV_SUBMISSION_STAMP_PATTERN.test(line.text)) {
+    return false;
+  }
+
+  if (line.estimatedWidth > line.pageWidth * 0.7) {
+    return false;
+  }
+
+  const minFontSize = Math.max(
+    bodyFontSize + ARXIV_SUBMISSION_STAMP_MIN_FONT_SIZE_DELTA,
+    bodyFontSize * ARXIV_SUBMISSION_STAMP_MIN_FONT_SIZE_RATIO,
+  );
+  return line.fontSize >= minFontSize;
 }
 
 function computePageVerticalExtents(lines: TextLine[]): Map<number, PageVerticalExtent> {

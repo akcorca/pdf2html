@@ -60,6 +60,10 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("<h1>arXiv:1706.03762v7 [cs.CL] 2 Aug 2023</h1>");
   });
 
+  it("removes the arXiv side metadata line from the document body", () => {
+    expect(html).not.toContain("<p>arXiv:1706.03762v7 [cs.CL] 2 Aug 2023</p>");
+  });
+
   it("ignores extremely out-of-page text artifacts for clean.pdf", () => {
     expect(cleanHtml).not.toContain("Name Admission Date Address Abby Fri Jan 1st");
   });
