@@ -18,6 +18,9 @@ const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
   ["discussion", 2],
   ["references", 2],
 ]);
+const INLINE_ACKNOWLEDGEMENTS_HEADING_PATTERN =
+  /^(acknowledg(?:e)?ments?)(?:(?:\s*[:\-–]\s*)|\s+)(.+)$/iu;
+const INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH = 8;
 const TRAILING_TABULAR_SCORE_PATTERN = /\b\d{1,2}\.\d{1,2}$/;
 const BULLET_LIST_ITEM_PATTERN = /^([•◦▪●○■□◆◇‣⁃∙·])\s+(.+)$/u;
 const MIN_LIST_CONTINUATION_INDENT = 6;
@@ -74,6 +77,14 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     const headingTag = renderHeadingTag(currentLine, bodyFontSize, hasDottedSubsectionHeadings);
     if (headingTag !== undefined) {
       bodyLines.push(headingTag);
+      index += 1;
+      continue;
+    }
+
+    const inlineHeading = parseInlineAcknowledgementsHeading(currentLine.text);
+    if (inlineHeading !== undefined) {
+      bodyLines.push(`<h${inlineHeading.level}>${escapeHtml(inlineHeading.heading)}</h${inlineHeading.level}>`);
+      bodyLines.push(`<p>${escapeHtml(inlineHeading.body)}</p>`);
       index += 1;
       continue;
     }
@@ -285,6 +296,20 @@ export function detectNamedSectionHeadingLevel(text: string): number | undefined
   if (containsDocumentMetadata(normalized)) return undefined;
   if (!/^[A-Za-z][A-Za-z\s-]*[A-Za-z]$/u.test(normalized)) return undefined;
   return NAMED_SECTION_HEADING_LEVELS.get(normalized.toLowerCase());
+}
+
+function parseInlineAcknowledgementsHeading(
+  text: string,
+): { heading: string; body: string; level: number } | undefined {
+  const normalized = normalizeSpacing(text);
+  const match = INLINE_ACKNOWLEDGEMENTS_HEADING_PATTERN.exec(normalized);
+  if (!match) return undefined;
+
+  const headingText = normalizeSpacing(match[1]);
+  const bodyText = match[2].trim();
+  if (bodyText.length < INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH) return undefined;
+  if (!/[A-Za-z]/.test(bodyText)) return undefined;
+  return { heading: headingText, body: bodyText, level: 2 };
 }
 
 function isValidHeadingText(text: string): boolean {

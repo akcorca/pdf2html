@@ -139,6 +139,16 @@ describe("convertPdfToHtml", () => {
     expect(html).toContain("<h2>Abstract</h2>");
   });
 
+  it("splits inline acknowledgements heading in attention.pdf into a semantic heading", () => {
+    expect(html).toContain("<h2>Acknowledgements</h2>");
+    expect(html).toContain(
+      "<p>We are grateful to Nal Kalchbrenner and Stephan Gouws for their fruitful</p>",
+    );
+    expect(html).not.toContain(
+      "<p>Acknowledgements We are grateful to Nal Kalchbrenner and Stephan Gouws for their fruitful</p>",
+    );
+  });
+
   it("moves first-page footnotes in attention.pdf to the end of the document", () => {
     const footnoteText = "Equal contribution. Listing order is random.";
     const referencesHeading = "<h2>References</h2>";
