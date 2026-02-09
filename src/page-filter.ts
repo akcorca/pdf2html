@@ -38,6 +38,17 @@ const TOP_MATTER_SYMBOLIC_AFFILIATION_PATTERN = /^(?:[*∗†‡§¶#]\s*){2,}$/
 const TOP_MATTER_SYMBOLIC_AFFILIATION_MIN_VERTICAL_RATIO = 0.55;
 const TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_VERTICAL_RATIO = 0.72;
 const TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_FONT_RATIO = 0.82;
+const INLINE_FIGURE_LABEL_MAX_FONT_RATIO = 0.72;
+const INLINE_FIGURE_LABEL_MIN_RIGHT_X_RATIO = 0.42;
+const INLINE_FIGURE_LABEL_MIN_VERTICAL_RATIO = 0.45;
+const INLINE_FIGURE_LABEL_MAX_VERTICAL_RATIO = 0.9;
+const INLINE_FIGURE_LABEL_MIN_SUBSTANTIVE_CHARS = 4;
+const INLINE_FIGURE_LABEL_NEAR_BODY_LEFT_MAX_X_RATIO = 0.28;
+const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_FONT_RATIO = 0.9;
+const INLINE_FIGURE_LABEL_NEAR_BODY_MAX_Y_DELTA_FONT_RATIO = 2.4;
+const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_Y_DELTA = 10;
+const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_SUBSTANTIVE_CHARS = 8;
+const DENSE_INLINE_FIGURE_LABEL_MIN_LINES = 20;
 
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
@@ -48,6 +59,7 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
     stripRepeatedEdgeTextAffixes(lines, repeatedEdgeTexts),
   );
   const pageNumberLines = findLikelyPageNumberLines(strippedLines, pageExtents);
+  const inlineFigureLabelLines = findLikelyInlineFigureLabelLines(strippedLines, bodyFontSize);
   return strippedLines.filter(
     (line) =>
       !isRemovablePageArtifact(
@@ -56,6 +68,7 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
         pageExtents,
         repeatedEdgeTexts,
         pageNumberLines,
+        inlineFigureLabelLines,
       ),
   );
 }
@@ -66,12 +79,14 @@ function isRemovablePageArtifact(
   pageExtents: Map<number, PageVerticalExtent>,
   repeatedEdgeTexts: Set<string>,
   pageNumberLines: Set<TextLine>,
+  inlineFigureLabelLines: Set<TextLine>,
 ): boolean {
   if (line.text.length === 0) return true;
   if (isLikelyArxivSubmissionStamp(line, bodyFontSize)) return true;
   if (isLikelyPublisherPageCounterFooter(line, pageExtents)) return true;
   if (isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize)) return true;
   if (isLikelyTopMatterSymbolicAffiliationLine(line, bodyFontSize)) return true;
+  if (inlineFigureLabelLines.has(line)) return true;
   if (repeatedEdgeTexts.has(line.text)) return true;
   if (pageNumberLines.has(line)) return true;
   return isStandaloneCitationMarker(line.text);
@@ -332,6 +347,80 @@ function stripTextSuffix(text: string, suffix: string): string {
 function isEdgeTextBoundary(character: string): boolean {
   if (character.length === 0) return true;
   return /[\s()[\]{}.,;:!?'"/-]/.test(character);
+}
+
+function findLikelyInlineFigureLabelLines(
+  lines: TextLine[],
+  bodyFontSize: number,
+): Set<TextLine> {
+  if (lines.length === 0) return new Set<TextLine>();
+  const byPage = groupLinesByPage(lines);
+  const result = new Set<TextLine>();
+  for (const pageLines of byPage.values()) {
+    const candidates = pageLines.filter((line) =>
+      isLikelyInlineFigureLabelLine(line, pageLines, bodyFontSize),
+    );
+    if (candidates.length < DENSE_INLINE_FIGURE_LABEL_MIN_LINES) continue;
+    for (const line of candidates) result.add(line);
+  }
+  return result;
+}
+
+function groupLinesByPage(lines: TextLine[]): Map<number, TextLine[]> {
+  return lines.reduce((grouped, line) => {
+    const pageLines = grouped.get(line.pageIndex) ?? [];
+    pageLines.push(line);
+    grouped.set(line.pageIndex, pageLines);
+    return grouped;
+  }, new Map<number, TextLine[]>());
+}
+
+function isLikelyInlineFigureLabelLine(
+  line: TextLine,
+  pageLines: TextLine[],
+  bodyFontSize: number,
+): boolean {
+  if (line.pageWidth <= 0 || line.pageHeight <= 0) return false;
+  if (line.fontSize > bodyFontSize * INLINE_FIGURE_LABEL_MAX_FONT_RATIO) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (countSubstantiveChars(normalized) < INLINE_FIGURE_LABEL_MIN_SUBSTANTIVE_CHARS) return false;
+
+  const relativeX = line.x / line.pageWidth;
+  if (relativeX < INLINE_FIGURE_LABEL_MIN_RIGHT_X_RATIO) return false;
+
+  const relativeY = line.y / line.pageHeight;
+  if (
+    relativeY < INLINE_FIGURE_LABEL_MIN_VERTICAL_RATIO ||
+    relativeY > INLINE_FIGURE_LABEL_MAX_VERTICAL_RATIO
+  ) {
+    return false;
+  }
+
+  return hasNearbyBodyLineInLeftColumn(line, pageLines, bodyFontSize);
+}
+
+function hasNearbyBodyLineInLeftColumn(
+  line: TextLine,
+  pageLines: TextLine[],
+  bodyFontSize: number,
+): boolean {
+  const maxYDelta = Math.max(
+    line.fontSize * INLINE_FIGURE_LABEL_NEAR_BODY_MAX_Y_DELTA_FONT_RATIO,
+    INLINE_FIGURE_LABEL_NEAR_BODY_MIN_Y_DELTA,
+  );
+  return pageLines.some((other) => {
+    if (other === line) return false;
+    if (Math.abs(other.y - line.y) > maxYDelta) return false;
+    if (other.pageWidth <= 0) return false;
+    if (other.fontSize < bodyFontSize * INLINE_FIGURE_LABEL_NEAR_BODY_MIN_FONT_RATIO) return false;
+    if (other.x / other.pageWidth > INLINE_FIGURE_LABEL_NEAR_BODY_LEFT_MAX_X_RATIO) return false;
+    return countSubstantiveChars(other.text) >= INLINE_FIGURE_LABEL_NEAR_BODY_MIN_SUBSTANTIVE_CHARS;
+  });
+}
+
+function countSubstantiveChars(text: string): number {
+  return normalizeSpacing(text).replace(/[^\p{L}\p{N}]+/gu, "").length;
 }
 
 function isStandaloneCitationMarker(text: string): boolean {

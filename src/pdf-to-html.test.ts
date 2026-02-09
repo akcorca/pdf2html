@@ -85,6 +85,11 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).toContain("scientist inputs their requirement to standardize “Admission Date”");
   });
 
+  it("removes dense inline figure-label text from clean.pdf abstract area", () => {
+    expect(cleanHtml).not.toContain("<p>I want the output format of the date</p>");
+    expect(cleanHtml).not.toContain("<p>Input Table 𝑻</p>");
+  });
+
   it("removes repeated running headers and standalone page number lines", () => {
     expect(covidHtml).not.toContain("<p>Thrombosis Research 202 (2021) 17–23</p>");
     expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);
