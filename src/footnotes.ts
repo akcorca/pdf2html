@@ -45,8 +45,7 @@ function partitionFootnoteLines(
   const footnoteLines: TextLine[] = [];
 
   for (const line of lines) {
-    if (moved.has(line)) footnoteLines.push(line);
-    else bodyLines.push(line);
+    (moved.has(line) ? footnoteLines : bodyLines).push(line);
   }
 
   return { bodyLines, footnoteLines };
@@ -115,8 +114,7 @@ function isFootnoteStartMarkerLine(line: TextLine, bodyFontSize: number): boolea
 }
 
 function isLikelyFootnoteTextLine(line: TextLine, bodyFontSize: number): boolean {
-  const text = getValidFootnoteBlockText(line, bodyFontSize);
-  return text !== undefined && text.length >= FOOTNOTE_MIN_TEXT_LENGTH && /[A-Za-z]/.test(text);
+  return getFootnoteContentText(line, bodyFontSize) !== undefined;
 }
 
 function isLikelyFootnoteContinuationLine(
@@ -127,18 +125,22 @@ function isLikelyFootnoteContinuationLine(
   if (line.pageIndex !== previousLine.pageIndex) return false;
   if (line.y >= previousLine.y) return false;
   if (previousLine.y - line.y > FOOTNOTE_MAX_VERTICAL_GAP) return false;
-  return getValidFootnoteBlockText(line, bodyFontSize) !== undefined;
+  return getFootnoteBlockText(line, bodyFontSize) !== undefined;
 }
 
-function getValidFootnoteBlockText(
-  line: TextLine,
-  bodyFontSize: number,
-): string | undefined {
+function getFootnoteBlockText(line: TextLine, bodyFontSize: number): string | undefined {
   if (line.y > line.pageHeight * FOOTNOTE_BLOCK_MAX_VERTICAL_RATIO) return undefined;
   if (line.fontSize > bodyFontSize * FOOTNOTE_TEXT_MAX_FONT_RATIO) return undefined;
 
   const text = normalizeSpacing(line.text);
   if (text.length === 0) return undefined;
+  return text;
+}
+
+function getFootnoteContentText(line: TextLine, bodyFontSize: number): string | undefined {
+  const text = getFootnoteBlockText(line, bodyFontSize);
+  if (!text || text.length < FOOTNOTE_MIN_TEXT_LENGTH) return undefined;
+  if (!/[A-Za-z]/.test(text)) return undefined;
   return text;
 }
 
@@ -180,9 +182,9 @@ function mergeStandaloneMarkerLine(
 
   const markerText = normalizeSpacing(markerLine.text);
   if (!isFootnoteMarkerOnlyText(markerText)) return undefined;
-  if (!isLikelyFootnoteTextLine(textLine, bodyFontSize)) return undefined;
+  const textLineText = getFootnoteContentText(textLine, bodyFontSize);
+  if (!textLineText) return undefined;
 
-  const textLineText = normalizeSpacing(textLine.text);
   return {
     ...textLine,
     x: Math.min(markerLine.x, textLine.x),
