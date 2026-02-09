@@ -143,6 +143,14 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml.indexOf(trailingSentence)).toBeLessThan(cleanHtml.indexOf(section3));
   });
 
+  it("keeps clean.pdf first-page right-column example content after the left-column section heading", () => {
+    const section1 = "<h2>1 INTRODUCTION</h2>";
+    const example2 = "Example 2. Still considering the data standardization task in";
+    expect(cleanHtml).toContain(section1);
+    expect(cleanHtml).toContain(example2);
+    expect(cleanHtml.indexOf(section1)).toBeLessThan(cleanHtml.indexOf(example2));
+  });
+
   it("renders numbered code examples in clean.pdf as semantic pre/code blocks", () => {
     expect(cleanHtml).toMatch(
       /<pre><code>1 def standardize_address \( addr \):[\s\S]*9 return f\"\{ street \}, \{ state \}, \{ zipcode \}\"<\/code><\/pre>/,

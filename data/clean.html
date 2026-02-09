@@ -10,16 +10,9 @@
 <p>Simon Fraser University</p>
 <p>{dqi, zhengjie, jnwang}@sfu.ca</p>
 <h2>ABSTRACT</h2>
-<p>Data standardization is a crucial part of the data science life cycle. While tools like Pandas offer robust functionalities, their complex-ity and the manual effort required for customizing code to diverse column types pose significant challenges. Although large language models (LLMs) like ChatGPT have shown promise in automating this process through natural language understanding and code gen-eration, it still demands expert-level programming knowledge and continuous interaction for prompt refinement. To solve these chal-lenges, our key idea is to propose a Python library with declarative, unified APIs for standardizing different column types, simplify-ing the LLM’s code generation with concise API calls. We first propose Dataprep.Clean , a component of the Dataprep Python Library, significantly reduces the coding complexity by enabling the standardization of specific column types with a single line of code. Then, we introduce the CleanAgent framework integrat-</p>
-<p>Example 2. Still considering the data standardization task in</p>
-<p>ing Dataprep.Clean and LLM-based agents to automate the data</p>
-<p>Figure 1. For standardizing “Admission Date” and “Address”, data sci-</p>
-<p>standardization process. With CleanAgent , data scientists only</p>
-<p>entists need to write the datetime standardization code for “Admission</p>
-<p>need to provide their requirements once, allowing for a hands-free</p>
-<p>Date” and address standardization code for “Address” using regex. An</p>
-<p>process.</p>
-<p>example standardization code for “Address” is shown as follows .</p>
+<p>Data standardization is a crucial part of the data science life cycle. While tools like Pandas offer robust functionalities, their complex-ity and the manual effort required for customizing code to diverse column types pose significant challenges. Although large language models (LLMs) like ChatGPT have shown promise in automating this process through natural language understanding and code gen-eration, it still demands expert-level programming knowledge and continuous interaction for prompt refinement. To solve these chal-lenges, our key idea is to propose a Python library with declarative, unified APIs for standardizing different column types, simplify-ing the LLM’s code generation with concise API calls. We first propose Dataprep.Clean , a component of the Dataprep Python Library, significantly reduces the coding complexity by enabling the standardization of specific column types with a single line of code. Then, we introduce the CleanAgent framework integrat-ing Dataprep.Clean and LLM-based agents to automate the data standardization process. With CleanAgent , data scientists only need to provide their requirements once, allowing for a hands-free process.</p>
+<h2>1 INTRODUCTION</h2>
+<p>Example 2. Still considering the data standardization task in Figure 1. For standardizing “Admission Date” and “Address”, data sci-entists need to write the datetime standardization code for “Admission Date” and address standardization code for “Address” using regex. An example standardization code for “Address” is shown as follows .</p>
 <pre><code>1 def standardize_address ( addr ):
 2 # Extract street number and street name
 3 street = pd . Series ( addr ). str . extract (r ' (\ d+ [^ ,]+) ' ).
@@ -31,7 +24,6 @@ squeeze ()
 squeeze ()
 8 # Output standardized address
 9 return f"{ street }, { state }, { zipcode }"</code></pre>
-<h2>1 INTRODUCTION</h2>
 <p>Data standardization, which is pivotal in the realm of data science,</p>
 <p>aims to transform heterogeneous data formats within a single col-</p>
 <p>umn into a unified data format. This crucial data preprocessing step</p>
@@ -199,8 +191,8 @@ squeeze ()
 <p>Annotator</p>
 <p>Executor</p>
 <p>4 df = clean_email (</p>
-<p>sults ( ③ in Figure 2), picks up the corresponding clean functions,</p>
 <p>3 Historical</p>
+<p>sults ( ③ in Figure 2), picks up the corresponding clean functions,</p>
 <p>df, “email”)</p>
 <p>Tools</p>
 <p>Message</p>
@@ -482,9 +474,7 @@ squeeze ()
 <p>The script must be runnable with ‘python script.py‘ in a standard Python environment (pandas &amp; common pip packages installed)</p>
 <p>Return only the column typing and script. No additional explanations.</p>
 <p>Sample rows of the given table is shown as follows: {df}</p>
-<p>1</p>
-<p><a href="https://colab.research.google.com/github/Cocoon-Data-Transformation/cocoon/">https://colab.research.google.com/github/Cocoon-Data-Transformation/cocoon/</a></p>
-<p>2</p>
-<p><a href="https://cocoon-data-transformation.github.io/page/clean">https://cocoon-data-transformation.github.io/page/clean</a></p>
+<p>1 <a href="https://colab.research.google.com/github/Cocoon-Data-Transformation/cocoon/">https://colab.research.google.com/github/Cocoon-Data-Transformation/cocoon/</a></p>
+<p>2 <a href="https://cocoon-data-transformation.github.io/page/clean">https://cocoon-data-transformation.github.io/page/clean</a></p>
 </body>
 </html>

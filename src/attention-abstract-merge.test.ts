@@ -67,4 +67,17 @@ describe("attention abstract same-row merge", () => {
       "<p>On both WMT 2014 English-to-German and WMT 2014</p>",
     );
   });
+
+  it("merges same-row wide-gap continuation lines in section 6.3 into one paragraph", () => {
+    expect(attentionHtml).toMatch(
+      /increased the maximum output length to input length \+\s+300 \. We used a beam size of 21[^<]*for both WSJ only and the semi-supervised setting\./,
+    );
+    expect(attentionHtml).not.toContain(
+      "<p>increased the maximum output length to input length +</p>",
+    );
+    expect(attentionHtml).not.toContain("<p>300 . We used a beam size of 21");
+    expect(attentionHtml).not.toContain(
+      "<p>for both WSJ only and the semi-supervised setting.</p>",
+    );
+  });
 });

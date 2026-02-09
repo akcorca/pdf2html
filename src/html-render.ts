@@ -65,6 +65,11 @@ const BODY_PARAGRAPH_SHORT_LEAD_MIN_WIDTH_RATIO = 0.55;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_WORD_COUNT = 4;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_X_BACKSHIFT_RATIO = 0.08;
 const BODY_PARAGRAPH_SHORT_LEAD_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO = 0.25;
+const BODY_PARAGRAPH_OPERATOR_TRAILING_PATTERN = /[+\-−/=]$/u;
+const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MIN_X_DELTA_RATIO = 0.18;
+const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO = 0.25;
+const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_PREVIOUS_WIDTH_RATIO = 0.7;
+const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_CONTINUATION_WIDTH_RATIO = 0.65;
 const INLINE_MATH_BRIDGE_MAX_LOOKAHEAD = 4;
 const INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH = 24;
 const INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT = 8;
@@ -1301,7 +1306,6 @@ function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): 
   return result;
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: paragraph merge heuristics are evaluated in one pass.
 function consumeBodyParagraph(
   lines: TextLine[],
   startIndex: number,
@@ -1322,10 +1326,8 @@ function consumeBodyParagraph(
   if (startNormalized === undefined) return undefined;
   if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(startNormalized)) return undefined;
-  const isStartFullWidth = startLine.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO;
   if (
-    !isStartFullWidth &&
-    !isShortWrappedBodyParagraphLead(
+    !isBodyParagraphLead(
       lines,
       startIndex,
       startLine,
@@ -1340,10 +1342,88 @@ function consumeBodyParagraph(
   }
 
   const parts = [startNormalized];
+  const nextIndex = consumeBodyParagraphContinuationParts(
+    lines,
+    startIndex + 1,
+    startLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    typicalWidth,
+    parts,
+  );
+
+  if (parts.length <= 1 && nextIndex === startIndex + 1) return undefined;
+  return { text: normalizeSpacing(parts.join(" ")), nextIndex };
+}
+
+function isBodyParagraphLead(
+  lines: TextLine[],
+  startIndex: number,
+  startLine: TextLine,
+  startNormalized: string,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  typicalWidth: number,
+): boolean {
+  if (startLine.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO) return true;
+  if (
+    consumeSameRowOperatorSplitBodyContinuation(
+      lines,
+      startIndex + 1,
+      startLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+      typicalWidth,
+    ) !== undefined
+  ) {
+    return true;
+  }
+  return isShortWrappedBodyParagraphLead(
+    lines,
+    startIndex,
+    startLine,
+    startNormalized,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    typicalWidth,
+  );
+}
+
+function consumeBodyParagraphContinuationParts(
+  lines: TextLine[],
+  continuationStartIndex: number,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  typicalWidth: number,
+  parts: string[],
+): number {
   let previousLine = startLine;
-  let nextIndex = startIndex + 1;
+  let nextIndex = continuationStartIndex;
 
   while (nextIndex < lines.length) {
+    const sameRowOperatorContinuation = consumeSameRowOperatorSplitBodyContinuation(
+      lines,
+      nextIndex,
+      previousLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+      typicalWidth,
+    );
+    if (sameRowOperatorContinuation !== undefined) {
+      appendBodyParagraphPart(parts, sameRowOperatorContinuation.text);
+      nextIndex = sameRowOperatorContinuation.nextIndex;
+      continue;
+    }
+
     const candidate = lines[nextIndex];
     const bridgedContinuationIndex = findBodyParagraphContinuationAfterInlineMathArtifacts(
       lines,
@@ -1368,37 +1448,37 @@ function consumeBodyParagraph(
     )) {
       break;
     }
-    const candidateNormalized = normalizeSpacing(candidate.text);
-    const previousText = parts[parts.length - 1];
-    if (isHyphenWrappedLineText(previousText)) {
-      parts[parts.length - 1] = mergeHyphenWrappedTexts(previousText, candidateNormalized);
-    } else {
-      parts.push(candidateNormalized);
-    }
-    const isFullWidth = candidate.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO;
+
+    appendBodyParagraphPart(parts, normalizeSpacing(candidate.text));
     previousLine = candidate;
     nextIndex += 1;
-    if (!isFullWidth) {
-      const sameRowContinuation = consumeTrailingSameRowSentenceContinuation(
-        lines,
-        nextIndex,
-        candidate,
-        titleLine,
-        bodyFontSize,
-        hasDottedSubsectionHeadings,
-      );
-      if (sameRowContinuation !== undefined) {
-        parts.push(sameRowContinuation.text);
-        previousLine = sameRowContinuation.line;
-        nextIndex = sameRowContinuation.nextIndex;
-        continue;
-      }
-      break;
-    }
+    const isFullWidth = candidate.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO;
+    if (isFullWidth) continue;
+
+    const sameRowContinuation = consumeTrailingSameRowSentenceContinuation(
+      lines,
+      nextIndex,
+      candidate,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    );
+    if (sameRowContinuation === undefined) break;
+    parts.push(sameRowContinuation.text);
+    previousLine = sameRowContinuation.line;
+    nextIndex = sameRowContinuation.nextIndex;
   }
 
-  if (parts.length <= 1 && nextIndex === startIndex + 1) return undefined;
-  return { text: normalizeSpacing(parts.join(" ")), nextIndex };
+  return nextIndex;
+}
+
+function appendBodyParagraphPart(parts: string[], text: string): void {
+  const previousText = parts[parts.length - 1];
+  if (isHyphenWrappedLineText(previousText)) {
+    parts[parts.length - 1] = mergeHyphenWrappedTexts(previousText, text);
+    return;
+  }
+  parts.push(text);
 }
 
 function isShortWrappedBodyParagraphLead(
@@ -1486,6 +1566,67 @@ function consumeTrailingSameRowSentenceContinuation(
     line: continuation,
     nextIndex: continuationIndex + 1,
   };
+}
+
+function consumeSameRowOperatorSplitBodyContinuation(
+  lines: TextLine[],
+  continuationIndex: number,
+  previousLine: TextLine,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  typicalWidth: number,
+): { text: string; nextIndex: number } | undefined {
+  const previousText = normalizeSpacing(previousLine.text);
+  if (!BODY_PARAGRAPH_OPERATOR_TRAILING_PATTERN.test(previousText)) return undefined;
+  if (
+    previousLine.estimatedWidth >
+    typicalWidth * BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_PREVIOUS_WIDTH_RATIO
+  ) {
+    return undefined;
+  }
+
+  const continuation = lines[continuationIndex];
+  if (!continuation) return undefined;
+  const continuationText = parseParagraphMergeCandidateText(continuation, {
+    samePageAs: previousLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    startPattern: BODY_PARAGRAPH_CONTINUATION_START_PATTERN,
+  });
+  if (continuationText === undefined) return undefined;
+  if (
+    continuation.estimatedWidth >
+    typicalWidth * BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_CONTINUATION_WIDTH_RATIO
+  ) {
+    return undefined;
+  }
+
+  const maxYDelta =
+    Math.max(previousLine.fontSize, continuation.fontSize) *
+    BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO;
+  if (Math.abs(previousLine.y - continuation.y) > maxYDelta) return undefined;
+  const minXDelta = continuation.pageWidth * BODY_PARAGRAPH_OPERATOR_SAME_ROW_MIN_X_DELTA_RATIO;
+  if (continuation.x - previousLine.x < minXDelta) return undefined;
+
+  const nextLine = lines[continuationIndex + 1];
+  if (!nextLine) return undefined;
+  if (
+    !isBodyParagraphContinuationLine(
+      nextLine,
+      previousLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
+    return undefined;
+  }
+
+  return { text: continuationText, nextIndex: continuationIndex + 1 };
 }
 
 function findBodyParagraphContinuationAfterInlineMathArtifacts(

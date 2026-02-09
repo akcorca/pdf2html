@@ -45,6 +45,7 @@ const MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE = 10;
 const MIN_COLUMN_MAJOR_VERTICAL_SPAN_RATIO = 0.2;
 const ADJACENT_RIGHT_BODY_HEADING_LOOKBACK = 6;
 const ADJACENT_RIGHT_BODY_HEADING_MAX_Y_DELTA_FONT_RATIO = 2.8;
+const FIRST_TOP_LEVEL_HEADING_RIGHT_BODY_REORDER_LOOKBACK = 14;
 const LEFT_HEADING_BODY_CONTINUATION_LOOKAHEAD = 16;
 const LEFT_HEADING_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO = 3.6;
 const LEFT_HEADING_RIGHT_BODY_START_PATTERN = /^[a-z]/u;
@@ -94,6 +95,7 @@ function applyReadingOrderReorders(
     reordered,
     multiColumnPageIndexes,
   );
+  reordered = reorderRightColumnBodyBeforeFirstTopLevelHeading(reordered, multiColumnPageIndexes);
   return reordered;
 }
 
@@ -616,6 +618,91 @@ function findLeftColumnTopLevelHeadingPromotionIndex(
   }
 
   return promotionIndex < currentIndex ? promotionIndex : undefined;
+}
+
+function reorderRightColumnBodyBeforeFirstTopLevelHeading(
+  lines: TextLine[],
+  multiColumnPageIndexes: Set<number>,
+): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 1; index < reordered.length; index += 1) {
+    const heading = reordered[index];
+    if (!isFirstTopLevelLeftColumnHeadingOnFirstPage(heading, multiColumnPageIndexes)) continue;
+    const rightBodyIndexes = findRightBodyIndexesBeforeHeading(reordered, index, heading);
+    if (rightBodyIndexes === undefined) continue;
+    index = moveIndexedLinesAfterHeading(reordered, rightBodyIndexes, index);
+  }
+  return reordered;
+}
+
+function findRightBodyIndexesBeforeHeading(
+  lines: TextLine[],
+  headingIndex: number,
+  heading: TextLine,
+): number[] | undefined {
+  const scanStart = Math.max(0, headingIndex - FIRST_TOP_LEVEL_HEADING_RIGHT_BODY_REORDER_LOOKBACK);
+  const rightBodyIndexes: number[] = [];
+  let hasLeftBodyLine = false;
+  for (let scanIndex = scanStart; scanIndex < headingIndex; scanIndex += 1) {
+    const candidateColumn = classifyNearRowBodyColumnBeforeHeading(lines[scanIndex], heading);
+    if (candidateColumn === undefined) continue;
+    if (candidateColumn === "right") {
+      rightBodyIndexes.push(scanIndex);
+      continue;
+    }
+    hasLeftBodyLine = true;
+  }
+
+  if (rightBodyIndexes.length === 0 || !hasLeftBodyLine) return undefined;
+  return rightBodyIndexes;
+}
+
+function classifyNearRowBodyColumnBeforeHeading(
+  candidate: TextLine,
+  heading: TextLine,
+): "left" | "right" | undefined {
+  if (candidate.pageIndex !== heading.pageIndex) return undefined;
+  if (candidate.y <= heading.y) return undefined;
+  if (isLikelyColumnHeadingLine(candidate.text)) return undefined;
+  if (!isLikelyNearRowBodyLine(candidate)) return undefined;
+  const candidateColumn = classifyMultiColumnLine(candidate);
+  return candidateColumn === "spanning" ? undefined : candidateColumn;
+}
+
+function moveIndexedLinesAfterHeading(
+  lines: TextLine[],
+  lineIndexes: number[],
+  headingIndex: number,
+): number {
+  const linesToMove = lineIndexes.map((lineIndex) => lines[lineIndex]);
+  let adjustedHeadingIndex = headingIndex;
+  for (let index = lineIndexes.length - 1; index >= 0; index -= 1) {
+    const removeIndex = lineIndexes[index];
+    if (removeIndex < adjustedHeadingIndex) adjustedHeadingIndex -= 1;
+    lines.splice(removeIndex, 1);
+  }
+
+  const insertIndex = adjustedHeadingIndex + 1;
+  lines.splice(insertIndex, 0, ...linesToMove);
+  return insertIndex + linesToMove.length;
+}
+
+function isFirstTopLevelLeftColumnHeadingOnFirstPage(
+  line: TextLine,
+  multiColumnPageIndexes: Set<number>,
+): boolean {
+  if (line.pageIndex !== 0) return false;
+  if (!multiColumnPageIndexes.has(line.pageIndex)) return false;
+  if (classifyMultiColumnLine(line) !== "left") return false;
+  if (getTopLevelHeadingNumber(line.text) !== 1) return false;
+  return isAllCapsTopLevelHeading(line.text);
+}
+
+function isAllCapsTopLevelHeading(text: string): boolean {
+  const parsed = parseMultiColumnHeading(text);
+  if (!parsed) return false;
+  if (!/[A-Z]/.test(parsed.headingText)) return false;
+  return !/[a-z]/.test(parsed.headingText);
 }
 
 function findTopLevelHeadingPromotionIndex(
