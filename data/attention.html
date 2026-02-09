@@ -6,9 +6,6 @@
   <title>Converted PDF</title>
 </head>
 <body>
-<p>Provided proper attribution is provided, Google hereby grants permission to</p>
-<p>reproduce the tables and figures in this paper solely for use in journalistic or</p>
-<p>scholarly works.</p>
 <h1>Attention Is All You Need</h1>
 <p>Ashish Vaswani Noam Shazeer</p>
 <p>Niki Parmar Jakob Uszkoreit</p>
@@ -56,8 +53,7 @@
 <p>significant improvements in computational efficiency through factorization tricks [ 21 ] and conditional</p>
 <p>computation [ 32 ], while also improving model performance in case of the latter. The fundamental</p>
 <p>constraint of sequential computation, however, remains.</p>
-<p>Attention mechanisms have become an integral part of compelling sequence modeling and transduc-</p>
-<p>tion models in various tasks, allowing modeling of dependencies without regard to their distance in</p>
+<p>Attention mechanisms have become an integral part of compelling sequence modeling and transduc-tion models in various tasks, allowing modeling of dependencies without regard to their distance in</p>
 <p>the input or output sequences [ 2 , 19 ]. In all but a few cases [ 27 ], however, such attention mechanisms</p>
 <p>are used in conjunction with a recurrent network.</p>
 <p>In this work we propose the Transformer, a model architecture eschewing recurrence and instead</p>
@@ -78,12 +74,10 @@
 <p>of a single sequence in order to compute a representation of the sequence. Self-attention has been</p>
 <p>used successfully in a variety of tasks including reading comprehension, abstractive summarization,</p>
 <p>textual entailment and learning task-independent sentence representations [4, 27, 28, 22].</p>
-<p>End-to-end memory networks are based on a recurrent attention mechanism instead of sequence-</p>
-<p>aligned recurrence and have been shown to perform well on simple-language question answering and</p>
+<p>End-to-end memory networks are based on a recurrent attention mechanism instead of sequence-aligned recurrence and have been shown to perform well on simple-language question answering and</p>
 <p>language modeling tasks [34].</p>
 <p>To the best of our knowledge, however, the Transformer is the first transduction model relying</p>
-<p>entirely on self-attention to compute representations of its input and output without using sequence-</p>
-<p>aligned RNNs or convolution. In the following sections, we will describe the Transformer, motivate</p>
+<p>entirely on self-attention to compute representations of its input and output without using sequence-aligned RNNs or convolution. In the following sections, we will describe the Transformer, motivate</p>
 <p>self-attention and discuss its advantages over models such as [17, 18] and [9].</p>
 <h2>3 Model Architecture</h2>
 <p>Most competitive neural sequence transduction models have an encoder-decoder structure [ 5 , 2 , 35 ].</p>
@@ -98,8 +92,7 @@
 <p>respectively.</p>
 <h3>3.1 Encoder and Decoder Stacks</h3>
 <p>Encoder: The encoder is composed of a stack of N = 6 identical layers. Each layer has two</p>
-<p>sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, position-</p>
-<p>wise fully connected feed-forward network. We employ a residual connection [ 11 ] around each of</p>
+<p>sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, position-wise fully connected feed-forward network. We employ a residual connection [ 11 ] around each of</p>
 <p>the two sub-layers, followed by layer normalization [ 1 ]. That is, the output of each sub-layer is</p>
 <p>LayerNorm( x + Sublayer( x )) , where Sublayer( x ) is the function implemented by the sub-layer</p>
 <p>itself. To facilitate these residual connections, all sub-layers in the model, as well as the embedding</p>
@@ -135,8 +128,7 @@
 <p>Attention( Q, K, V ) = softmax( √ ) V (1)</p>
 <p>d</p>
 <p>k</p>
-<p>The two most commonly used attention functions are additive attention [ 2 ], and dot-product (multi-</p>
-<p>plicative) attention. Dot-product attention is identical to our algorithm, except for the scaling factor</p>
+<p>The two most commonly used attention functions are additive attention [ 2 ], and dot-product (multi-plicative) attention. Dot-product attention is identical to our algorithm, except for the scaling factor</p>
 <p>1</p>
 <p>of √ . Additive attention computes the compatibility function using a feed-forward network with</p>
 <p>d k</p>
@@ -204,8 +196,7 @@
 <p>f f</p>
 <h3>3.4 Embeddings and Softmax</h3>
 <p>Similarly to other sequence transduction models, we use learned embeddings to convert the input</p>
-<p>tokens and output tokens to vectors of dimension d model . We also use the usual learned linear transfor-</p>
-<p>mation and softmax function to convert the decoder output to predicted next-token probabilities. In</p>
+<p>tokens and output tokens to vectors of dimension d model . We also use the usual learned linear transfor-mation and softmax function to convert the decoder output to predicted next-token probabilities. In</p>
 <p>our model, we share the same weight matrix between the two embedding layers and the pre-softmax</p>
 <p>√</p>
 <p>linear transformation, similar to [ 30 ]. In the embedding layers, we multiply those weights by d .</p>
@@ -251,8 +242,7 @@
 <p>because it may allow the model to extrapolate to sequence lengths longer than the ones encountered</p>
 <p>during training.</p>
 <h2>4 Why Self-Attention</h2>
-<p>In this section we compare various aspects of self-attention layers to the recurrent and convolu-</p>
-<p>tional layers commonly used for mapping one variable-length sequence of symbol representations</p>
+<p>In this section we compare various aspects of self-attention layers to the recurrent and convolu-tional layers commonly used for mapping one variable-length sequence of symbol representations</p>
 <p>d</p>
 <p>( x , ..., x ) to another sequence of equal length ( z , ..., z ) , with x , z ∈ R , such as a hidden</p>
 <p>1 n 1 n i i</p>
@@ -294,8 +284,7 @@
 <p>This section describes the training regime for our models.</p>
 <h3>5.1 Training Data and Batching</h3>
 <p>We trained on the standard WMT 2014 English-German dataset consisting of about 4.5 million</p>
-<p>sentence pairs. Sentences were encoded using byte-pair encoding [ 3 ], which has a shared source-</p>
-<p>target vocabulary of about 37000 tokens. For English-French, we used the significantly larger WMT</p>
+<p>sentence pairs. Sentences were encoded using byte-pair encoding [ 3 ], which has a shared source-target vocabulary of about 37000 tokens. For English-French, we used the significantly larger WMT</p>
 <p>2014 English-French dataset consisting of 36M sentences and split tokens into a 32000 word-piece</p>
 <p>vocabulary [ 38 ]. Sentence pairs were batched together by approximate sequence length. Each training</p>
 <p>batch contained a set of sentence pairs containing approximately 25000 source tokens and 25000</p>
@@ -464,8 +453,7 @@
 <p>increased the maximum output length to input length +</p>
 <p>300 . We used a beam size of 21 and α = 0 . 3</p>
 <p>for both WSJ only and the semi-supervised setting.</p>
-<p>Our results in Table 4 show that despite the lack of task-specific tuning our model performs sur-</p>
-<p>prisingly well, yielding better results than all previously reported models with the exception of the</p>
+<p>Our results in Table 4 show that despite the lack of task-specific tuning our model performs sur-prisingly well, yielding better results than all previously reported models with the exception of the</p>
 <p>Recurrent Neural Network Grammar [8].</p>
 <p>In contrast to RNN sequence-to-sequence models [</p>
 <p>37 ], the Transformer outperforms the Berkeley-</p>
@@ -513,9 +501,9 @@
 <p>[9] Jonas Gehring, Michael Auli, David Grangier, Denis Yarats, and Yann N. Dauphin. Convolu-</p>
 <p>tional sequence to sequence learning.</p>
 <p>arXiv preprint arXiv:1705.03122v2 , 2017.</p>
-<p>[10] Alex Graves. Generating sequences with recurrent neural networks.</p>
+<p>[10] Alex Graves.</p>
+<p>Generating sequences with recurrent neural networks. arXiv preprint</p>
 <p>arXiv:1308.0850 , 2013.</p>
-<p>arXiv preprint</p>
 <p>[11] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for im-</p>
 <p>age recognition. In</p>
 <p>Proceedings of the IEEE Conference on Computer Vision and Pattern</p>
@@ -592,8 +580,8 @@
 <p>, pages 2440–2448. Curran Associates,</p>
 <p>Inc., 2015.</p>
 <p>[35] Ilya Sutskever, Oriol Vinyals, and Quoc VV Le. Sequence to sequence learning with neural</p>
-<p>networks. In Advances in Neural Information Processing Systems</p>
-<p>, pages 3104–3112, 2014.</p>
+<p>networks. In</p>
+<p>Advances in Neural Information Processing Systems , pages 3104–3112, 2014.</p>
 <p>[36] Christian Szegedy, Vincent Vanhoucke, Sergey Ioffe, Jonathon Shlens, and Zbigniew Wojna.</p>
 <p>Rethinking the inception architecture for computer vision.</p>
 <p>CoRR , abs/1512.00567, 2015.</p>

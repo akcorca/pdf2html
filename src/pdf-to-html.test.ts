@@ -260,6 +260,15 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("merges hyphen-wrapped paragraph lines in attention.pdf into one paragraph block", () => {
+    expect(html).not.toContain(
+      "<p>Attention mechanisms have become an integral part of compelling sequence modeling and transduc-</p>",
+    );
+    expect(html).toContain(
+      "<p>Attention mechanisms have become an integral part of compelling sequence modeling and transduc-tion models in various tasks, allowing modeling of dependencies without regard to their distance in</p>",
+    );
+  });
+
   it("moves first-page footnotes in attention.pdf to the end of the document", () => {
     const footnoteText = "Equal contribution. Listing order is random.";
     const referencesHeading = "<h2>References</h2>";

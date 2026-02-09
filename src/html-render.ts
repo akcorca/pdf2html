@@ -32,6 +32,13 @@ const ACKNOWLEDGEMENTS_CONTINUATION_START_PATTERN = /^[a-z(“‘"']/u;
 const ACKNOWLEDGEMENTS_MAX_FONT_DELTA = 0.8;
 const ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO = 0.06;
 const ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO = 2.8;
+const HYPHEN_WRAPPED_LINE_PATTERN = /[A-Za-z]-$/;
+const HYPHEN_WRAP_CONTINUATION_START_PATTERN = /^[A-Za-z]/;
+const HYPHEN_WRAP_MAX_VERTICAL_GAP_RATIO = 2.8;
+const HYPHEN_WRAP_MAX_LEFT_OFFSET_RATIO = 0.08;
+const HYPHEN_WRAP_MAX_CENTER_OFFSET_RATIO = 0.12;
+const HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO = 0.72;
+const HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO = 0.72;
 
 interface HeadingCandidate {
   kind: "named" | "numbered";
@@ -167,6 +174,19 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     if (renderedStandaloneLink !== undefined) {
       bodyLines.push(renderedStandaloneLink.html);
       index = renderedStandaloneLink.nextIndex;
+      continue;
+    }
+
+    const hyphenWrappedParagraph = consumeHyphenWrappedParagraph(
+      lines,
+      index,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    );
+    if (hyphenWrappedParagraph !== undefined) {
+      bodyLines.push(`<p>${escapeHtml(hyphenWrappedParagraph.text)}</p>`);
+      index = hyphenWrappedParagraph.nextIndex;
       continue;
     }
 
@@ -508,6 +528,96 @@ function consumeAcknowledgementsParagraphAfterHeading(
   }
 
   return { text: normalizeSpacing(bodyParts.join(" ")), nextIndex };
+}
+
+function consumeHyphenWrappedParagraph(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): { text: string; nextIndex: number } | undefined {
+  const startLine = lines[startIndex];
+  let mergedText = normalizeSpacing(startLine.text);
+  if (!isHyphenWrappedLineText(mergedText)) return undefined;
+
+  let previousLine = startLine;
+  let nextIndex = startIndex + 1;
+  let mergedLineCount = 0;
+
+  while (nextIndex < lines.length && isHyphenWrappedLineText(mergedText)) {
+    const candidate = lines[nextIndex];
+    if (
+      !isHyphenWrapContinuationLine(
+        candidate,
+        previousLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
+      break;
+    }
+    mergedText = mergeHyphenWrappedTexts(mergedText, candidate.text);
+    previousLine = candidate;
+    nextIndex += 1;
+    mergedLineCount += 1;
+  }
+
+  if (mergedLineCount === 0) return undefined;
+  return { text: mergedText, nextIndex };
+}
+
+function isHyphenWrappedLineText(text: string): boolean {
+  return HYPHEN_WRAPPED_LINE_PATTERN.test(text.trimEnd());
+}
+
+function isHyphenWrapContinuationLine(
+  line: TextLine,
+  previousLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (line === titleLine) return false;
+  if (line.pageIndex !== previousLine.pageIndex) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return false;
+  if (!HYPHEN_WRAP_CONTINUATION_START_PATTERN.test(normalized)) return false;
+  if (containsDocumentMetadata(normalized)) return false;
+  if (parseBulletListItemText(normalized) !== undefined) return false;
+  if (parseInlineAcknowledgementsHeading(normalized) !== undefined) return false;
+  if (parseStandaloneUrlLine(normalized) !== undefined) return false;
+  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+    return false;
+  }
+
+  const verticalGap = previousLine.y - line.y;
+  const maxVerticalGap = Math.max(
+    previousLine.fontSize * HYPHEN_WRAP_MAX_VERTICAL_GAP_RATIO,
+    previousLine.fontSize + 10,
+  );
+  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+  if (previousLine.estimatedWidth < previousLine.pageWidth * HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO) {
+    return false;
+  }
+  if (line.estimatedWidth < line.pageWidth * HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO) {
+    return false;
+  }
+
+  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const leftOffset = Math.abs(line.x - previousLine.x);
+  return (
+    centerOffset <= line.pageWidth * HYPHEN_WRAP_MAX_CENTER_OFFSET_RATIO ||
+    leftOffset <= line.pageWidth * HYPHEN_WRAP_MAX_LEFT_OFFSET_RATIO
+  );
+}
+
+function mergeHyphenWrappedTexts(currentText: string, nextLineText: string): string {
+  const left = currentText.trimEnd();
+  const right = nextLineText.trimStart();
+  return normalizeSpacing(`${left}${right}`);
 }
 
 function isAcknowledgementsBodyLine(line: TextLine, headingLine: TextLine): boolean {
