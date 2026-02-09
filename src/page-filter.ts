@@ -28,7 +28,7 @@ const STANDALONE_CITATION_MARKER_PATTERN =
   /^(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*$/;
 const STANDALONE_DOI_METADATA_PATTERN = /^(?:doi\s*:\s*)?10\.\d{4,9}\/[-._;()/:a-z0-9]+$/iu;
 const STANDALONE_DOI_METADATA_MAX_PAGE_INDEX = 1;
-const STANDALONE_SYMBOL_ARTIFACT_PATTERN = /^[!)\u2032]+$/u;
+const STANDALONE_SYMBOL_ARTIFACT_PATTERN = /^[!)+\u2032]+$/u;
 const FOOTNOTE_MARKER_ONLY_SYMBOL_PATTERN = /^[*∗†‡§¶#]+$/u;
 const STANDALONE_SYMBOL_ARTIFACT_MAX_CHARS = 3;
 const STANDALONE_SYMBOL_ARTIFACT_MAX_FONT_RATIO = 1.2;
