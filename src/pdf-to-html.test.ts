@@ -79,6 +79,10 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);
   });
 
+  it("strips repeated running header text when it is prefixed to body lines", () => {
+    expect(covidHtml).not.toMatch(/<p>Thrombosis Research 202 \(2021\) 17–23\b/);
+  });
+
   it("extracts respect paper title as an h1 heading", () => {
     expect(respectHtml).toContain(
       "<h1>the Influence of Prompt Politeness on LLM Performance</h1>",

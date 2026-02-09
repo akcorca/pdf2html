@@ -11,6 +11,7 @@ const PAGE_EDGE_MARGIN = 0.08;
 const STANDALONE_PAGE_NUMBER_PATTERN = /^\d{1,4}$/;
 const MIN_REPEATED_EDGE_TEXT_PAGES = 4;
 const MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE = 0.6;
+const MIN_EDGE_TEXT_AFFIX_LENGTH = 12;
 const MIN_PAGE_NUMBER_SEQUENCE_PAGES = 3;
 const MIN_PAGE_NUMBER_SEQUENCE_COVERAGE = 0.5;
 const ARXIV_SUBMISSION_STAMP_PATTERN =
@@ -242,9 +243,14 @@ function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   const bodyFontSize = estimateBodyFontSize(lines);
   const pageExtents = computePageVerticalExtents(lines);
   const repeatedEdgeTexts = findRepeatedEdgeTexts(lines, pageExtents);
-  const pageNumberLines = findLikelyPageNumberLines(lines, pageExtents);
+  const strippedLines = stripRepeatedEdgeTextAffixes(lines, repeatedEdgeTexts);
+  const pageNumberLines = findLikelyPageNumberLines(strippedLines, pageExtents);
 
-  return lines.filter((line) => {
+  return strippedLines.filter((line) => {
+    if (line.text.length === 0) {
+      return false;
+    }
+
     if (isLikelyArxivSubmissionStamp(line, bodyFontSize)) {
       return false;
     }
@@ -259,6 +265,99 @@ function filterPageArtifacts(lines: TextLine[]): TextLine[] {
 
     return true;
   });
+}
+
+function stripRepeatedEdgeTextAffixes(
+  lines: TextLine[],
+  repeatedEdgeTexts: Set<string>,
+): TextLine[] {
+  if (repeatedEdgeTexts.size === 0) {
+    return lines;
+  }
+
+  const edgeTexts = [...repeatedEdgeTexts]
+    .filter((text) => text.length >= MIN_EDGE_TEXT_AFFIX_LENGTH)
+    .sort((left, right) => right.length - left.length);
+
+  if (edgeTexts.length === 0) {
+    return lines;
+  }
+
+  return lines.map((line) => {
+    const strippedText = stripEdgeTextAffixes(line.text, edgeTexts);
+    if (strippedText === line.text) {
+      return line;
+    }
+    return { ...line, text: strippedText };
+  });
+}
+
+function stripEdgeTextAffixes(text: string, edgeTexts: string[]): string {
+  let current = text;
+
+  for (let iteration = 0; iteration < 3; iteration += 1) {
+    let changed = false;
+
+    for (const edgeText of edgeTexts) {
+      const strippedPrefix = stripTextPrefix(current, edgeText);
+      if (strippedPrefix !== current) {
+        current = strippedPrefix;
+        changed = true;
+      }
+
+      const strippedSuffix = stripTextSuffix(current, edgeText);
+      if (strippedSuffix !== current) {
+        current = strippedSuffix;
+        changed = true;
+      }
+    }
+
+    current = normalizeSpacing(current);
+    if (!changed) {
+      break;
+    }
+  }
+
+  return current;
+}
+
+function stripTextPrefix(text: string, prefix: string): string {
+  if (text === prefix) {
+    return "";
+  }
+  if (!text.startsWith(prefix)) {
+    return text;
+  }
+
+  const trailing = text.slice(prefix.length, prefix.length + 1);
+  if (!isEdgeTextBoundaryCharacter(trailing)) {
+    return text;
+  }
+
+  return text.slice(prefix.length);
+}
+
+function stripTextSuffix(text: string, suffix: string): string {
+  if (text === suffix) {
+    return "";
+  }
+  if (!text.endsWith(suffix)) {
+    return text;
+  }
+
+  const leading = text.slice(text.length - suffix.length - 1, text.length - suffix.length);
+  if (!isEdgeTextBoundaryCharacter(leading)) {
+    return text;
+  }
+
+  return text.slice(0, text.length - suffix.length);
+}
+
+function isEdgeTextBoundaryCharacter(character: string): boolean {
+  if (character.length === 0) {
+    return true;
+  }
+  return /[\s()[\]{}.,;:!?'"/-]/.test(character);
 }
 
 function isLikelyArxivSubmissionStamp(line: TextLine, bodyFontSize: number): boolean {
