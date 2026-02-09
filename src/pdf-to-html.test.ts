@@ -219,6 +219,10 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).not.toContain("does not nessandrespectmayhavedifferentdefinitionsand");
   });
 
+  it("removes inline first-page figure captions from respect.pdf abstract flow", () => {
+    expect(respectHtml).not.toContain("<p>Figure 1: Illustration of our motivation.</p>");
+  });
+
   it("does not treat scored prompt-table rows as section headings in respect.pdf", () => {
     expect(respectHtml).not.toMatch(/<h[2-6]>\d+\s+[^<]*\s\d+\.\d{2}<\/h[2-6]>/);
   });

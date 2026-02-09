@@ -68,6 +68,15 @@ const INLINE_FIGURE_LABEL_NEAR_BODY_MAX_Y_DELTA_FONT_RATIO = 2.4;
 const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_Y_DELTA = 10;
 const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_SUBSTANTIVE_CHARS = 8;
 const DENSE_INLINE_FIGURE_LABEL_MIN_LINES = 20;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_PATTERN = /^Figure\s+\d+[A-Za-z]?:\s+/u;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_END_PATTERN = /[.!?]["')\]]?$/;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_RIGHT_X_RATIO = 0.5;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_VERTICAL_RATIO = 0.45;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_VERTICAL_RATIO = 0.72;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WIDTH_RATIO = 0.42;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_FONT_RATIO = 1.08;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_SUBSTANTIVE_CHARS = 20;
+const FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WORDS = 14;
 const FIRST_PAGE_VENUE_FOOTER_MAX_VERTICAL_RATIO = 0.12;
 const FIRST_PAGE_VENUE_FOOTER_MAX_FONT_RATIO = 0.96;
 const FIRST_PAGE_VENUE_FOOTER_MIN_SUBSTANTIVE_CHARS = 20;
@@ -130,6 +139,10 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
     bodyFontSize,
   );
   const inlineFigureLabelLines = findLikelyInlineFigureLabelLines(strippedLines, bodyFontSize);
+  const firstPageInlineFigureCaptionLines = findLikelyFirstPageInlineFigureCaptionLines(
+    strippedLines,
+    bodyFontSize,
+  );
   return strippedLines.filter(
     (line) =>
       !isRemovablePageArtifact(
@@ -140,6 +153,7 @@ export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
         pageNumberLines,
         alphabeticAffiliationLines,
         inlineFigureLabelLines,
+        firstPageInlineFigureCaptionLines,
         alternatingRunningHeaderLines,
       ),
   );
@@ -153,6 +167,7 @@ function isRemovablePageArtifact(
   pageNumberLines: Set<TextLine>,
   alphabeticAffiliationLines: Set<TextLine>,
   inlineFigureLabelLines: Set<TextLine>,
+  firstPageInlineFigureCaptionLines: Set<TextLine>,
   alternatingRunningHeaderLines: Set<TextLine>,
 ): boolean {
   return (
@@ -167,6 +182,7 @@ function isRemovablePageArtifact(
     isLikelyFirstPageVenueFooterLine(line, bodyFontSize) ||
     alphabeticAffiliationLines.has(line) ||
     inlineFigureLabelLines.has(line) ||
+    firstPageInlineFigureCaptionLines.has(line) ||
     alternatingRunningHeaderLines.has(line) ||
     repeatedEdgeTexts.has(line.text) ||
     pageNumberLines.has(line) ||
@@ -585,6 +601,54 @@ function findLikelyInlineFigureLabelLines(
     (line, pageLines) => isLikelyInlineFigureLabelLine(line, pageLines, bodyFontSize),
     (candidates) => candidates.length >= DENSE_INLINE_FIGURE_LABEL_MIN_LINES,
   );
+}
+
+function findLikelyFirstPageInlineFigureCaptionLines(
+  lines: TextLine[],
+  bodyFontSize: number,
+): Set<TextLine> {
+  const pageLines = groupLinesByPage(lines).get(0) ?? [];
+  const result = new Set<TextLine>();
+  for (const line of pageLines) {
+    if (isLikelyFirstPageInlineFigureCaptionLine(line, pageLines, bodyFontSize)) {
+      result.add(line);
+    }
+  }
+  return result;
+}
+
+function isLikelyFirstPageInlineFigureCaptionLine(
+  line: TextLine,
+  pageLines: TextLine[],
+  bodyFontSize: number,
+): boolean {
+  if (line.pageIndex !== 0) return false;
+  if (line.pageWidth <= 0 || line.pageHeight <= 0) return false;
+  if (line.fontSize > bodyFontSize * FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_FONT_RATIO) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (!FIRST_PAGE_INLINE_FIGURE_CAPTION_PATTERN.test(normalized)) return false;
+  if (!FIRST_PAGE_INLINE_FIGURE_CAPTION_END_PATTERN.test(normalized)) return false;
+  if (countSubstantiveChars(normalized) < FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_SUBSTANTIVE_CHARS) {
+    return false;
+  }
+  if (countWords(normalized) > FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WORDS) return false;
+
+  const relativeX = line.x / line.pageWidth;
+  if (relativeX < FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_RIGHT_X_RATIO) return false;
+  if (line.estimatedWidth > line.pageWidth * FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WIDTH_RATIO) {
+    return false;
+  }
+
+  const relativeY = line.y / line.pageHeight;
+  if (
+    relativeY < FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_VERTICAL_RATIO ||
+    relativeY > FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_VERTICAL_RATIO
+  ) {
+    return false;
+  }
+
+  return hasNearbyBodyLineInLeftColumn(line, pageLines, bodyFontSize);
 }
 
 function collectQualifiedPageCandidates(
