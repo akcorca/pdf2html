@@ -938,17 +938,24 @@ function parseParagraphMergeCandidateText(
   return normalized;
 }
 
-function isAcknowledgementsBodyLine(line: TextLine, headingLine: TextLine): boolean {
-  if (line.pageIndex !== headingLine.pageIndex) return false;
+function parseAcknowledgementsBodyText(
+  line: TextLine,
+  headingLine: TextLine,
+): string | undefined {
+  if (line.pageIndex !== headingLine.pageIndex) return undefined;
   const normalized = normalizeSpacing(line.text);
-  if (normalized.length === 0) return false;
-  if (!/[A-Za-z]/.test(normalized)) return false;
-  if (containsDocumentMetadata(normalized)) return false;
-  if (parseBulletListItemText(normalized) !== undefined) return false;
-  if (detectNumberedHeadingLevel(normalized) !== undefined) return false;
-  if (detectNamedSectionHeadingLevel(normalized) !== undefined) return false;
-  if (parseStandaloneUrlLine(normalized) !== undefined) return false;
+  if (normalized.length === 0) return undefined;
+  if (!/[A-Za-z]/.test(normalized)) return undefined;
+  if (containsDocumentMetadata(normalized)) return undefined;
+  if (parseBulletListItemText(normalized) !== undefined) return undefined;
+  if (detectNumberedHeadingLevel(normalized) !== undefined) return undefined;
+  if (detectNamedSectionHeadingLevel(normalized) !== undefined) return undefined;
+  if (parseStandaloneUrlLine(normalized) !== undefined) return undefined;
+  if (!isWithinAcknowledgementsBodyGeometry(line, headingLine)) return undefined;
+  return normalized;
+}
 
+function isWithinAcknowledgementsBodyGeometry(line: TextLine, headingLine: TextLine): boolean {
   if (Math.abs(line.fontSize - headingLine.fontSize) > ACKNOWLEDGEMENTS_MAX_FONT_DELTA) {
     return false;
   }
@@ -958,8 +965,11 @@ function isAcknowledgementsBodyLine(line: TextLine, headingLine: TextLine): bool
     headingLine.fontSize + 10,
   );
   if (verticalGap < 0 || verticalGap > maxVerticalGap) return false;
-
   return line.x >= headingLine.x - line.pageWidth * ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO;
+}
+
+function isAcknowledgementsBodyLine(line: TextLine, headingLine: TextLine): boolean {
+  return parseAcknowledgementsBodyText(line, headingLine) !== undefined;
 }
 
 function isAcknowledgementsBodyContinuationLine(
@@ -968,13 +978,10 @@ function isAcknowledgementsBodyContinuationLine(
   previousText: string,
   headingLine: TextLine,
 ): boolean {
-  if (line.pageIndex !== previousLine.pageIndex || line.pageIndex !== headingLine.pageIndex) {
-    return false;
-  }
+  if (line.pageIndex !== previousLine.pageIndex) return false;
   if (/[.!?]$/.test(previousText)) return false;
-  if (!isAcknowledgementsBodyLine(line, headingLine)) return false;
-
-  const normalized = normalizeSpacing(line.text);
+  const normalized = parseAcknowledgementsBodyText(line, headingLine);
+  if (normalized === undefined) return false;
   if (!ACKNOWLEDGEMENTS_CONTINUATION_START_PATTERN.test(normalized)) return false;
   if (Math.abs(line.fontSize - previousLine.fontSize) > ACKNOWLEDGEMENTS_MAX_FONT_DELTA) {
     return false;
