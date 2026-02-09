@@ -75,6 +75,10 @@ const INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN = /[.!?]["')\]]?$/;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_TOKEN_COUNT = 3;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MIN_TOKEN_LENGTH = 3;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO = 0.88;
+const DETACHED_LOWERCASE_MATH_SUBSCRIPT_PATTERN = /^[a-z]{3,6}(?:\s+[a-z]{3,6}){0,2}$/u;
+const DETACHED_LOWERCASE_MATH_SUBSCRIPT_MAX_WIDTH_RATIO = 0.1;
+const DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN = /=\s*(?:[A-Za-z]\b|[-−]?\d)/u;
+const DETACHED_MATH_SUBSCRIPT_TRAILING_VARIABLE_PATTERN = /\b[A-Za-z]\s*[.)]?$/u;
 const NUMBERED_CODE_BLOCK_LINE_PATTERN = /^(\d{1,3})\s+(.+)$/;
 const NUMBERED_CODE_BLOCK_MAX_LOOKAHEAD = 48;
 const NUMBERED_CODE_BLOCK_MIN_LINES = 4;
@@ -166,6 +170,18 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       continue;
     }
     if (shouldSkipConsumedBodyLineIndex(index, consumedTitle, consumedBodyLineIndexes)) {
+      index += 1;
+      continue;
+    }
+    if (
+      shouldSkipDetachedLowercaseMathSubscriptLine(
+        lines,
+        index,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
       index += 1;
       continue;
     }
@@ -1447,6 +1463,53 @@ function findBodyParagraphContinuationAfterInlineMathArtifacts(
   }
 
   return undefined;
+}
+
+function shouldSkipDetachedLowercaseMathSubscriptLine(
+  lines: TextLine[],
+  index: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const line = lines[index];
+  const previousLine = lines[index - 1];
+  if (!line || !previousLine) return false;
+  if (line.pageIndex !== previousLine.pageIndex) return false;
+
+  const normalized = parseParagraphMergeCandidateText(
+    line,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  );
+  if (normalized === undefined) return false;
+  if (!DETACHED_LOWERCASE_MATH_SUBSCRIPT_PATTERN.test(normalized)) return false;
+
+  const verticalGap = previousLine.y - line.y;
+  const maxVerticalGap = Math.max(previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO, 3);
+  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+  if (line.fontSize > previousLine.fontSize * INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO) {
+    return false;
+  }
+  if (
+    line.estimatedWidth >
+    line.pageWidth * DETACHED_LOWERCASE_MATH_SUBSCRIPT_MAX_WIDTH_RATIO
+  ) {
+    return false;
+  }
+
+  const previousText = normalizeSpacing(previousLine.text);
+  const nextLine = lines[index + 1];
+  const nextText =
+    nextLine && nextLine.pageIndex === line.pageIndex ? normalizeSpacing(nextLine.text) : "";
+  return hasDetachedMathSubscriptContext(previousText, nextText);
+}
+
+function hasDetachedMathSubscriptContext(previousText: string, nextText: string): boolean {
+  if (DETACHED_MATH_SUBSCRIPT_TRAILING_VARIABLE_PATTERN.test(previousText)) return true;
+  if (DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN.test(previousText)) return true;
+  return DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN.test(nextText);
 }
 
 function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine): boolean {

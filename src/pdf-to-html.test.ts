@@ -364,6 +364,11 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("does not render detached lowercase math-subscripts as standalone paragraphs in attention.pdf", () => {
+    expect(html).not.toContain("<p>model</p>");
+    expect(html).not.toContain("<p>drop</p>");
+  });
+
   it("moves first-page footnotes in attention.pdf to the end of the document", () => {
     const footnoteText = "Equal contribution. Listing order is random.";
     const referencesHeading = "<h2>References</h2>";
