@@ -1,3 +1,4 @@
+// biome-ignore lint/nursery/noExcessiveLinesPerFile: page artifact heuristics are intentionally grouped.
 import type { NumericEdgeLine, PageVerticalExtent, RepeatedEdgeTextStat, TextLine } from "./pdf-types.ts";
 import {
   ARXIV_SUBMISSION_STAMP_MIN_FONT_SIZE_DELTA,
@@ -26,6 +27,9 @@ const STANDALONE_CITATION_MARKER_PATTERN =
   /^(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*$/;
 const PAGE_COUNTER_PATTERN = /\(\d+\s+of\s+\d+\)/i;
 const DOMAIN_LIKE_TOKEN_PATTERN = /\b(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/;
+const AUTHOR_RUNNING_LABEL_PATTERN = /\bet\s+al\.?$/iu;
+const AUTHOR_RUNNING_LABEL_MIN_PAGE_COVERAGE = 0.45;
+const AUTHOR_RUNNING_LABEL_MIN_PAGE_COUNT = 4;
 const TOP_MATTER_AFFILIATION_INDEX_PATTERN = /^[\d\s,.;:()[\]{}+-]+$/;
 const TOP_MATTER_AFFILIATION_MIN_VERTICAL_RATIO = 0.72;
 const TOP_MATTER_AFFILIATION_MAX_FONT_RATIO = 0.82;
@@ -100,6 +104,7 @@ function updateExistingStat(
   if (nearBroad) stat.broadEdgePageIndexes.add(pageIndex);
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: repeated-edge text heuristics are evaluated in one place.
 function selectRepeatedEdgeTexts(
   stats: Map<string, RepeatedEdgeTextStat>,
   totalPages: number,
@@ -108,19 +113,47 @@ function selectRepeatedEdgeTexts(
   for (const [text, stat] of stats) {
     if (stat.pageIndexes.size < MIN_REPEATED_EDGE_TEXT_PAGES) continue;
     const pageCoverage = stat.pageIndexes.size / Math.max(totalPages, 1);
-    if (pageCoverage < MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE) continue;
     const edgeRatio = stat.edgeOccurrences / stat.totalOccurrences;
+    const edgePageCoverage =
+      stat.broadEdgePageIndexes.size / Math.max(stat.pageIndexes.size, 1);
+    if (isLikelyAuthorRunningLabelText(text)) {
+      if (
+        stat.pageIndexes.size >= AUTHOR_RUNNING_LABEL_MIN_PAGE_COUNT &&
+        pageCoverage >= AUTHOR_RUNNING_LABEL_MIN_PAGE_COVERAGE &&
+        edgeRatio >= 0.85 &&
+        edgePageCoverage >= MIN_RUNNING_LABEL_EDGE_PAGE_COVERAGE
+      ) {
+        result.add(text);
+        continue;
+      }
+    }
+    if (pageCoverage < MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE) continue;
     if (edgeRatio >= 0.85) {
       result.add(text);
       continue;
     }
-    const edgePageCoverage =
-      stat.broadEdgePageIndexes.size / Math.max(stat.pageIndexes.size, 1);
     if (edgePageCoverage >= MIN_RUNNING_LABEL_EDGE_PAGE_COVERAGE && isLikelyRunningLabelText(text)) {
       result.add(text);
     }
   }
   return result;
+}
+
+function isLikelyAuthorRunningLabelText(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  if (!AUTHOR_RUNNING_LABEL_PATTERN.test(normalized)) return false;
+  if (normalized.length < 8 || normalized.length > 48) return false;
+  if (/\d/.test(normalized)) return false;
+
+  const tokens = normalized.split(/\s+/).filter((token) => token.length > 0);
+  if (tokens.length < 3 || tokens.length > 7) return false;
+
+  const trailing = `${tokens[tokens.length - 2]} ${tokens[tokens.length - 1]}`.toLowerCase();
+  if (trailing !== "et al." && trailing !== "et al") return false;
+
+  const authorTokens = tokens.slice(0, -2);
+  if (authorTokens.length < 1 || authorTokens.length > 4) return false;
+  return authorTokens.every((token) => /^[A-Z][A-Za-z.'-]*$/u.test(token));
 }
 
 function isLikelyRunningLabelText(text: string): boolean {

@@ -94,6 +94,10 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).not.toMatch(/<p>Thrombosis Research 202 \(2021\) 17–23\b/);
   });
 
+  it("removes repeated author running labels from covid.pdf", () => {
+    expect(covidHtml).not.toContain("<p>S. Aktaa et al.</p>");
+  });
+
   it("extracts covid paper title as an h1 heading even when page 1 is a cover/disclaimer page", () => {
     expect(covidHtml).toMatch(/<h1>[^<]*COVID-19 pandemic[^<]*<\/h1>/);
     expect(covidHtml).not.toContain("<h1>Thrombosis Research</h1>");
