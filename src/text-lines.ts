@@ -59,6 +59,9 @@ const LEFT_BODY_CONTINUATION_END_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
 const RIGHT_BODY_MIN_PROSE_WORD_COUNT = 6;
 const RIGHT_BODY_MIN_PROSE_CHAR_COUNT = 28;
 const RIGHT_BODY_CODE_LIKE_PATTERN = /[#=(){}\[\]<>]|^\d{1,3}\s+\S/u;
+const FALLBACK_INTERLEAVED_COLUMN_MIN_BODY_LINES_PER_SIDE = 20;
+const FALLBACK_INTERLEAVED_COLUMN_MIN_VERTICAL_SPAN_RATIO = 0.5;
+const FALLBACK_INTERLEAVED_COLUMN_MIN_SIDE_SWITCHES = 15;
 const MAX_COLUMN_BREAK_BRIDGE_LOOKAHEAD = 2;
 const COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS = 1;
 const DUPLICATED_SENTENCE_PREFIX_PATTERN = /^([A-Z][^.!?]{1,80}[.!?])\s+\1(\s+.+)$/u;
@@ -87,21 +90,27 @@ function applyReadingOrderReorders(
   lines: TextLine[],
   multiColumnPageIndexes: Set<number>,
 ): TextLine[] {
-  let reordered = reorderMisorderedTopLevelHeadings(lines);
-  reordered = reorderLeftColumnTopLevelHeadings(reordered, multiColumnPageIndexes);
-  reordered = reorderMisorderedNumberedHeadings(reordered, multiColumnPageIndexes);
-  reordered = reorderRightColumnHeadingsAfterLeftBodyContinuations(reordered);
-  reordered = reorderRightColumnBodyAfterLeftBodyContinuations(reordered, multiColumnPageIndexes);
-  reordered = reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
-    reordered,
-    multiColumnPageIndexes,
-  );
-  reordered = reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
-    reordered,
-    multiColumnPageIndexes,
-  );
-  reordered = reorderRightColumnBodyBeforeFirstTopLevelHeading(reordered, multiColumnPageIndexes);
-  return reordered;
+  const reorderSteps: Array<(currentLines: TextLine[]) => TextLine[]> = [
+    reorderMisorderedTopLevelHeadings,
+    (currentLines) => reorderLeftColumnTopLevelHeadings(currentLines, multiColumnPageIndexes),
+    (currentLines) => reorderMisorderedNumberedHeadings(currentLines, multiColumnPageIndexes),
+    reorderRightColumnHeadingsAfterLeftBodyContinuations,
+    (currentLines) =>
+      reorderRightColumnBodyAfterLeftBodyContinuations(currentLines, multiColumnPageIndexes),
+    (currentLines) =>
+      reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
+        currentLines,
+        multiColumnPageIndexes,
+      ),
+    (currentLines) =>
+      reorderLeftHeadingBodyContinuationBeforeRightColumnBody(
+        currentLines,
+        multiColumnPageIndexes,
+      ),
+    (currentLines) =>
+      reorderRightColumnBodyBeforeFirstTopLevelHeading(currentLines, multiColumnPageIndexes),
+  ];
+  return reorderSteps.reduce((currentLines, reorderStep) => reorderStep(currentLines), lines);
 }
 
 function collectPageLines(page: ExtractedPage): { lines: TextLine[]; isMultiColumn: boolean } {
@@ -352,13 +361,38 @@ function reorderRightColumnBodyAfterLeftBodyContinuations(
   lines: TextLine[],
   multiColumnPageIndexes: Set<number>,
 ): TextLine[] {
-  return reorderRightColumnLinesAfterLeftBodyContinuations(lines, {
-    lookahead: RIGHT_BODY_LEFT_CONTINUATION_LOOKAHEAD,
-    isDeferredRightLine: (line) =>
-      isRightColumnBodyEligibleForLeftContinuationDeferral(line, multiColumnPageIndexes),
-    isLeftLineBeforeDeferredRightLine: isLeftProseBodyLineBeforeDeferredRightBody,
-    isLeftContinuationAfterDeferredRightLine: isLeftProseBodyContinuationAfterDeferredRightBody,
-  });
+  const fallbackInterleavedColumnPageIndexes = findFallbackInterleavedColumnPageIndexes(lines);
+  const isDeferredRightBodyLine = (line: TextLine): boolean =>
+    isRightColumnBodyEligibleForLeftContinuationDeferral(
+      line,
+      multiColumnPageIndexes,
+      fallbackInterleavedColumnPageIndexes,
+    );
+
+  const reordered = [...lines];
+  for (let index = 1; index < reordered.length - 1; index += 1) {
+    const deferredRightLine = reordered[index];
+    if (!isDeferredRightBodyLine(deferredRightLine)) continue;
+
+    const previousLeftLine = reordered[index - 1];
+    if (!isLeftProseBodyLineBeforeDeferredRightBody(previousLeftLine, deferredRightLine)) continue;
+
+    const deferredRightBlock = collectDeferredRightBodyBlock(
+      reordered,
+      index,
+      previousLeftLine,
+      deferredRightLine,
+      isDeferredRightBodyLine,
+    );
+    if (deferredRightBlock === undefined) continue;
+
+    index = moveIndexedLinesAfterHeading(
+      reordered,
+      deferredRightBlock.deferredRightIndexes,
+      deferredRightBlock.insertAfterIndex,
+    );
+  }
+  return reordered;
 }
 
 interface RightLineDeferralRule {
@@ -430,11 +464,130 @@ function findDeferredRightLineInsertionIndex(
   return hasContinuation ? insertionIndex : undefined;
 }
 
+interface DeferredRightBodyBlock {
+  deferredRightIndexes: number[];
+  insertAfterIndex: number;
+}
+
+interface FallbackInterleavedColumnPageStat {
+  leftCount: number;
+  rightCount: number;
+  leftMinY: number;
+  leftMaxY: number;
+  pageHeight: number;
+  rightMinY: number;
+  rightMaxY: number;
+  sideSwitches: number;
+  lastSide?: "left" | "right";
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: fallback page classification combines geometry and prose-signal guards.
+function findFallbackInterleavedColumnPageIndexes(lines: TextLine[]): Set<number> {
+  const statsByPage = new Map<number, FallbackInterleavedColumnPageStat>();
+
+  for (const line of lines) {
+    if (!isLikelyNearRowBodyLine(line)) continue;
+    if (isLikelyColumnHeadingLine(line.text)) continue;
+    if (!isLikelyProseBodyText(line.text)) continue;
+
+    const side = classifyMultiColumnLine(line);
+    if (side === "spanning") continue;
+    const stat = statsByPage.get(line.pageIndex) ?? {
+      leftCount: 0,
+      rightCount: 0,
+      leftMinY: Number.POSITIVE_INFINITY,
+      leftMaxY: Number.NEGATIVE_INFINITY,
+      pageHeight: line.pageHeight,
+      rightMinY: Number.POSITIVE_INFINITY,
+      rightMaxY: Number.NEGATIVE_INFINITY,
+      sideSwitches: 0,
+    };
+
+    if (stat.lastSide && stat.lastSide !== side) {
+      stat.sideSwitches += 1;
+    }
+    stat.lastSide = side;
+
+    if (side === "left") {
+      stat.leftCount += 1;
+      stat.leftMinY = Math.min(stat.leftMinY, line.y);
+      stat.leftMaxY = Math.max(stat.leftMaxY, line.y);
+    } else {
+      stat.rightCount += 1;
+      stat.rightMinY = Math.min(stat.rightMinY, line.y);
+      stat.rightMaxY = Math.max(stat.rightMaxY, line.y);
+    }
+    statsByPage.set(line.pageIndex, stat);
+  }
+
+  const fallbackPageIndexes = new Set<number>();
+  for (const [pageIndex, stat] of statsByPage) {
+    if (stat.leftCount < FALLBACK_INTERLEAVED_COLUMN_MIN_BODY_LINES_PER_SIDE) continue;
+    if (stat.rightCount < FALLBACK_INTERLEAVED_COLUMN_MIN_BODY_LINES_PER_SIDE) continue;
+    if (stat.sideSwitches < FALLBACK_INTERLEAVED_COLUMN_MIN_SIDE_SWITCHES) continue;
+
+    const leftSpan = stat.leftMaxY - stat.leftMinY;
+    const rightSpan = stat.rightMaxY - stat.rightMinY;
+    const pageHeight = Math.max(stat.pageHeight, 1);
+    if (leftSpan / pageHeight < FALLBACK_INTERLEAVED_COLUMN_MIN_VERTICAL_SPAN_RATIO) continue;
+    if (rightSpan / pageHeight < FALLBACK_INTERLEAVED_COLUMN_MIN_VERTICAL_SPAN_RATIO) continue;
+
+    fallbackPageIndexes.add(pageIndex);
+  }
+  return fallbackPageIndexes;
+}
+
+function collectDeferredRightBodyBlock(
+  lines: TextLine[],
+  deferredRightStartIndex: number,
+  previousLeftLine: TextLine,
+  deferredRightLine: TextLine,
+  isDeferredRightBodyLine: (line: TextLine) => boolean,
+): DeferredRightBodyBlock | undefined {
+  const deferredRightIndexes = [deferredRightStartIndex];
+  const leftContinuationIndexes: number[] = [];
+  let currentLeftLine = previousLeftLine;
+  const maxScanIndex = Math.min(
+    lines.length,
+    deferredRightStartIndex + RIGHT_BODY_LEFT_CONTINUATION_LOOKAHEAD + 1,
+  );
+
+  for (let scanIndex = deferredRightStartIndex + 1; scanIndex < maxScanIndex; scanIndex += 1) {
+    const candidate = lines[scanIndex];
+    if (
+      isLeftProseBodyContinuationAfterDeferredRightBody(
+        candidate,
+        currentLeftLine,
+        deferredRightLine,
+      )
+    ) {
+      leftContinuationIndexes.push(scanIndex);
+      currentLeftLine = candidate;
+      if (isLeftBodyContinuationTerminal(currentLeftLine)) break;
+      continue;
+    }
+
+    if (isDeferredRightBodyLine(candidate)) {
+      deferredRightIndexes.push(scanIndex);
+      continue;
+    }
+    break;
+  }
+
+  const insertAfterIndex = leftContinuationIndexes[leftContinuationIndexes.length - 1];
+  if (insertAfterIndex === undefined) return undefined;
+  return { deferredRightIndexes, insertAfterIndex };
+}
+
 function isRightColumnBodyEligibleForLeftContinuationDeferral(
   bodyLine: TextLine,
   multiColumnPageIndexes: Set<number>,
+  fallbackInterleavedColumnPageIndexes: Set<number>,
 ): boolean {
-  if (!multiColumnPageIndexes.has(bodyLine.pageIndex)) return false;
+  const isEligiblePage =
+    multiColumnPageIndexes.has(bodyLine.pageIndex) ||
+    fallbackInterleavedColumnPageIndexes.has(bodyLine.pageIndex);
+  if (!isEligiblePage) return false;
   if (classifyMultiColumnLine(bodyLine) !== "right") return false;
   if (!isLikelyNearRowBodyLine(bodyLine)) return false;
   if (isLikelyColumnHeadingLine(bodyLine.text)) return false;
@@ -479,7 +632,12 @@ function isLeftProseBodyContinuationAfterDeferredRightBody(
   if (!isLikelyProseBodyText(candidate.text)) return false;
 
   const normalized = normalizeSpacing(candidate.text);
-  if (!LEFT_BODY_CONTINUATION_START_PATTERN.test(normalized)) return false;
+  if (
+    !LEFT_BODY_CONTINUATION_START_PATTERN.test(normalized) &&
+    !isUppercaseAcronymLikeContinuationStart(normalized, previousLeftLine)
+  ) {
+    return false;
+  }
 
   const verticalDelta = previousLeftLine.y - candidate.y;
   const maxVerticalDelta = computeVerticalDeltaThreshold(
@@ -494,6 +652,24 @@ function isLeftProseBodyContinuationAfterDeferredRightBody(
     Math.abs(candidate.x - previousLeftLine.x) <=
     candidate.pageWidth * LEFT_BODY_CONTINUATION_MAX_LEFT_OFFSET_RATIO
   );
+}
+
+function isUppercaseAcronymLikeContinuationStart(
+  normalized: string,
+  previousLeftLine: TextLine,
+): boolean {
+  const previousNormalized = normalizeSpacing(previousLeftLine.text);
+  if (LEFT_BODY_CONTINUATION_END_PUNCTUATION_PATTERN.test(previousNormalized)) return false;
+
+  const [firstToken = ""] = normalized.split(/\s+/);
+  const normalizedToken = firstToken.replace(/[^A-Za-z0-9-]/g, "");
+  if (normalizedToken.length < 2) return false;
+  if (!/^[A-Z]/.test(normalizedToken)) return false;
+
+  const hasDigitOrHyphen = /[0-9-]/.test(normalizedToken);
+  const alphabetic = normalizedToken.replace(/[^A-Za-z]/g, "");
+  const isAllCaps = alphabetic.length >= 2 && alphabetic === alphabetic.toUpperCase();
+  return hasDigitOrHyphen || isAllCaps;
 }
 
 function isLikelyProseBodyText(text: string): boolean {
