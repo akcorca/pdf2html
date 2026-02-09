@@ -97,6 +97,10 @@ describe("convertPdfToHtml", () => {
     expect(tftHtml).toContain("<h1>Multifunctional Organic-Semiconductor Interfacial</h1>");
   });
 
+  it("renders numbered section headings in attention.pdf as semantic headings", () => {
+    expect(html).toContain("<h2>1 Introduction</h2>");
+  });
+
   it("removes repeated running-label header lines from tft.pdf", () => {
     expect(tftHtml).not.toContain("<p>COMMUNICATION</p>");
   });
@@ -306,6 +310,26 @@ describe("pdfToHtmlInternals", () => {
 
     expect(html).toContain("<h1>Attention Is All You Need</h1>");
     expect(html).toContain("<p>a &lt; b &amp; c</p>");
+  });
+
+  it("detects heading levels for numbered section headings", () => {
+    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("1 Introduction")).toBe(2);
+    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("3.2 Attention")).toBe(3);
+    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("3.2.1 Scaled Dot-Product Attention")).toBe(
+      4,
+    );
+    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("1 and 2023 Vilkki")).toBeUndefined();
+    expect(
+      pdfToHtmlInternals.detectNumberedHeadingLevel(
+        "35 Baekbeom-ro, Mapo-gu, Seoul 04107, Republic of Korea",
+      ),
+    ).toBeUndefined();
+    expect(pdfToHtmlInternals.detectNumberedHeadingLevel("2 V − 1 s − 1 and an")).toBeUndefined();
+    expect(
+      pdfToHtmlInternals.detectNumberedHeadingLevel(
+        "2015 See et al. 2017 2021 , Lin Liangetal. , 2022",
+      ),
+    ).toBeUndefined();
   });
 
   it("filters repeated edge headers and standalone page numbers", () => {

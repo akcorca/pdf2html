@@ -44,6 +44,11 @@ const MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT = 6;
 const MIN_MULTI_COLUMN_BREAK_ROWS = 3;
 const MIN_MULTI_COLUMN_BREAK_ROW_RATIO = 0.12;
 const MIN_NEGATIVE_COORDINATE_RATIO_FOR_MULTI_COLUMN_SPLIT = 0.6;
+const MIN_NUMBERED_HEADING_LENGTH = 6;
+const MAX_NUMBERED_HEADING_LENGTH = 90;
+const MAX_NUMBERED_HEADING_WORDS = 16;
+const MAX_TOP_LEVEL_SECTION_NUMBER = 20;
+const MAX_NUMBERED_HEADING_DIGIT_RATIO = 0.2;
 
 interface ConvertPdfToHtmlInput {
   inputPdfPath: string;
@@ -339,9 +344,18 @@ function countSubstantiveCharacters(text: string): number {
 
 function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
-  const bodyLines = lines.map((line) =>
-    line === titleLine ? `<h1>${escapeHtml(line.text)}</h1>` : `<p>${escapeHtml(line.text)}</p>`,
-  );
+  const bodyLines = lines.map((line) => {
+    if (line === titleLine) {
+      return `<h1>${escapeHtml(line.text)}</h1>`;
+    }
+
+    const headingLevel = detectNumberedHeadingLevel(line.text);
+    if (headingLevel !== undefined) {
+      return `<h${headingLevel}>${escapeHtml(line.text)}</h${headingLevel}>`;
+    }
+
+    return `<p>${escapeHtml(line.text)}</p>`;
+  });
 
   return [
     "<!DOCTYPE html>",
@@ -965,6 +979,71 @@ function createExtractionError(error: unknown): Error {
   return new Error(`Failed to extract text from PDF: ${detail}`);
 }
 
+function detectNumberedHeadingLevel(text: string): number | undefined {
+  const normalized = normalizeSpacing(text);
+  if (
+    normalized.length < MIN_NUMBERED_HEADING_LENGTH ||
+    normalized.length > MAX_NUMBERED_HEADING_LENGTH
+  ) {
+    return undefined;
+  }
+  if (containsDocumentMetadata(normalized)) {
+    return undefined;
+  }
+
+  const match = /^(\d+(?:\.\d+){0,4})\s+(.+)$/u.exec(normalized);
+  if (!match) {
+    return undefined;
+  }
+
+  const topLevelNumber = Number.parseInt(match[1].split(".")[0], 10);
+  if (
+    !Number.isFinite(topLevelNumber) ||
+    topLevelNumber < 1 ||
+    topLevelNumber > MAX_TOP_LEVEL_SECTION_NUMBER
+  ) {
+    return undefined;
+  }
+
+  const headingText = match[2].trim();
+  if (headingText.length < 2) {
+    return undefined;
+  }
+  if (headingText.includes(",")) {
+    return undefined;
+  }
+  if (/[.!?]$/.test(headingText)) {
+    return undefined;
+  }
+  if (!/^[A-Z]/.test(headingText)) {
+    return undefined;
+  }
+  if (!/[A-Za-z]/.test(headingText)) {
+    return undefined;
+  }
+
+  const wordCount = headingText.split(/\s+/).filter((part) => part.length > 0).length;
+  if (wordCount > MAX_NUMBERED_HEADING_WORDS) {
+    return undefined;
+  }
+  const hasMeaningfulWord = headingText
+    .split(/[^A-Za-z-]+/)
+    .some((word) => word.replace(/[^A-Za-z]/g, "").length >= 4);
+  if (!hasMeaningfulWord) {
+    return undefined;
+  }
+
+  const alphanumeric = headingText.replace(/[^A-Za-z0-9]/g, "");
+  const digitCount = headingText.replace(/[^0-9]/g, "").length;
+  const digitRatio = digitCount / Math.max(alphanumeric.length, 1);
+  if (digitRatio > MAX_NUMBERED_HEADING_DIGIT_RATIO) {
+    return undefined;
+  }
+
+  const depth = match[1].split(".").length;
+  return Math.min(depth + 1, 6);
+}
+
 export const pdfToHtmlInternals = {
   collectTextLines,
   renderHtml,
@@ -983,4 +1062,5 @@ export const pdfToHtmlInternals = {
   normalizeSpacing,
   escapeHtml,
   createExtractionError,
+  detectNumberedHeadingLevel,
 };
