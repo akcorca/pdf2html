@@ -32,6 +32,14 @@ const MIN_AUTHOR_LINE_COMMA_COUNT = 2;
 const MIN_AUTHOR_NAME_TOKEN_COUNT = 4;
 const MIN_TOP_MATTER_TITLE_WORD_COUNT = 3;
 const MAX_TOP_MATTER_TITLE_COMMA_COUNT = 1;
+const MIN_COLUMN_BREAK_GAP = 120;
+const MIN_COLUMN_BREAK_GAP_RATIO = 0.18;
+const COLUMN_BREAK_LEFT_MAX_RATIO = 0.55;
+const COLUMN_BREAK_RIGHT_MIN_RATIO = 0.33;
+const MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT = 6;
+const MIN_MULTI_COLUMN_BREAK_ROWS = 3;
+const MIN_MULTI_COLUMN_BREAK_ROW_RATIO = 0.12;
+const MIN_NEGATIVE_COORDINATE_RATIO_FOR_MULTI_COLUMN_SPLIT = 0.6;
 
 interface ConvertPdfToHtmlInput {
   inputPdfPath: string;
@@ -167,10 +175,16 @@ function collectTextLines(document: ExtractedDocument): TextLine[] {
 
   for (const page of document.pages) {
     const buckets = new Map<number, ExtractedFragment[]>();
+    let validFragmentCount = 0;
+    let negativeCoordinateFragmentCount = 0;
 
     for (const fragment of page.fragments) {
       if (fragment.y > page.height * MAX_REASONABLE_Y_MULTIPLIER) {
         continue;
+      }
+      validFragmentCount += 1;
+      if (fragment.y < 0) {
+        negativeCoordinateFragmentCount += 1;
       }
 
       const bucket = Math.round(fragment.y / LINE_Y_BUCKET_SIZE) * LINE_Y_BUCKET_SIZE;
@@ -182,23 +196,35 @@ function collectTextLines(document: ExtractedDocument): TextLine[] {
       }
     }
 
-    for (const [bucket, fragments] of buckets) {
-      fragments.sort((left, right) => left.x - right.x);
-      const lineText = normalizeSpacing(fragments.map((fragment) => fragment.text).join(" "));
-      if (lineText.length === 0) {
-        continue;
-      }
+    const negativeCoordinateRatio =
+      negativeCoordinateFragmentCount / Math.max(validFragmentCount, 1);
+    const splitRowsByColumnBreak =
+      negativeCoordinateRatio >= MIN_NEGATIVE_COORDINATE_RATIO_FOR_MULTI_COLUMN_SPLIT &&
+      isLikelyMultiColumnPage(buckets, page.width);
 
-      lines.push({
-        pageIndex: page.pageIndex,
-        pageHeight: page.height,
-        pageWidth: page.width,
-        estimatedWidth: estimateLineWidth(fragments),
-        x: Math.min(...fragments.map((fragment) => fragment.x)),
-        y: bucket,
-        fontSize: Math.max(...fragments.map((fragment) => fragment.fontSize)),
-        text: lineText,
-      });
+    for (const [bucket, bucketFragments] of buckets) {
+      const sortedFragments = [...bucketFragments].sort((left, right) => left.x - right.x);
+      const fragmentGroups = splitRowsByColumnBreak
+        ? splitFragmentsByColumnBreaks(sortedFragments, page.width)
+        : [sortedFragments];
+
+      for (const fragments of fragmentGroups) {
+        const lineText = normalizeSpacing(fragments.map((fragment) => fragment.text).join(" "));
+        if (lineText.length === 0) {
+          continue;
+        }
+
+        lines.push({
+          pageIndex: page.pageIndex,
+          pageHeight: page.height,
+          pageWidth: page.width,
+          estimatedWidth: estimateLineWidth(fragments),
+          x: Math.min(...fragments.map((fragment) => fragment.x)),
+          y: bucket,
+          fontSize: Math.max(...fragments.map((fragment) => fragment.fontSize)),
+          text: lineText,
+        });
+      }
     }
   }
 
@@ -211,6 +237,98 @@ function collectTextLines(document: ExtractedDocument): TextLine[] {
     }
     return left.x - right.x;
   });
+}
+
+function isLikelyMultiColumnPage(
+  buckets: Map<number, ExtractedFragment[]>,
+  pageWidth: number,
+): boolean {
+  let multiFragmentRows = 0;
+  let rowsWithColumnBreak = 0;
+
+  for (const bucketFragments of buckets.values()) {
+    if (bucketFragments.length < 2) {
+      continue;
+    }
+
+    multiFragmentRows += 1;
+    const fragments = [...bucketFragments].sort((left, right) => left.x - right.x);
+    if (findColumnBreakIndexes(fragments, pageWidth).length > 0) {
+      rowsWithColumnBreak += 1;
+    }
+  }
+
+  if (rowsWithColumnBreak < MIN_MULTI_COLUMN_BREAK_ROWS) {
+    return false;
+  }
+
+  return rowsWithColumnBreak / Math.max(multiFragmentRows, 1) >= MIN_MULTI_COLUMN_BREAK_ROW_RATIO;
+}
+
+function splitFragmentsByColumnBreaks(
+  fragments: ExtractedFragment[],
+  pageWidth: number,
+): ExtractedFragment[][] {
+  const columnBreakIndexes = findColumnBreakIndexes(fragments, pageWidth);
+  if (columnBreakIndexes.length === 0) {
+    return [fragments];
+  }
+
+  const groups: ExtractedFragment[][] = [];
+  let startIndex = 0;
+
+  for (const breakIndex of columnBreakIndexes) {
+    groups.push(fragments.slice(startIndex, breakIndex + 1));
+    startIndex = breakIndex + 1;
+  }
+  groups.push(fragments.slice(startIndex));
+
+  return groups.filter((group) => group.length > 0);
+}
+
+function findColumnBreakIndexes(fragments: ExtractedFragment[], pageWidth: number): number[] {
+  const indexes: number[] = [];
+
+  for (let index = 0; index < fragments.length - 1; index += 1) {
+    const left = fragments[index];
+    const right = fragments[index + 1];
+
+    if (!isLikelyColumnBreak(left, right, pageWidth)) {
+      continue;
+    }
+
+    indexes.push(index);
+  }
+
+  return indexes;
+}
+
+function isLikelyColumnBreak(
+  left: ExtractedFragment,
+  right: ExtractedFragment,
+  pageWidth: number,
+): boolean {
+  const minimumGap = Math.max(MIN_COLUMN_BREAK_GAP, pageWidth * MIN_COLUMN_BREAK_GAP_RATIO);
+  if (right.x - left.x < minimumGap) {
+    return false;
+  }
+  if (left.x > pageWidth * COLUMN_BREAK_LEFT_MAX_RATIO) {
+    return false;
+  }
+  if (right.x < pageWidth * COLUMN_BREAK_RIGHT_MIN_RATIO) {
+    return false;
+  }
+
+  const leftTextLength = countSubstantiveCharacters(left.text);
+  const rightTextLength = countSubstantiveCharacters(right.text);
+  return (
+    leftTextLength >= MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT &&
+    rightTextLength >= MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT
+  );
+}
+
+function countSubstantiveCharacters(text: string): number {
+  return text.replace(/[^\p{L}\p{N}]+/gu, "").length;
 }
 
 function renderHtml(lines: TextLine[]): string {

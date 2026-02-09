@@ -89,6 +89,10 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("does not merge left and right column text into the same line for respect.pdf", () => {
+    expect(respectHtml).not.toContain("does not nessandrespectmayhavedifferentdefinitionsand");
+  });
+
   it("extracts tft paper title as an h1 heading when font metadata is unreliable", () => {
     expect(tftHtml).toContain("<h1>Multifunctional Organic-Semiconductor Interfacial</h1>");
   });
