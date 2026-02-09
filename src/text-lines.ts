@@ -533,31 +533,20 @@ function promoteLine(lines: TextLine[], fromIndex: number, toIndex: number): voi
   lines.splice(toIndex, 0, promoted);
 }
 
+interface ParsedMultiColumnHeading {
+  marker: string;
+  headingText: string;
+}
+
 function parseNumberedHeadingPathForReorder(text: string): number[] | undefined {
-  const normalized = normalizeSpacing(text);
-  const match = MULTI_COLUMN_HEADING_REORDER_PATTERN.exec(normalized);
-  if (!match) return undefined;
-
-  const headingText = match[2]?.trim() ?? "";
-  if (!isLikelyNumberedHeadingTextForReorder(headingText)) return undefined;
-
-  const pathTokens = match[1].replace(/\.$/, "").split(".");
-  const path: number[] = [];
-  for (const token of pathTokens) {
-    const value = Number.parseInt(token, 10);
-    if (!Number.isFinite(value) || value < 0) return undefined;
-    path.push(value);
-  }
-  return path.length > 0 ? path : undefined;
+  const parsed = parseMultiColumnHeading(text);
+  if (!parsed) return undefined;
+  if (!isLikelyNumberedHeadingTextForReorder(parsed.headingText)) return undefined;
+  return parseHeadingMarkerPath(parsed.marker);
 }
 
 function isLikelyNumberedHeadingTextForReorder(text: string): boolean {
-  if (text.length < 2 || text.length > MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH) return false;
-  if (!/^[A-Z]/.test(text)) return false;
-  if (!/[A-Za-z]/.test(text)) return false;
-  if (/[.!?]$/.test(text)) return false;
-  const words = text.split(/\s+/).filter((token) => token.length > 0);
-  if (words.length === 0 || words.length > MAX_MULTI_COLUMN_HEADING_WORDS) return false;
+  if (!hasBasicMultiColumnHeadingTextShape(text)) return false;
   const alphanumericLength = text.replace(/[^A-Za-z0-9]/g, "").length;
   const digitLength = text.replace(/[^0-9]/g, "").length;
   const digitRatio = digitLength / Math.max(alphanumericLength, 1);
@@ -583,12 +572,12 @@ function isNumberPathPrefix(prefix: number[], target: number[]): boolean {
 }
 
 function getTopLevelHeadingNumber(text: string): number | undefined {
-  if (!isLikelyColumnHeadingLine(text)) return undefined;
-  const normalized = normalizeSpacing(text);
-  const match = /^(\d+)\.?\s+/.exec(normalized);
-  if (!match) return undefined;
-  if (/^\d+\.\d/.test(normalized)) return undefined;
-  return Number.parseInt(match[1] ?? "", 10);
+  const parsed = parseMultiColumnHeading(text);
+  if (!parsed) return undefined;
+  if (!isLikelyColumnHeadingText(parsed.headingText)) return undefined;
+  const path = parseHeadingMarkerPath(parsed.marker);
+  if (!path || path.length !== 1) return undefined;
+  return path[0];
 }
 
 function isLikelyNearRowBodyPair(left: TextLine, right: TextLine): boolean {
@@ -618,20 +607,48 @@ function classifyNearRowBodyColumn(line: TextLine): "left" | "right" | "spanning
 }
 
 function isLikelyColumnHeadingLine(text: string): boolean {
+  const parsed = parseMultiColumnHeading(text);
+  if (!parsed) return false;
+  return isLikelyColumnHeadingText(parsed.headingText);
+}
+
+function parseMultiColumnHeading(text: string): ParsedMultiColumnHeading | undefined {
   const normalized = normalizeSpacing(text);
   const match = MULTI_COLUMN_HEADING_REORDER_PATTERN.exec(normalized);
-  if (!match) return false;
-  const headingText = match[2].trim();
-  if (headingText.length < 2 || headingText.length > MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH) {
-    return false;
+  if (!match) return undefined;
+  const marker = match[1] ?? "";
+  const headingText = match[2]?.trim() ?? "";
+  return { marker, headingText };
+}
+
+function parseHeadingMarkerPath(marker: string): number[] | undefined {
+  const pathTokens = marker.replace(/\.$/, "").split(".");
+  const path: number[] = [];
+  for (const token of pathTokens) {
+    const value = Number.parseInt(token, 10);
+    if (!Number.isFinite(value) || value < 0) return undefined;
+    path.push(value);
   }
-  if (!/^[A-Z]/.test(headingText)) return false;
-  if (!/[A-Za-z]/.test(headingText)) return false;
+  return path.length > 0 ? path : undefined;
+}
+
+function hasBasicMultiColumnHeadingTextShape(text: string): boolean {
+  if (text.length < 2 || text.length > MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH) return false;
+  if (!/^[A-Z]/.test(text)) return false;
+  if (!/[A-Za-z]/.test(text)) return false;
+  if (/[.!?]$/.test(text)) return false;
+  const words = tokenizeHeadingWords(text);
+  return words.length > 0 && words.length <= MAX_MULTI_COLUMN_HEADING_WORDS;
+}
+
+function isLikelyColumnHeadingText(headingText: string): boolean {
+  if (!hasBasicMultiColumnHeadingTextShape(headingText)) return false;
   if (headingText.includes(",") || headingText.includes(":")) return false;
-  if (/[.!?]$/.test(headingText)) return false;
-  const words = headingText.split(/\s+/).filter((token) => token.length > 0);
-  if (words.length === 0 || words.length > MAX_MULTI_COLUMN_HEADING_WORDS) return false;
-  return words.every((token) => /^[A-Za-z][A-Za-z-]*$/.test(token));
+  return tokenizeHeadingWords(headingText).every((token) => /^[A-Za-z][A-Za-z-]*$/.test(token));
+}
+
+function tokenizeHeadingWords(text: string): string[] {
+  return text.split(/\s+/).filter((token) => token.length > 0);
 }
 
 function classifyMultiColumnLine(line: TextLine): "left" | "right" | "spanning" {
