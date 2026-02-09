@@ -95,6 +95,17 @@ interface NumberedCodeLine {
   content: string;
 }
 
+interface ConsumedTitleLineBlock {
+  startIndex: number;
+  text: string;
+  nextIndex: number;
+}
+
+interface ConsumedParagraph {
+  text: string;
+  nextIndex: number;
+}
+
 export function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
   const bodyLines = renderBodyLines(lines, titleLine);
@@ -129,7 +140,9 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     DOTTED_SUBSECTION_HEADING_PATTERN.test(normalizeSpacing(line.text)),
   );
   const seenTopLevelNumberedSections = new Set<number>();
-  const consumedTitle = titleLine ? consumeTitleLines(lines, titleLine) : undefined;
+  const consumedTitle: ConsumedTitleLineBlock | undefined = titleLine
+    ? consumeTitleLines(lines, titleLine)
+    : undefined;
   const consumedNumberedHeadingContinuationIndexes = new Set<number>();
   const consumedNumberedCodeBlockIndexes = new Set<number>();
   let index = consumedTitle?.startIndex ?? 0;
@@ -139,15 +152,14 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       index = consumedTitle.nextIndex;
       continue;
     }
-    if (consumedTitle && index > consumedTitle.startIndex && index < consumedTitle.nextIndex) {
-      index += 1;
-      continue;
-    }
-    if (consumedNumberedHeadingContinuationIndexes.has(index)) {
-      index += 1;
-      continue;
-    }
-    if (consumedNumberedCodeBlockIndexes.has(index)) {
+    if (
+      shouldSkipConsumedBodyLineIndex(
+        index,
+        consumedTitle,
+        consumedNumberedHeadingContinuationIndexes,
+        consumedNumberedCodeBlockIndexes,
+      )
+    ) {
       index += 1;
       continue;
     }
@@ -175,9 +187,11 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
           currentLine,
           bodyFontSize,
         );
-        for (const continuationIndex of wrapped.continuationIndexes) {
-          consumedNumberedHeadingContinuationIndexes.add(continuationIndex);
-        }
+        addConsumedIndexes(
+          consumedNumberedHeadingContinuationIndexes,
+          wrapped.continuationIndexes,
+          index,
+        );
         if (wrapped.continuationIndexes.length > 0) {
           headingText = wrapped.text;
         }
@@ -237,16 +251,16 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     );
     if (renderedNumberedCodeBlock !== undefined) {
       bodyLines.push(renderedNumberedCodeBlock.html);
-      for (const consumedIndex of renderedNumberedCodeBlock.consumedIndexes) {
-        if (consumedIndex !== index) {
-          consumedNumberedCodeBlockIndexes.add(consumedIndex);
-        }
-      }
+      addConsumedIndexes(
+        consumedNumberedCodeBlockIndexes,
+        renderedNumberedCodeBlock.consumedIndexes,
+        index,
+      );
       index += 1;
       continue;
     }
 
-    const bodyParagraph = consumeBodyParagraph(
+    const bodyParagraph = consumeParagraph(
       lines,
       index,
       titleLine,
@@ -260,36 +274,67 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       continue;
     }
 
-    const hyphenWrappedParagraph = consumeHyphenWrappedParagraph(
-      lines,
-      index,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-    );
-    if (hyphenWrappedParagraph !== undefined) {
-      bodyLines.push(`<p>${escapeHtml(hyphenWrappedParagraph.text)}</p>`);
-      index = hyphenWrappedParagraph.nextIndex;
-      continue;
-    }
-
-    const sameRowSentenceSplitParagraph = consumeSameRowSentenceSplitParagraph(
-      lines,
-      index,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-    );
-    if (sameRowSentenceSplitParagraph !== undefined) {
-      bodyLines.push(`<p>${escapeHtml(sameRowSentenceSplitParagraph.text)}</p>`);
-      index = sameRowSentenceSplitParagraph.nextIndex;
-      continue;
-    }
-
     bodyLines.push(`<p>${escapeHtml(currentLine.text)}</p>`);
     index += 1;
   }
   return bodyLines;
+}
+
+function shouldSkipConsumedBodyLineIndex(
+  index: number,
+  consumedTitle: Pick<ConsumedTitleLineBlock, "startIndex" | "nextIndex"> | undefined,
+  consumedNumberedHeadingContinuationIndexes: Set<number>,
+  consumedNumberedCodeBlockIndexes: Set<number>,
+): boolean {
+  if (consumedTitle && index > consumedTitle.startIndex && index < consumedTitle.nextIndex) {
+    return true;
+  }
+  if (consumedNumberedHeadingContinuationIndexes.has(index)) return true;
+  return consumedNumberedCodeBlockIndexes.has(index);
+}
+
+function addConsumedIndexes(
+  consumedIndexes: Set<number>,
+  indexesToConsume: number[],
+  currentIndex: number,
+): void {
+  for (const consumedIndex of indexesToConsume) {
+    if (consumedIndex !== currentIndex) consumedIndexes.add(consumedIndex);
+  }
+}
+
+function consumeParagraph(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  pageTypicalWidths: Map<number, number>,
+): ConsumedParagraph | undefined {
+  return (
+    consumeBodyParagraph(
+      lines,
+      startIndex,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+      pageTypicalWidths,
+    ) ??
+    consumeHyphenWrappedParagraph(
+      lines,
+      startIndex,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    ) ??
+    consumeSameRowSentenceSplitParagraph(
+      lines,
+      startIndex,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  );
 }
 
 function parseNumberedHeadingSectionInfo(text: string): NumberedHeadingSectionInfo | undefined {
@@ -297,10 +342,10 @@ function parseNumberedHeadingSectionInfo(text: string): NumberedHeadingSectionIn
   const match = /^(\d+(?:\.\d+){0,4})\.?\s+/.exec(normalized);
   if (!match) return undefined;
 
-  const sectionNumber = match[1];
-  const topLevelNumber = Number.parseInt(sectionNumber.split(".")[0] ?? "", 10);
+  const sectionParts = match[1].split(".");
+  const topLevelNumber = Number.parseInt(sectionParts[0] ?? "", 10);
   if (!Number.isFinite(topLevelNumber)) return undefined;
-  return { topLevelNumber, depth: sectionNumber.split(".").length };
+  return { topLevelNumber, depth: sectionParts.length };
 }
 
 function detectHeadingCandidate(
@@ -402,7 +447,7 @@ function isAlignedWithNumberedHeadingColumn(line: TextLine, headingLine: TextLin
 function consumeTitleLines(
   lines: TextLine[],
   titleLine: TextLine,
-): { startIndex: number; text: string; nextIndex: number } {
+): ConsumedTitleLineBlock {
   const titleIndex = lines.indexOf(titleLine);
   if (titleIndex < 0) {
     return { startIndex: 0, text: titleLine.text, nextIndex: 1 };
