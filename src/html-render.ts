@@ -1,3 +1,4 @@
+// biome-ignore lint/nursery/noExcessiveLinesPerFile: HTML rendering heuristics are intentionally grouped.
 import type { TextLine } from "./pdf-types.ts";
 import { estimateBodyFontSize, normalizeSpacing } from "./text-lines.ts";
 import { containsDocumentMetadata, findTitleLine } from "./title-detect.ts";
@@ -17,6 +18,8 @@ const MIN_NUMBERED_HEADING_FONT_RATIO = 0.85;
 const MIN_TOP_LEVEL_DOTTED_HEADING_FONT_RATIO = 1.05;
 const TOP_LEVEL_DOTTED_HEADING_PATTERN = /^\d+\.\s+/;
 const DOTTED_SUBSECTION_HEADING_PATTERN = /^\d+\.\d+(?:\.\d+){0,3}\.\s+/;
+const STANDALONE_URL_LINE_PATTERN = /^(https?:\/\/[^\s]+?)([.,;:!?])?$/iu;
+const URL_CONTINUATION_LINE_PATTERN = /^([A-Za-z0-9._~!$&'()*+,;=:@%/-]+?)([.,;:!?])?$/u;
 
 export function renderHtml(lines: TextLine[]): string {
   const titleLine = findTitleLine(lines);
@@ -42,6 +45,7 @@ export function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ordered rendering heuristics are evaluated in one pass.
 function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): string[] {
   const bodyLines: string[] = [];
   const bodyFontSize = estimateBodyFontSize(lines);
@@ -82,6 +86,13 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     if (renderedList !== undefined) {
       bodyLines.push(...renderedList.htmlLines);
       index = renderedList.nextIndex;
+      continue;
+    }
+
+    const renderedStandaloneLink = renderStandaloneLinkParagraph(lines, index);
+    if (renderedStandaloneLink !== undefined) {
+      bodyLines.push(renderedStandaloneLink.html);
+      index = renderedStandaloneLink.nextIndex;
       continue;
     }
 
@@ -307,4 +318,71 @@ function parseInlineAcknowledgementsHeading(
   if (bodyText.length < INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH) return undefined;
   if (!/[A-Za-z]/.test(bodyText)) return undefined;
   return { heading: headingText, body: bodyText, level: 2 };
+}
+
+function renderStandaloneLinkParagraph(
+  lines: TextLine[],
+  startIndex: number,
+): { html: string; nextIndex: number } | undefined {
+  const baseUrl = parseStandaloneUrlLine(lines[startIndex].text);
+  if (baseUrl === undefined) return undefined;
+
+  let url = baseUrl.url;
+  let trailingPunctuation = baseUrl.trailingPunctuation;
+  let nextIndex = startIndex + 1;
+
+  if (url.endsWith("/") && nextIndex < lines.length) {
+    const continuation = parseUrlContinuationLine(lines[nextIndex].text);
+    if (continuation !== undefined) {
+      const merged = `${url}${continuation.path}`;
+      if (isValidHttpUrl(merged)) {
+        url = merged;
+        trailingPunctuation = continuation.trailingPunctuation;
+        nextIndex += 1;
+      }
+    }
+  }
+
+  const escaped = escapeHtml(url);
+  return {
+    html: `<p><a href="${escaped}">${escaped}</a>${escapeHtml(trailingPunctuation)}</p>`,
+    nextIndex,
+  };
+}
+
+function parseStandaloneUrlLine(
+  text: string,
+): { url: string; trailingPunctuation: string } | undefined {
+  const normalized = normalizeTrailingPunctuationSpacing(normalizeSpacing(text));
+  const match = STANDALONE_URL_LINE_PATTERN.exec(normalized);
+  if (!match) return undefined;
+  const candidate = match[1];
+  if (!isValidHttpUrl(candidate)) return undefined;
+  return { url: candidate, trailingPunctuation: match[2] ?? "" };
+}
+
+function parseUrlContinuationLine(
+  text: string,
+): { path: string; trailingPunctuation: string } | undefined {
+  const normalized = normalizeTrailingPunctuationSpacing(normalizeSpacing(text));
+  const match = URL_CONTINUATION_LINE_PATTERN.exec(normalized);
+  if (!match) return undefined;
+  if (!match[1].includes("/")) return undefined;
+
+  const path = match[1].replace(/^\/+/, "");
+  if (path.length === 0) return undefined;
+  return { path, trailingPunctuation: match[2] ?? "" };
+}
+
+function normalizeTrailingPunctuationSpacing(text: string): string {
+  return text.replace(/\s+([.,;:!?])/g, "$1");
+}
+
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
 }

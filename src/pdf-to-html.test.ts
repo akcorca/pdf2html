@@ -183,6 +183,14 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("<p>• In \"encoder-decoder attention\" layers,");
   });
 
+  it("renders wrapped repository URLs in attention.pdf as a single hyperlink", () => {
+    expect(html).toContain(
+      '<a href="https://github.com/tensorflow/tensor2tensor">https://github.com/tensorflow/tensor2tensor</a>',
+    );
+    expect(html).not.toContain("<p>https://github.com/</p>");
+    expect(html).not.toContain("<p>tensorflow/tensor2tensor .</p>");
+  });
+
   it("removes repeated running-label header lines from tft.pdf", () => {
     expect(tftHtml).not.toContain("<p>COMMUNICATION</p>");
   });
