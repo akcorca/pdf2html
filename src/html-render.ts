@@ -39,6 +39,15 @@ const HYPHEN_WRAP_MAX_LEFT_OFFSET_RATIO = 0.08;
 const HYPHEN_WRAP_MAX_CENTER_OFFSET_RATIO = 0.12;
 const HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO = 0.72;
 const HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO = 0.72;
+const SAME_ROW_SENTENCE_SPLIT_END_PATTERN = /[.!?]["')\]]?$/;
+const SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN = /^[A-Z0-9(“‘"']/u;
+const SAME_ROW_SENTENCE_SPLIT_MAX_VERTICAL_DELTA_FONT_RATIO = 0.2;
+const SAME_ROW_SENTENCE_SPLIT_MAX_FONT_DELTA = 0.7;
+const SAME_ROW_SENTENCE_SPLIT_MIN_X_DELTA_RATIO = 0.01;
+const SAME_ROW_SENTENCE_SPLIT_MAX_X_DELTA_RATIO = 0.14;
+const SAME_ROW_SENTENCE_SPLIT_MAX_START_WIDTH_RATIO = 0.45;
+const STANDALONE_CAPTION_LABEL_PATTERN =
+  /^(?:Figure|Fig\.?|Table|Algorithm|Eq(?:uation)?\.?)\s+\d+[A-Za-z]?[.:]?$/iu;
 
 interface HeadingCandidate {
   kind: "named" | "numbered";
@@ -187,6 +196,19 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
     if (hyphenWrappedParagraph !== undefined) {
       bodyLines.push(`<p>${escapeHtml(hyphenWrappedParagraph.text)}</p>`);
       index = hyphenWrappedParagraph.nextIndex;
+      continue;
+    }
+
+    const sameRowSentenceSplitParagraph = consumeSameRowSentenceSplitParagraph(
+      lines,
+      index,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    );
+    if (sameRowSentenceSplitParagraph !== undefined) {
+      bodyLines.push(`<p>${escapeHtml(sameRowSentenceSplitParagraph.text)}</p>`);
+      index = sameRowSentenceSplitParagraph.nextIndex;
       continue;
     }
 
@@ -579,19 +601,15 @@ function isHyphenWrapContinuationLine(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
-  if (line === titleLine) return false;
-  if (line.pageIndex !== previousLine.pageIndex) return false;
-
-  const normalized = normalizeSpacing(line.text);
-  if (normalized.length === 0) return false;
-  if (!HYPHEN_WRAP_CONTINUATION_START_PATTERN.test(normalized)) return false;
-  if (containsDocumentMetadata(normalized)) return false;
-  if (parseBulletListItemText(normalized) !== undefined) return false;
-  if (parseInlineAcknowledgementsHeading(normalized) !== undefined) return false;
-  if (parseStandaloneUrlLine(normalized) !== undefined) return false;
-  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
-    return false;
-  }
+  const normalized = parseSamePageParagraphMergeCandidateText(
+    line,
+    previousLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    HYPHEN_WRAP_CONTINUATION_START_PATTERN,
+  );
+  if (normalized === undefined) return false;
 
   const verticalGap = previousLine.y - line.y;
   const maxVerticalGap = Math.max(
@@ -618,6 +636,145 @@ function mergeHyphenWrappedTexts(currentText: string, nextLineText: string): str
   const left = currentText.trimEnd();
   const right = nextLineText.trimStart();
   return normalizeSpacing(`${left}${right}`);
+}
+
+function consumeSameRowSentenceSplitParagraph(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): { text: string; nextIndex: number } | undefined {
+  const startLine = lines[startIndex];
+  if (
+    !isSameRowSentenceSplitStartLine(
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
+    return undefined;
+  }
+
+  const mergedParts = [normalizeSpacing(startLine.text)];
+  let nextIndex = startIndex + 1;
+  let previousLine = startLine;
+
+  while (nextIndex < lines.length) {
+    const candidate = lines[nextIndex];
+    if (
+      !isSameRowSentenceSplitContinuationLine(
+        candidate,
+        startLine,
+        previousLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
+      break;
+    }
+    mergedParts.push(normalizeSpacing(candidate.text));
+    previousLine = candidate;
+    nextIndex += 1;
+  }
+
+  if (mergedParts.length <= 1) return undefined;
+  return { text: normalizeSpacing(mergedParts.join(" ")), nextIndex };
+}
+
+function isSameRowSentenceSplitStartLine(
+  line: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const normalized = parseParagraphMergeCandidateText(
+    line,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  );
+  if (normalized === undefined) return false;
+  if (!SAME_ROW_SENTENCE_SPLIT_END_PATTERN.test(normalized)) return false;
+  if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
+  if (line.estimatedWidth > line.pageWidth * SAME_ROW_SENTENCE_SPLIT_MAX_START_WIDTH_RATIO) {
+    return false;
+  }
+  return true;
+}
+
+function isSameRowSentenceSplitContinuationLine(
+  line: TextLine,
+  startLine: TextLine,
+  previousLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const normalized = parseSamePageParagraphMergeCandidateText(
+    line,
+    previousLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN,
+  );
+  if (normalized === undefined) return false;
+
+  const maxYDelta =
+    Math.max(startLine.fontSize, line.fontSize) * SAME_ROW_SENTENCE_SPLIT_MAX_VERTICAL_DELTA_FONT_RATIO;
+  if (Math.abs(previousLine.y - line.y) > maxYDelta) return false;
+  if (Math.abs(line.fontSize - startLine.fontSize) > SAME_ROW_SENTENCE_SPLIT_MAX_FONT_DELTA) {
+    return false;
+  }
+
+  const minXDelta = line.pageWidth * SAME_ROW_SENTENCE_SPLIT_MIN_X_DELTA_RATIO;
+  const maxXDelta = line.pageWidth * SAME_ROW_SENTENCE_SPLIT_MAX_X_DELTA_RATIO;
+  const xDeltaFromStart = line.x - startLine.x;
+  if (xDeltaFromStart < minXDelta || xDeltaFromStart > maxXDelta) return false;
+  if (line.x < previousLine.x - minXDelta) return false;
+  return true;
+}
+
+function parseSamePageParagraphMergeCandidateText(
+  line: TextLine,
+  previousLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  startPattern: RegExp,
+): string | undefined {
+  if (line.pageIndex !== previousLine.pageIndex) return undefined;
+  return parseParagraphMergeCandidateText(
+    line,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    startPattern,
+  );
+}
+
+function parseParagraphMergeCandidateText(
+  line: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  startPattern?: RegExp,
+): string | undefined {
+  if (line === titleLine) return undefined;
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return undefined;
+  if (startPattern !== undefined && !startPattern.test(normalized)) return undefined;
+  if (containsDocumentMetadata(normalized)) return undefined;
+  if (parseBulletListItemText(normalized) !== undefined) return undefined;
+  if (parseInlineAcknowledgementsHeading(normalized) !== undefined) return undefined;
+  if (parseStandaloneUrlLine(normalized) !== undefined) return undefined;
+  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+    return undefined;
+  }
+  return normalized;
 }
 
 function isAcknowledgementsBodyLine(line: TextLine, headingLine: TextLine): boolean {
