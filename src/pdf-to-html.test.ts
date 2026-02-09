@@ -213,6 +213,11 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).not.toContain("<p>f f , g e , h a , b , c</p>");
   });
 
+  it("renders data sharing statement in covid.pdf as a semantic section heading", () => {
+    expect(covidHtml).toContain("<h2>Data sharing statement</h2>");
+    expect(covidHtml).not.toContain("<p>Data sharing statement</p>");
+  });
+
   it("merges wrapped respect paper title lines into a single h1 heading", () => {
     expect(respectHtml).toContain(
       "<h1>Should We Respect LLMs? A Cross-Lingual Study on the Influence of Prompt Politeness on LLM Performance</h1>",
