@@ -645,6 +645,15 @@ export function normalizeSpacing(text: string): string {
   return text.replace(/\s+/g, " ").trim();
 }
 
+export function groupLinesByPage(lines: TextLine[]): Map<number, TextLine[]> {
+  return lines.reduce((grouped, line) => {
+    const pageLines = grouped.get(line.pageIndex) ?? [];
+    pageLines.push(line);
+    grouped.set(line.pageIndex, pageLines);
+    return grouped;
+  }, new Map<number, TextLine[]>());
+}
+
 export function estimateLineWidth(fragments: ExtractedFragment[]): number {
   const startX = Math.min(...fragments.map((f) => f.x));
   const endX = Math.max(...fragments.map((f) => f.x));

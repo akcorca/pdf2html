@@ -1,5 +1,5 @@
 import type { TextLine } from "./pdf-types.ts";
-import { estimateBodyFontSize, normalizeSpacing } from "./text-lines.ts";
+import { estimateBodyFontSize, groupLinesByPage, normalizeSpacing } from "./text-lines.ts";
 
 const FOOTNOTE_SYMBOL_MARKER_ONLY_PATTERN = /^(?:[*∗†‡§¶#])$/u;
 const FOOTNOTE_SYMBOL_MARKER_PREFIX_PATTERN = /^(?:[*∗†‡§¶#])\s+.+$/u;
@@ -31,15 +31,6 @@ export function movePageFootnotesToDocumentEnd(lines: TextLine[]): TextLine[] {
   const bodyLines = lines.filter((line) => !moved.has(line));
   const footnoteLines = lines.filter((line) => moved.has(line));
   return [...bodyLines, ...footnoteLines];
-}
-
-function groupLinesByPage(lines: TextLine[]): Map<number, TextLine[]> {
-  return lines.reduce((grouped, line) => {
-    const bucket = grouped.get(line.pageIndex) ?? [];
-    bucket.push(line);
-    grouped.set(line.pageIndex, bucket);
-    return grouped;
-  }, new Map<number, TextLine[]>());
 }
 
 function findFootnoteRangesOnPage(

@@ -16,6 +16,7 @@ import {
 import {
   computePageVerticalExtents,
   estimateBodyFontSize,
+  groupLinesByPage,
   getRelativeVerticalPosition,
   normalizeSpacing,
 } from "./text-lines.ts";
@@ -54,19 +55,6 @@ function findTitleLineOnPage(
   return candidates.sort(
     (a, b) => scoreTitleCandidate(b, bodyFontSize) - scoreTitleCandidate(a, bodyFontSize),
   )[0];
-}
-
-function groupLinesByPage(lines: TextLine[]): Map<number, TextLine[]> {
-  const grouped = new Map<number, TextLine[]>();
-  for (const line of lines) {
-    const existing = grouped.get(line.pageIndex);
-    if (existing) {
-      existing.push(line);
-    } else {
-      grouped.set(line.pageIndex, [line]);
-    }
-  }
-  return grouped;
 }
 
 function isTitleCandidate(

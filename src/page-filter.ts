@@ -17,6 +17,7 @@ import {
 import {
   computePageVerticalExtents,
   estimateBodyFontSize,
+  groupLinesByPage,
   isNearPageEdge,
   isNearPhysicalPageEdge,
   isStandalonePageNumber,
@@ -573,15 +574,6 @@ function collectQualifiedPageCandidates(
     for (const line of candidates) result.add(line);
   }
   return result;
-}
-
-function groupLinesByPage(lines: TextLine[]): Map<number, TextLine[]> {
-  return lines.reduce((grouped, line) => {
-    const pageLines = grouped.get(line.pageIndex) ?? [];
-    pageLines.push(line);
-    grouped.set(line.pageIndex, pageLines);
-    return grouped;
-  }, new Map<number, TextLine[]>());
 }
 
 function isLikelyInlineFigureLabelLine(
