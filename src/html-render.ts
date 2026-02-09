@@ -56,6 +56,8 @@ const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.05;
 const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.12;
 const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[A-Za-z0-9("'"'[]/u;
 const BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN = /^\[\d+\]/;
+const BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN =
+  /^\[\d+(?:\s*,\s*\d+)*\]\s*[,;:]\s+[A-Za-z(“‘"']/u;
 const INLINE_MATH_BRIDGE_MAX_LOOKAHEAD = 4;
 const INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH = 24;
 const INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT = 8;
@@ -1402,7 +1404,12 @@ function isBodyParagraphContinuationLine(
     BODY_PARAGRAPH_CONTINUATION_START_PATTERN,
   );
   if (normalized === undefined) return false;
-  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized)) return false;
+  if (
+    BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized) &&
+    !isCitationLeadingContinuationLine(normalized, previousLine)
+  ) {
+    return false;
+  }
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
 
   if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
@@ -1424,4 +1431,10 @@ function isBodyParagraphContinuationLine(
   }
 
   return true;
+}
+
+function isCitationLeadingContinuationLine(normalized: string, previousLine: TextLine): boolean {
+  if (!BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN.test(normalized)) return false;
+  const previousText = normalizeSpacing(previousLine.text);
+  return !INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText);
 }

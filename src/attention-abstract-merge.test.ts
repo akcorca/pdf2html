@@ -37,4 +37,16 @@ describe("attention abstract same-row merge", () => {
     );
     expect(attentionHtml).not.toContain("<p>t t − 1</p>");
   });
+
+  it("merges citation-led continuation lines into the preceding paragraph", () => {
+    expect(attentionHtml).toContain(
+      "At each step the model is auto-regressive [10], consuming the previously generated symbols as additional input",
+    );
+    expect(attentionHtml).not.toContain(
+      "<p>Most competitive neural sequence transduction models have an encoder-decoder structure [ 5 , 2 , 35 ]. Here, the encoder maps an input sequence of symbol representations ( x 1 , ..., x n ) to a sequence of continuous representations z = ( z , ..., z ) . Given z , the decoder then generates an output sequence ( y 1 , ..., y m ) of symbols one element at a time. At each step the model is auto-regressive</p>",
+    );
+    expect(attentionHtml).not.toContain(
+      "<p>[10], consuming the previously generated symbols as additional input when generating the next.</p>",
+    );
+  });
 });
