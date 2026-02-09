@@ -2,7 +2,7 @@ import type { TextLine } from "./pdf-types.ts";
 import { estimateBodyFontSize, groupLinesByPage, normalizeSpacing } from "./text-lines.ts";
 
 const FOOTNOTE_SYMBOL_MARKER_ONLY_PATTERN = /^(?:[*∗†‡§¶#])$/u;
-const FOOTNOTE_SYMBOL_MARKER_PREFIX_PATTERN = /^(?:[*∗†‡§¶#])\s+.+$/u;
+const FOOTNOTE_SYMBOL_START_MARKER_PATTERN = /^(?:[*∗†‡§¶#])(?:\s+.+)?$/u;
 const FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN = /^\(?\d{1,2}\)?[.)]?$/u;
 const FOOTNOTE_START_MAX_VERTICAL_RATIO = 0.38;
 const FOOTNOTE_BLOCK_MAX_VERTICAL_RATIO = 0.42;
@@ -14,11 +14,7 @@ const FOOTNOTE_MAX_VERTICAL_GAP = 20;
 
 const FOOTNOTE_START_MARKER_RULES = [
   {
-    pattern: FOOTNOTE_SYMBOL_MARKER_ONLY_PATTERN,
-    maxFontRatio: FOOTNOTE_SYMBOL_MARKER_MAX_FONT_RATIO,
-  },
-  {
-    pattern: FOOTNOTE_SYMBOL_MARKER_PREFIX_PATTERN,
+    pattern: FOOTNOTE_SYMBOL_START_MARKER_PATTERN,
     maxFontRatio: FOOTNOTE_SYMBOL_MARKER_MAX_FONT_RATIO,
   },
   {
@@ -52,32 +48,22 @@ function partitionFootnoteLines(
 }
 
 function collectFootnoteLines(lines: TextLine[], bodyFontSize: number): Set<TextLine> {
-  const pageGroups = groupLinesByPage(lines);
   const moved = new Set<TextLine>();
-  for (const pageLines of pageGroups.values()) {
-    addFootnoteLinesOnPage(moved, pageLines, bodyFontSize);
+  for (const pageLines of groupLinesByPage(lines).values()) {
+    let index = 0;
+    while (index < pageLines.length - 1) {
+      const endIndex = findFootnoteRangeEndIndex(pageLines, index, bodyFontSize);
+      if (endIndex === undefined) {
+        index += 1;
+        continue;
+      }
+      for (let rangeIndex = index; rangeIndex < endIndex; rangeIndex += 1) {
+        moved.add(pageLines[rangeIndex]);
+      }
+      index = endIndex;
+    }
   }
   return moved;
-}
-
-function addFootnoteLinesOnPage(
-  moved: Set<TextLine>,
-  pageLines: TextLine[],
-  bodyFontSize: number,
-): void {
-  let index = 0;
-
-  while (index < pageLines.length - 1) {
-    const endIndex = findFootnoteRangeEndIndex(pageLines, index, bodyFontSize);
-    if (endIndex === undefined) {
-      index += 1;
-      continue;
-    }
-    for (let rangeIndex = index; rangeIndex < endIndex; rangeIndex += 1) {
-      moved.add(pageLines[rangeIndex]);
-    }
-    index = endIndex;
-  }
 }
 
 function findFootnoteRangeEndIndex(
@@ -89,7 +75,7 @@ function findFootnoteRangeEndIndex(
   if (!isFootnoteStartMarkerLine(markerLine, bodyFontSize)) return undefined;
 
   const nextLine = pageLines[startIndex + 1];
-  if (!isLikelyFootnoteTextLine(nextLine, bodyFontSize)) return undefined;
+  if (!nextLine || !getFootnoteContentText(nextLine, bodyFontSize)) return undefined;
 
   let endIndex = startIndex + 2;
   let previousLine = nextLine;
@@ -111,10 +97,6 @@ function isFootnoteStartMarkerLine(line: TextLine, bodyFontSize: number): boolea
   return FOOTNOTE_START_MARKER_RULES.some(
     (rule) => rule.pattern.test(text) && line.fontSize <= bodyFontSize * rule.maxFontRatio,
   );
-}
-
-function isLikelyFootnoteTextLine(line: TextLine, bodyFontSize: number): boolean {
-  return getFootnoteContentText(line, bodyFontSize) !== undefined;
 }
 
 function isLikelyFootnoteContinuationLine(
