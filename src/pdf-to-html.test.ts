@@ -295,6 +295,15 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml.indexOf(footnoteUrl)).toBeGreaterThan(respectHtml.indexOf(referencesHeading));
   });
 
+  it("keeps numeric footnote markers attached to URL footnotes in respect.pdf", () => {
+    expect(respectHtml).toContain(
+      '<p>1 <a href="https://openai.com/product">https://openai.com/product</a></p>',
+    );
+    expect(respectHtml).toContain(
+      '<p>2 <a href="https://huggingface.co/meta-llama/Llama-2-70b-chat">https://huggingface.co/meta-llama/Llama-2-70b-chat</a></p>',
+    );
+  });
+
   it("renders comma-containing numbered headings as semantic headings in respect.pdf", () => {
     expect(respectHtml).toContain("<h3>4.1 Languages, LLMs, and Prompt</h3>");
     expect(respectHtml).not.toContain("<p>4.1 Languages, LLMs, and Prompt</p>");
