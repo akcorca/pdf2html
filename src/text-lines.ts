@@ -25,6 +25,7 @@ const MAX_NUMBERED_SECTION_PREFIX_WORDS = 8;
 const MULTI_COLUMN_SPLIT_RATIO = 0.5;
 const MULTI_COLUMN_SPANNING_LINE_WIDTH_RATIO = 0.62;
 const MULTI_COLUMN_HEADING_REORDER_PATTERN = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u;
+const DOTTED_SUBSECTION_HEADING_MARKER_PATTERN = /^\d+(?:\.\d+){1,4}\.\s+/u;
 const MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH = 90;
 const MAX_MULTI_COLUMN_HEADING_WORDS = 16;
 const MULTI_COLUMN_NEAR_ROW_MAX_Y_DELTA_FONT_RATIO = 2.1;
@@ -240,15 +241,17 @@ function reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
     const leftHeading = reordered[index];
     const rightHeading = reordered[index + 1];
     if (!leftHeading || !rightHeading) continue;
-    if (!multiColumnPageIndexes.has(leftHeading.pageIndex)) continue;
     if (leftHeading.pageIndex !== rightHeading.pageIndex) continue;
     if (classifyMultiColumnLine(leftHeading) !== "left") continue;
     if (classifyMultiColumnLine(rightHeading) !== "right") continue;
 
-    const leftTopLevel = getTopLevelHeadingNumber(leftHeading.text);
-    const rightTopLevel = getTopLevelHeadingNumber(rightHeading.text);
-    if (leftTopLevel === undefined || rightTopLevel === undefined) continue;
-    if (leftTopLevel + 1 !== rightTopLevel) continue;
+    const continuationInsertionIndex = findLeftContinuationInsertionIndexForHeadingPair(
+      leftHeading,
+      rightHeading,
+      index,
+      multiColumnPageIndexes.has(leftHeading.pageIndex),
+    );
+    if (continuationInsertionIndex === undefined) continue;
 
     let continuationStart = index + 2;
     while (continuationStart < reordered.length) {
@@ -265,10 +268,50 @@ function reorderAdjacentSequentialHeadingPairsWithLeftBodyContinuations(
     if (continuationCount === 0) continue;
 
     const continuations = reordered.splice(index + 2, continuationCount);
-    reordered.splice(index, 0, ...continuations);
+    reordered.splice(continuationInsertionIndex, 0, ...continuations);
     index += continuationCount;
   }
   return reordered;
+}
+
+function findLeftContinuationInsertionIndexForHeadingPair(
+  leftHeading: TextLine,
+  rightHeading: TextLine,
+  leftHeadingIndex: number,
+  allowTopLevelHeadingRecovery: boolean,
+): number | undefined {
+  const leftPath = parseNumberedHeadingPathForReorder(leftHeading.text);
+  const rightPath = parseNumberedHeadingPathForReorder(rightHeading.text);
+  if (
+    leftPath !== undefined &&
+    rightPath !== undefined &&
+    hasDottedSubsectionHeadingMarker(leftHeading.text) &&
+    hasDottedSubsectionHeadingMarker(rightHeading.text) &&
+    isSequentialSiblingSubsectionPair(leftPath, rightPath)
+  ) {
+    return leftHeadingIndex + 1;
+  }
+
+  if (!allowTopLevelHeadingRecovery) return undefined;
+
+  const leftTopLevel = getTopLevelHeadingNumber(leftHeading.text);
+  const rightTopLevel = getTopLevelHeadingNumber(rightHeading.text);
+  if (leftTopLevel === undefined || rightTopLevel === undefined) return undefined;
+  if (leftTopLevel + 1 !== rightTopLevel) return undefined;
+  return leftHeadingIndex;
+}
+
+function isSequentialSiblingSubsectionPair(leftPath: number[], rightPath: number[]): boolean {
+  if (leftPath.length < 2 || rightPath.length < 2) return false;
+  if (leftPath.length !== rightPath.length) return false;
+  if (!isNumberPathPrefix(leftPath.slice(0, -1), rightPath.slice(0, -1))) return false;
+  const leftLast = leftPath[leftPath.length - 1] ?? -1;
+  const rightLast = rightPath[rightPath.length - 1] ?? -1;
+  return leftLast + 1 === rightLast;
+}
+
+function hasDottedSubsectionHeadingMarker(text: string): boolean {
+  return DOTTED_SUBSECTION_HEADING_MARKER_PATTERN.test(normalizeSpacing(text));
 }
 
 interface ReorderLinesByPromotionInput {

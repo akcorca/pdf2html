@@ -30,4 +30,17 @@ describe("covid numbered heading order", () => {
     expect(covidHtml.indexOf(dataCollectionHeading)).toBeLessThan(covidHtml.indexOf(deathDataHeading));
     expect(covidHtml).not.toContain("<p>2.2. Death data</p>");
   });
+
+  it("keeps left-column 2.1 body continuation before the right-column 2.2 heading", () => {
+    const dataCollectionHeading = "<h3>2.1. Data collection</h3>";
+    const leftBodyContinuation =
+      "<p>linked to SARS-CoV-2, which causes COVID-19, could predispose</p>";
+    const deathDataHeading = "<h3>2.2. Death data</h3>";
+
+    expect(covidHtml).toContain(dataCollectionHeading);
+    expect(covidHtml).toContain(leftBodyContinuation);
+    expect(covidHtml).toContain(deathDataHeading);
+    expect(covidHtml.indexOf(dataCollectionHeading)).toBeLessThan(covidHtml.indexOf(leftBodyContinuation));
+    expect(covidHtml.indexOf(leftBodyContinuation)).toBeLessThan(covidHtml.indexOf(deathDataHeading));
+  });
 });
