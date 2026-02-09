@@ -25,6 +25,11 @@ import {
 
 const STANDALONE_CITATION_MARKER_PATTERN =
   /^(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*$/;
+const STANDALONE_SYMBOL_ARTIFACT_PATTERN = /^[!)\u2032]+$/u;
+const FOOTNOTE_MARKER_ONLY_SYMBOL_PATTERN = /^[*∗†‡§¶#]+$/u;
+const STANDALONE_SYMBOL_ARTIFACT_MAX_CHARS = 3;
+const STANDALONE_SYMBOL_ARTIFACT_MAX_FONT_RATIO = 1.2;
+const STANDALONE_SYMBOL_ARTIFACT_MAX_WIDTH_RATIO = 0.15;
 const PAGE_COUNTER_PATTERN = /\(\d+\s+of\s+\d+\)/i;
 const DOMAIN_LIKE_TOKEN_PATTERN = /\b(?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,}\b/;
 const AUTHOR_RUNNING_LABEL_PATTERN = /\bet\s+al\.?$/iu;
@@ -104,6 +109,7 @@ function isRemovablePageArtifact(
   inlineFigureLabelLines: Set<TextLine>,
 ): boolean {
   if (line.text.length === 0) return true;
+  if (isLikelyStandaloneSymbolArtifact(line, bodyFontSize)) return true;
   if (isLikelyArxivSubmissionStamp(line, bodyFontSize)) return true;
   if (isLikelyPublisherPageCounterFooter(line, pageExtents)) return true;
   if (isLikelyTopMatterAffiliationIndexLine(line, bodyFontSize)) return true;
@@ -452,6 +458,22 @@ function hasNearbyBodyLineInLeftColumn(
     if (other.x / other.pageWidth > INLINE_FIGURE_LABEL_NEAR_BODY_LEFT_MAX_X_RATIO) return false;
     return countSubstantiveChars(other.text) >= INLINE_FIGURE_LABEL_NEAR_BODY_MIN_SUBSTANTIVE_CHARS;
   });
+}
+
+function isLikelyStandaloneSymbolArtifact(line: TextLine, bodyFontSize: number): boolean {
+  if (line.pageWidth <= 0) return false;
+  if (line.fontSize > bodyFontSize * STANDALONE_SYMBOL_ARTIFACT_MAX_FONT_RATIO) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (
+    normalized.length === 0 ||
+    normalized.length > STANDALONE_SYMBOL_ARTIFACT_MAX_CHARS
+  ) {
+    return false;
+  }
+  if (!STANDALONE_SYMBOL_ARTIFACT_PATTERN.test(normalized)) return false;
+  if (FOOTNOTE_MARKER_ONLY_SYMBOL_PATTERN.test(normalized)) return false;
+  return line.estimatedWidth <= line.pageWidth * STANDALONE_SYMBOL_ARTIFACT_MAX_WIDTH_RATIO;
 }
 
 function countSubstantiveChars(text: string): number {

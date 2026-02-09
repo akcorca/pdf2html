@@ -90,6 +90,11 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).not.toContain("<p>Input Table 𝑻</p>");
   });
 
+  it("removes standalone symbol-only artifact lines from clean.pdf", () => {
+    expect(cleanHtml).not.toContain("<p>!</p>");
+    expect(cleanHtml).not.toContain("<p>)</p>");
+  });
+
   it("keeps clean.pdf numbered section headings in left-to-right column reading order", () => {
     const section3 = "<h2>3 CLEANAGENT WORKFLOW</h2>";
     const section4 = "<h2>4 EXPERIMENTS</h2>";

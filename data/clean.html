@@ -15,12 +15,10 @@
 <p>ity and the manual effort required for customizing code to diverse</p>
 <p>column types pose significant challenges. Although large language</p>
 <p>models (LLMs) like ChatGPT have shown promise in automating</p>
-<p>!</p>
 <p>this process through natural language understanding and code gen-</p>
 <p>eration, it still demands expert-level programming knowledge and</p>
 <p>continuous interaction for prompt refinement. To solve these chal-</p>
 <p>lenges, our key idea is to propose a Python library with declarative,</p>
-<p>)</p>
 <p>unified APIs for standardizing different column types, simplify-</p>
 <p>ing the LLM’s code generation with concise API calls. We first</p>
 <p>propose Dataprep.Clean , a component of the Dataprep Python</p>
@@ -64,12 +62,10 @@
 <p>IP addresses, data scientists also need to write standardization code</p>
 <p>the data format in each column in 𝑇 , to get the standardized table</p>
 <p>tailored for the new types, which is time-consuming.</p>
-<p>′</p>
 <p>𝑇 satisfying the data scientist’s requirements. In Figure 1, the data</p>
 <p>Recently, the emerging LLMs have shown the potential to rev-</p>
 <p>scientist inputs their requirement to standardize “Admission Date”</p>
 <p>olutionize this process. By leveraging their natural language un-</p>
-<p>′</p>
 <p>with the “MM/DD/YYYY HH:MM:SS” format. In the resulting 𝑇 , data</p>
 <p>derstanding and code generation ability, these models could signif-</p>
 <p>in the cells of the “Admission Date” column follows only one date</p>
@@ -216,7 +212,6 @@
 <p>Table 𝑻 Standardized</p>
 <p>cannot figure out the specific type of one column, the</p>
 <p>Column-</p>
-<p>!</p>
 <p>+ User’s Requirements Table 𝑻</p>
 <p>type Annotator outputs “I do not know”. The annotation result is</p>
 <p>CleanAgent</p>
@@ -254,7 +249,6 @@
 <p>Programmer</p>
 <p>Python code ( ⑤ in Figure 2), then executes the generated Python</p>
 <p>code. If the generated code executes without errors, the standard-</p>
-<p>′</p>
 <p>Figure 2: The Workflow of CleanAgent.</p>
 <p>ized table 𝑇 is returned; otherwise, the error message is returned</p>
 <p>to the Chat Manager and stored in its memory ( ⑥ in Figure 2). Then,</p>
@@ -262,11 +256,11 @@
 <p>the data standardization process successfully.</p>
 <p>declarative data standardization tools for LLMs is not only feasible</p>
 <p>but essential, motivating the community to develop even more</p>
+<h2>3 CLEANAGENT WORKFLOW</h2>
 <h2>4 EXPERIMENTS</h2>
 <p>advanced tools.</p>
 <p>Dataset. In our experiment, we employ the Flights dataset from [ 4 ],</p>
 <p>as it contains highly irregular datetime formats across four at-</p>
-<h2>3 CLEANAGENT WORKFLOW</h2>
 <p>tributes: scheduled_dept, actual_dept, scheduled_arrival,</p>
 <p>In this section, we first introduce the basic structure of LLM-based</p>
 <p>and actual_arrival . The datetime values in these columns ex-</p>
