@@ -95,15 +95,15 @@ const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_CONTINUATION_WIDTH_RATIO = 0.65;
 const INLINE_MATH_BRIDGE_MAX_LOOKAHEAD = 4;
 const INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH = 24;
 const INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT = 8;
-const INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO = 0.55;
+const INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO = 1.0;
 const INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO = 0.55;
 const INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}\[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN = /^[A-Za-z]$/;
 const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_PATTERN = /^[A-Za-z0-9]$/u;
 const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_FONT_RATIO = 0.82;
 const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_WIDTH_RATIO = 0.08;
-const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_VERTICAL_GAP_RATIO = 0.9;
 const INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN = /^[a-z]{1,6}$/u;
+const INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN = /^[a-z]{1,3}$/u;
 const INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN = /^\d{1,4}$/;
 const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}\[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN = /[.!?]["')\]]?$/;
@@ -2189,7 +2189,7 @@ function consumeBodyParagraphContinuationParts(
     }
 
     const candidate = lines[nextIndex];
-    const bridgedContinuationIndex = findBodyParagraphContinuationAfterInlineMathArtifacts(
+    const inlineMathBridge = findBodyParagraphContinuationAfterInlineMathArtifacts(
       lines,
       nextIndex,
       previousLine,
@@ -2198,15 +2198,11 @@ function consumeBodyParagraphContinuationParts(
       bodyFontSize,
       hasDottedSubsectionHeadings,
     );
-    if (bridgedContinuationIndex !== undefined) {
-      const detachedSingleTokenArtifactText = getDetachedSingleTokenInlineMathArtifactText(
-        lines[nextIndex],
-        previousLine,
-      );
-      if (detachedSingleTokenArtifactText !== undefined) {
-        appendBodyParagraphPart(parts, detachedSingleTokenArtifactText);
+    if (inlineMathBridge !== undefined) {
+      for (const artifactText of inlineMathBridge.artifactTexts) {
+        appendBodyParagraphPart(parts, artifactText);
       }
-      nextIndex = bridgedContinuationIndex;
+      nextIndex = inlineMathBridge.continuationIndex;
       continue;
     }
     if (!isBodyParagraphContinuationLine(
@@ -2271,13 +2267,28 @@ function shouldContinuePastShortBodyLine(
   }
   const nextLine = lines[nextIndex];
   if (!nextLine) return false;
-  return isBodyParagraphContinuationLine(
-    nextLine,
-    currentLine,
-    startLine,
-    titleLine,
-    bodyFontSize,
-    hasDottedSubsectionHeadings,
+  if (
+    isBodyParagraphContinuationLine(
+      nextLine,
+      currentLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
+    return true;
+  }
+  return (
+    findBodyParagraphContinuationAfterInlineMathArtifacts(
+      lines,
+      nextIndex,
+      currentLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    ) !== undefined
   );
 }
 
@@ -2446,15 +2457,18 @@ function findBodyParagraphContinuationAfterInlineMathArtifacts(
   titleLine: TextLine | undefined,
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
-): number | undefined {
+): { continuationIndex: number; artifactTexts: string[] } | undefined {
   const previousText = normalizeSpacing(previousLine.text);
   if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return undefined;
 
   let scanIndex = artifactStartIndex;
+  const artifactTexts: string[] = [];
   const maxScanIndex = Math.min(lines.length, artifactStartIndex + INLINE_MATH_BRIDGE_MAX_LOOKAHEAD);
   while (scanIndex < maxScanIndex) {
     const artifact = lines[scanIndex];
     if (!isInlineMathArtifactBridgeLine(artifact, previousLine)) return undefined;
+    const artifactText = getInlineMathArtifactBridgeText(artifact, previousLine);
+    if (artifactText !== undefined) artifactTexts.push(artifactText);
 
     const continuationIndex = scanIndex + 1;
     const continuationLine = lines[continuationIndex];
@@ -2471,7 +2485,7 @@ function findBodyParagraphContinuationAfterInlineMathArtifacts(
         hasDottedSubsectionHeadings,
       )
     ) {
-      return continuationIndex;
+      return { continuationIndex, artifactTexts };
     }
     scanIndex += 1;
   }
@@ -2525,15 +2539,27 @@ function hasDetachedMathSubscriptContext(previousText: string, nextText: string)
   return DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN.test(nextText);
 }
 
-function getDetachedSingleTokenInlineMathArtifactText(
-  line: TextLine | undefined,
+function getInlineMathArtifactBridgeText(
+  line: TextLine,
   previousLine: TextLine,
 ): string | undefined {
-  if (!line || line.pageIndex !== previousLine.pageIndex) return undefined;
+  if (line.pageIndex !== previousLine.pageIndex) return undefined;
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0 || normalized.length > INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH) return undefined;
+
   const tokens = normalized.split(/\s+/).filter((token) => token.length > 0);
+  if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT) return undefined;
   if (isDetachedSingleTokenInlineMathArtifact(tokens, line, previousLine)) return normalized;
+
+  const hasNumericOrSymbol = tokens.some(
+    (token) =>
+      INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
+      INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token),
+  );
+  if (hasNumericOrSymbol) return normalized;
+  if (tokens.every((token) => INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN.test(token))) {
+    return normalized;
+  }
   return undefined;
 }
 
@@ -2553,16 +2579,7 @@ function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine):
     previousLine,
   );
   const verticalGap = previousLine.y - line.y;
-  const baseMaxVerticalGap = Math.max(
-    previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO,
-    3,
-  );
-  const maxVerticalGap = isDetachedSingleTokenArtifact
-    ? Math.max(
-        baseMaxVerticalGap,
-        previousLine.fontSize * INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_VERTICAL_GAP_RATIO,
-      )
-    : baseMaxVerticalGap;
+  const maxVerticalGap = Math.max(previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO, 3);
   if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
   if (
     !isDetachedSingleTokenArtifact &&
