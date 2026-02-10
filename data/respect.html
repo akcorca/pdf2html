@@ -75,8 +75,7 @@ RIKEN AIP NII LLMC
 <p>Therefore, we investigate this issue using</p>
 <p>Llama2-70B and its base model without SFT and</p>
 <p>RLHF. We conduct the same experiment as be-fore to evaluate the impact of RLHF. However,</p>
-<p>Figure 2: Summarization performance across politeness levels. The x-axis shows politeness levels (1 = impolite, 8</p>
-<p>= very polite), and the y-axis represents metrics like ROUGE-L, BERTScore, and summary length. The lines show how different LLMs, including GPT-3.5 and GPT-4, respond to varying politeness levels.</p>
+<p>Figure 2: Summarization performance across politeness levels. The x-axis shows politeness levels (1 = impolite, 8 = very polite), and the y-axis represents metrics like ROUGE-L, BERTScore, and summary length. The lines show how different LLMs, including GPT-3.5 and GPT-4, respond to varying politeness levels.</p>
 <p>we modify the prompt content while keeping the prompt template and meaning unchanged to ensure that llama2-70B could generate the required con-tent. In addition, since the base model has yet to be fine-tuned, it will continue to output content in the summarization task until it reaches the gener-ation length limit. Therefore, we do not carry out this evaluation on summarization.</p>
 <h2>5 Results</h2>
 <h3>5.1 Summarization</h3>
@@ -160,8 +159,7 @@ RIKEN AIP NII LLMC
 <tr><td></td><td>1</td><td>28.44</td><td>51.19</td></tr>
 </tbody>
 </table>
-<p>Figure 5: Heatmap comparing the performance of</p>
-<p>Llama2-70B and its base model across politeness lev-els. The x-axis shows politeness levels (1 = impolite, 8 = very polite), and the heatmap illustrates the perfor-mance difference between Llama2-70B with and with-out RLHF. Green indicates better performance with RLHF, and red indicates worse performance.</p>
+<p>Figure 5: Heatmap comparing the performance of Llama2-70B and its base model across politeness lev-els. The x-axis shows politeness levels (1 = impolite, 8 = very polite), and the heatmap illustrates the perfor-mance difference between Llama2-70B with and with-out RLHF. Green indicates better performance with RLHF, and red indicates worse performance.</p>
 <p>ness generally achieves higher scores. However,</p>
 <p>this correlation is not consistently statistically sig-nificant across most instances. Compared to the result of Llama2-70B, it can be inferred that while the base model is indeed influenced by politeness level in prompts, its sensitivity to politeness is pri-marily governed by RLHF and SFT.</p>
 <p>In Figure 6, the Llama2-70B model, fine-tuning with RLHF and SFT, exhibited a significantly lower level of bias compared to the base model,</p>

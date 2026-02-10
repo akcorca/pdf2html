@@ -67,6 +67,11 @@ const SAME_ROW_SENTENCE_SPLIT_MAX_OVERLAP_FONT_RATIO = 6.0;
 const SAME_ROW_SENTENCE_SPLIT_MAX_START_WIDTH_RATIO = 0.45;
 const STANDALONE_CAPTION_LABEL_PATTERN =
   /^(?:Figure|Fig\.?|Table|Algorithm|Eq(?:uation)?\.?)\s+\d+[A-Za-z]?[.:]?$/iu;
+const CAPTION_START_PATTERN =
+  /^(?:Figure|Fig\.?)\s+\d+[A-Za-z]?\s*[.:]\s+\S/iu;
+const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
+const CAPTION_CONTINUATION_MAX_FONT_DELTA = 0.8;
+const CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.05;
 const BODY_PARAGRAPH_FULL_WIDTH_RATIO = 0.85;
 const BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE = 0.75;
 const BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO = 2.0;
@@ -385,6 +390,13 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
       bodyLines.push(renderedNumberedCodeBlock.html);
       addConsumedIndexes(consumedBodyLineIndexes, renderedNumberedCodeBlock.consumedIndexes, index);
       index += 1;
+      continue;
+    }
+
+    const figureCaption = consumeFigureCaption(lines, index);
+    if (figureCaption !== undefined) {
+      bodyLines.push(`<p>${escapeHtml(figureCaption.text)}</p>`);
+      index = figureCaption.nextIndex;
       continue;
     }
 
@@ -863,6 +875,60 @@ function consumeDisplayMathBlock(
   }
 
   return { text: parts.join(" "), nextIndex };
+}
+
+/**
+ * Merge multi-line figure captions (e.g. "Figure 3: An example of the
+ * attention mechanism following...") into a single paragraph.  The first
+ * line must match CAPTION_START_PATTERN; subsequent same-page lines with
+ * matching font size and left alignment are consumed until a line ends
+ * with terminal punctuation and no valid continuation follows.
+ */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: caption continuation collects multiple geometry guards in one loop.
+function consumeFigureCaption(
+  lines: TextLine[],
+  startIndex: number,
+): ConsumedParagraph | undefined {
+  const startLine = lines[startIndex];
+  const startNormalized = normalizeSpacing(startLine.text);
+  if (!CAPTION_START_PATTERN.test(startNormalized)) return undefined;
+
+  const parts = [startNormalized];
+  let previousLine = startLine;
+  let scanIndex = startIndex + 1;
+
+  while (scanIndex < lines.length) {
+    const line = lines[scanIndex];
+    if (line.pageIndex !== startLine.pageIndex) break;
+    if (isCrossColumnPair(previousLine, line)) break;
+    if (Math.abs(line.fontSize - startLine.fontSize) > CAPTION_CONTINUATION_MAX_FONT_DELTA) break;
+
+    const maxVerticalGap = getFontScaledVerticalGapLimit(
+      previousLine.fontSize,
+      CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
+    );
+    if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) break;
+
+    const maxLeftOffset = line.pageWidth * CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO;
+    if (Math.abs(line.x - startLine.x) > maxLeftOffset) break;
+
+    const normalized = normalizeSpacing(line.text);
+    if (normalized.length === 0) break;
+    if (isMetadataOrSemanticHeadingText(normalized)) break;
+    if (CAPTION_START_PATTERN.test(normalized)) break;
+
+    parts.push(normalized);
+    previousLine = line;
+    scanIndex++;
+  }
+
+  if (parts.length <= 1) return undefined;
+  // Join parts, preserving hyphen-wrapped words (e.g. "in-" + "dicate" → "in-dicate").
+  let text = parts[0];
+  for (let i = 1; i < parts.length; i++) {
+    text = /[A-Za-z]-\s*$/.test(text) ? `${text.trimEnd()}${parts[i]}` : `${text} ${parts[i]}`;
+  }
+  return { text: normalizeSpacing(text), nextIndex: scanIndex };
 }
 
 function consumeParagraph(

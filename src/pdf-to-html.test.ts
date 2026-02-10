@@ -879,4 +879,19 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).not.toContain("for 4 Chinese");
     expect(respectHtml).toContain("Llama-2-70b-chat (hereafter Llama2- 70B) for English");
   });
+
+  it("merges multi-line figure captions into a single paragraph", () => {
+    // Figure 3 caption spans 4 lines in the PDF (page 13)
+    expect(html).toContain(
+      "Figure 3: An example of the attention mechanism following long-distance dependencies in the encoder self-attention in layer 5 of 6.",
+    );
+    // Figure 4 caption spans 3 lines in the PDF (page 14)
+    expect(html).toContain(
+      "Figure 4: Two attention heads, also in layer 5 of 6, apparently involved in anaphora resolution.",
+    );
+    // Figure 5 caption spans 2 lines in the PDF (page 15)
+    expect(html).toContain(
+      "Figure 5: Many of the attention heads exhibit behaviour that seems related to the structure of the sentence.",
+    );
+  });
 });
