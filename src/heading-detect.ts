@@ -40,11 +40,38 @@ export function detectNumberedHeadingLevel(text: string): number | undefined {
   return Math.min(parsed.depth + 1, 6);
 }
 
-export function detectNamedSectionHeadingLevel(text: string): number | undefined {
-  const normalized = normalizeHeadingCandidate(text, 4, 40);
+export interface NamedHeading {
+  level: number;
+  text: string;
+}
+
+export function detectNamedSectionHeadingLevel(text: string): NamedHeading | undefined {
+  let candidate = text;
+  // Handle widely-kerned headings like "A B S T R A C T"
+  if (/^([A-Z0-9]\s+){5,}/.test(text)) {
+    const compacted = text.replace(/\s/g, "");
+    if (compacted.includes("ABSTRACT")) {
+      candidate = "Abstract";
+    } else if (compacted.includes("INTRODUCTION")) {
+      candidate = "Introduction";
+    } else if (compacted.includes("REFERENCES")) {
+      candidate = "References";
+    }
+  }
+
+  const normalized = normalizeHeadingCandidate(candidate, 4, 40);
   if (normalized === undefined) return undefined;
-  if (!/^[A-Za-z][A-Za-z\s-]*[A-Za-z]$/u.test(normalized)) return undefined;
-  return NAMED_SECTION_HEADING_LEVELS.get(normalized.toLowerCase());
+
+  const level = NAMED_SECTION_HEADING_LEVELS.get(normalized.toLowerCase());
+  if (level === undefined) return undefined;
+
+  // The regex check might be too strict for our transformed candidates.
+  // Let's rely on the map lookup.
+  if (!/^[A-Za-z][A-Za-z\s-]*[A-Za-z]$/u.test(normalized) && candidate === text) {
+    return undefined;
+  }
+
+  return { level, text: candidate };
 }
 
 function normalizeHeadingCandidate(

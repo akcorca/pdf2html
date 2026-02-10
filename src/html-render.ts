@@ -2,7 +2,11 @@
 import type { ExtractedDocument, TextLine } from "./pdf-types.ts";
 import { estimateBodyFontSize, normalizeSpacing, splitWords } from "./text-lines.ts";
 import { containsDocumentMetadata, findTitleLine } from "./title-detect.ts";
-import { detectNamedSectionHeadingLevel, detectNumberedHeadingLevel } from "./heading-detect.ts";
+import {
+  detectNamedSectionHeadingLevel,
+  detectNumberedHeadingLevel,
+  type NamedHeading,
+} from "./heading-detect.ts";
 import { detectTable, renderTableHtml } from "./table-detect.ts";
 
 const INLINE_ACKNOWLEDGEMENTS_HEADING_PATTERN =
@@ -139,6 +143,7 @@ const DISPLAY_MATH_SUPERSCRIPT_MAX_FONT_RATIO = 0.85;
 interface HeadingCandidate {
   kind: "named" | "numbered";
   level: number;
+  text?: string;
 }
 
 interface NumberedHeadingSectionInfo {
@@ -268,7 +273,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     );
     if (resolvedHeading !== undefined) {
       const { heading, numberedHeadingSectionInfo } = resolvedHeading;
-      let headingText = currentLine.text;
+      let headingText = heading.text ?? currentLine.text;
       if (heading.kind === "numbered") {
         const wrapped = consumeWrappedNumberedHeadingContinuation(
           lines,
@@ -426,7 +431,7 @@ function consumeAuthorBlock(
     if (AUTHOR_BLOCK_END_PATTERN.test(normalized)) {
       break;
     }
-    if (detectNamedSectionHeadingLevel(normalized)) {
+    if (detectNamedSectionHeadingLevel(normalized) !== undefined) {
       break;
     }
     // Author blocks appear in the title area (often full-width), so always use
@@ -932,14 +937,15 @@ function detectHeadingCandidate(
     return { kind: "numbered", level: numberedHeadingLevel };
   }
 
-  const namedHeadingLevel = detectNamedSectionHeadingLevel(normalized);
-  if (namedHeadingLevel === undefined) return undefined;
-  return { kind: "named", level: namedHeadingLevel };
+  const namedHeading = detectNamedSectionHeadingLevel(normalized);
+  if (namedHeading === undefined) return undefined;
+  return { kind: "named", level: namedHeading.level, text: namedHeading.text };
 }
 
 function isSemanticHeadingText(text: string): boolean {
   return (
-    detectNumberedHeadingLevel(text) !== undefined || detectNamedSectionHeadingLevel(text) !== undefined
+    detectNumberedHeadingLevel(text) !== undefined ||
+    detectNamedSectionHeadingLevel(text) !== undefined
   );
 }
 
@@ -1334,14 +1340,14 @@ function parseInlineNamedSectionHeading(
   if (headingText.length === 0 || isStandaloneAcknowledgementsHeading(headingText)) {
     return undefined;
   }
-  const headingLevel = detectNamedSectionHeadingLevel(headingText);
-  if (headingLevel === undefined) return undefined;
+  const namedHeading = detectNamedSectionHeadingLevel(headingText);
+  if (namedHeading === undefined) return undefined;
 
   const bodyText = match[2].trim();
   if (!hasInlineHeadingBodyText(bodyText, INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH)) {
     return undefined;
   }
-  return { heading: headingText, body: bodyText, level: headingLevel };
+  return { heading: headingText, body: bodyText, level: namedHeading.level };
 }
 
 function parseInlineHeadingParagraph(

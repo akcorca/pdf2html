@@ -819,6 +819,11 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).toMatch(/<li>.*\[1\]/);
   });
 
+  it("identifies and cleans the abstract heading in covid.pdf", () => {
+    expect(covidHtml).not.toContain("<p>A R T I C L E I N F O A B S T R A C T</p>");
+    expect(covidHtml).toContain("<h2>Abstract</h2>");
+  });
+
   it("renders Table 1 in attention.pdf as a semantic table element", () => {
     expect(html).toContain("<table>");
     expect(html).toContain("</table>");

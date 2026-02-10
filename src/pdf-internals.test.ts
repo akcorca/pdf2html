@@ -114,10 +114,10 @@ describe("pdfToHtmlInternals", () => {
   });
 
   it("detects heading levels for common unnumbered section headings", () => {
-    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Abstract")).toBe(2);
-    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("References")).toBe(2);
-    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Conclusion")).toBe(2);
-    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Research in context")).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Abstract")?.level).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("References")?.level).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Conclusion")?.level).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Research in context")?.level).toBe(2);
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("In this work, we show")).toBeUndefined();
   });
 
