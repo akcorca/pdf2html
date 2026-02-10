@@ -36,15 +36,8 @@ export function detectNumberedHeadingLevel(text: string): number | undefined {
 
   const parsed = parseNumberedHeading(normalized);
   if (parsed === undefined) return undefined;
-
-  if (!isValidTopLevelSectionNumber(parsed.sectionNumber)) {
-    return undefined;
-  }
-
-  if (!isValidHeadingText(parsed.headingText, parsed.sectionNumber)) return undefined;
-
-  const depth = parsed.sectionNumber.split(".").length;
-  return Math.min(depth + 1, 6);
+  if (!isValidHeadingText(parsed.headingText, parsed.isTopLevelSection)) return undefined;
+  return Math.min(parsed.depth + 1, 6);
 }
 
 export function detectNamedSectionHeadingLevel(text: string): number | undefined {
@@ -66,27 +59,36 @@ function normalizeHeadingCandidate(
 }
 
 interface ParsedNumberedHeading {
-  sectionNumber: string;
+  depth: number;
+  isTopLevelSection: boolean;
   headingText: string;
 }
 
 function parseNumberedHeading(text: string): ParsedNumberedHeading | undefined {
   const match = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u.exec(text);
   if (!match) return undefined;
+  const sectionNumber = match[1].replace(/\.$/, "");
+  const sectionParts = sectionNumber.split(".");
+  const topLevelSectionNumber = Number.parseInt(sectionParts[0], 10);
+  if (!isValidTopLevelSectionNumber(topLevelSectionNumber)) return undefined;
   return {
-    sectionNumber: match[1].replace(/\.$/, ""),
+    depth: sectionParts.length,
+    isTopLevelSection: sectionParts.length === 1,
     headingText: match[2].trim(),
   };
 }
 
-function isValidTopLevelSectionNumber(sectionNumber: string): boolean {
-  const topLevel = Number.parseInt(sectionNumber.split(".")[0], 10);
-  return Number.isFinite(topLevel) && topLevel >= 1 && topLevel <= MAX_TOP_LEVEL_SECTION_NUMBER;
+function isValidTopLevelSectionNumber(topLevelSectionNumber: number): boolean {
+  return (
+    Number.isFinite(topLevelSectionNumber) &&
+    topLevelSectionNumber >= 1 &&
+    topLevelSectionNumber <= MAX_TOP_LEVEL_SECTION_NUMBER
+  );
 }
 
-function isValidHeadingText(text: string, sectionNumber: string): boolean {
+function isValidHeadingText(text: string, isTopLevelSection: boolean): boolean {
   if (text.length < 2) return false;
-  if (text.includes(",") && !sectionNumber.includes(".")) return false;
+  if (text.includes(",") && isTopLevelSection) return false;
   if (isLikelyScoredTableRow(text)) return false;
   if (/[.!?]$/.test(text)) return false;
   if (!/^[A-Z]/.test(text)) return false;
