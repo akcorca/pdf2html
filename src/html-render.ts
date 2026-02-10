@@ -2880,14 +2880,7 @@ function shouldSkipDetachedNumericFootnoteMarkerLine(
     hasDottedSubsectionHeadings,
   });
   if (normalized === undefined) return false;
-  if (!DETACHED_NUMERIC_FOOTNOTE_MARKER_PATTERN.test(normalized)) return false;
-  if (
-    line.estimatedWidth >
-    line.pageWidth * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_WIDTH_RATIO
-  ) {
-    return false;
-  }
-  if (line.fontSize > bodyFontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_FONT_RATIO) return false;
+  if (!isDetachedNumericFootnoteMarker(line, normalized, bodyFontSize)) return false;
 
   const previousLine = lines[index - 1];
   const nextLine = lines[index + 1];
@@ -2906,13 +2899,7 @@ function shouldSkipDetachedNumericFootnoteMarkerLine(
     line.fontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MIN_BASELINE_Y_DELTA_FONT_RATIO;
   if (line.y - nextLine.y < minBaselineYDelta) return false;
 
-  const markerLeft = line.x;
-  const markerRight = line.x + line.estimatedWidth;
-  const previousRight = previousLine.x + previousLine.estimatedWidth;
-  const maxGap = line.fontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_NEIGHBOR_GAP_FONT_RATIO;
-  const closeToPrevious = markerLeft - previousRight <= maxGap;
-  const closeToNext = nextLine.x - markerRight <= maxGap;
-  return closeToPrevious || closeToNext;
+  return isDetachedNumericFootnoteMarkerNearNeighbors(line, previousLine, nextLine);
 }
 
 function shouldSkipDetachedNumericFootnoteMarkerContinuationLine(
@@ -2928,16 +2915,7 @@ function shouldSkipDetachedNumericFootnoteMarkerContinuationLine(
   if (!markerLine || markerLine.pageIndex !== previousLine.pageIndex) return false;
 
   const normalizedMarker = normalizeSpacing(markerLine.text);
-  if (!DETACHED_NUMERIC_FOOTNOTE_MARKER_PATTERN.test(normalizedMarker)) return false;
-  if (
-    markerLine.estimatedWidth >
-    markerLine.pageWidth * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_WIDTH_RATIO
-  ) {
-    return false;
-  }
-  if (markerLine.fontSize > bodyFontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_FONT_RATIO) {
-    return false;
-  }
+  if (!isDetachedNumericFootnoteMarker(markerLine, normalizedMarker, bodyFontSize)) return false;
 
   const previousText = normalizeSpacing(previousLine.text);
   if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
@@ -2966,6 +2944,29 @@ function shouldSkipDetachedNumericFootnoteMarkerContinuationLine(
     return false;
   }
 
+  return isDetachedNumericFootnoteMarkerNearNeighbors(markerLine, previousLine, nextLine);
+}
+
+function isDetachedNumericFootnoteMarker(
+  line: TextLine,
+  normalizedText: string,
+  bodyFontSize: number,
+): boolean {
+  if (!DETACHED_NUMERIC_FOOTNOTE_MARKER_PATTERN.test(normalizedText)) return false;
+  if (
+    line.estimatedWidth >
+    line.pageWidth * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_WIDTH_RATIO
+  ) {
+    return false;
+  }
+  return line.fontSize <= bodyFontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_FONT_RATIO;
+}
+
+function isDetachedNumericFootnoteMarkerNearNeighbors(
+  markerLine: TextLine,
+  previousLine: TextLine,
+  nextLine: TextLine,
+): boolean {
   const markerLeft = markerLine.x;
   const markerRight = markerLine.x + markerLine.estimatedWidth;
   const previousRight = previousLine.x + previousLine.estimatedWidth;
