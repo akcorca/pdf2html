@@ -31,6 +31,22 @@ describe("covid numbered heading order", () => {
     expect(covidHtml).not.toContain("<p>2.2. Death data</p>");
   });
 
+  it("keeps Methods subsections in numeric order (2.1 -> 2.2 -> 2.3)", () => {
+    const dataCollectionHeading = "<h3>2.1. Data collection</h3>";
+    const deathDataHeading = "<h3>2.2. Death data</h3>";
+    const statisticalHeading = "<h3>2.3. Statistical analyses</h3>";
+
+    expect(covidHtml).toContain(dataCollectionHeading);
+    expect(covidHtml).toContain(deathDataHeading);
+    expect(covidHtml).toContain(statisticalHeading);
+    expect(covidHtml.indexOf(dataCollectionHeading)).toBeLessThan(
+      covidHtml.indexOf(deathDataHeading),
+    );
+    expect(covidHtml.indexOf(deathDataHeading)).toBeLessThan(
+      covidHtml.indexOf(statisticalHeading),
+    );
+  });
+
   it("keeps left-column 2.1 body continuation before the right-column 2.2 heading", () => {
     const dataCollectionHeading = "<h3>2.1. Data collection</h3>";
     const leftBodyText = "re-hospitalisations due to TE during the study period were excluded";

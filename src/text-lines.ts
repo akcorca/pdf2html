@@ -225,6 +225,7 @@ function applyReadingOrderReorders(
       reorderMisorderedNumberedHeadings(currentLines, multiColumnPageIndexes, columnMajorPageIndexes),
     (currentLines) =>
       deferRightColumnHeadingsOnColumnMajorPages(currentLines, columnMajorPageIndexes, pageColumnSplitXs),
+    reorderDescendingSequentialSiblingNumberedHeadings,
     reorderRightColumnHeadingsAfterLeftBodyContinuations,
     (currentLines) =>
       reorderRightColumnBodyAfterLeftBodyContinuations(currentLines, multiColumnPageIndexes),
@@ -566,6 +567,31 @@ function deferRightColumnHeadingsOnColumnMajorPages(
     i--;
   }
   return result;
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: sibling heading repair requires combined guards.
+function reorderDescendingSequentialSiblingNumberedHeadings(lines: TextLine[]): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 0; index < reordered.length - 1; index += 1) {
+    const current = reordered[index];
+    const next = reordered[index + 1];
+    if (current.pageIndex !== next.pageIndex) continue;
+
+    const currentPath = parseNumberedHeadingPathForReorder(current.text);
+    const nextPath = parseNumberedHeadingPathForReorder(next.text);
+    if (!currentPath || !nextPath) continue;
+    if (!isSequentialSiblingSubsectionPair(nextPath, currentPath)) continue;
+
+    const currentColumn = classifyMultiColumnLine(current);
+    const nextColumn = classifyMultiColumnLine(next);
+    if (currentColumn === "spanning" || nextColumn === "spanning") continue;
+    if (currentColumn !== nextColumn) continue;
+    if (next.y <= current.y) continue;
+
+    promoteLine(reordered, index + 1, index);
+    if (index > 0) index -= 1;
+  }
+  return reordered;
 }
 
 function reorderLeftColumnTopLevelHeadings(
