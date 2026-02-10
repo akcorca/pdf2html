@@ -2635,9 +2635,9 @@ function findBodyParagraphContinuationAfterInlineMathArtifacts(
   const maxScanIndex = Math.min(lines.length, artifactStartIndex + INLINE_MATH_BRIDGE_MAX_LOOKAHEAD);
   while (scanIndex < maxScanIndex) {
     const artifact = lines[scanIndex];
-    if (!isInlineMathArtifactBridgeLine(artifact, previousLine)) return undefined;
-    const artifactText = getInlineMathArtifactBridgeText(artifact, previousLine);
-    if (artifactText !== undefined) artifactTexts.push(artifactText);
+    const artifactBridge = analyzeInlineMathArtifactBridgeLine(artifact, previousLine);
+    if (!artifactBridge) return undefined;
+    if (artifactBridge.artifactText !== undefined) artifactTexts.push(artifactBridge.artifactText);
 
     const continuationIndex = scanIndex + 1;
     const continuationLine = lines[continuationIndex];
@@ -2682,9 +2682,7 @@ function shouldSkipDetachedLowercaseMathSubscriptLine(
   if (normalized === undefined) return false;
   if (!DETACHED_LOWERCASE_MATH_SUBSCRIPT_PATTERN.test(normalized)) return false;
 
-  const verticalGap = previousLine.y - line.y;
-  const maxVerticalGap = Math.max(previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO, 3);
-  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+  if (!hasPositiveInlineMathBridgeVerticalGap(line, previousLine)) return false;
   if (line.fontSize > previousLine.fontSize * INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO) {
     return false;
   }
@@ -2708,55 +2706,64 @@ function hasDetachedMathSubscriptContext(previousText: string, nextText: string)
   return DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN.test(nextText);
 }
 
-function getInlineMathArtifactBridgeText(
+type InlineMathArtifactBridgeKind =
+  | "detachedSingleToken"
+  | "numericOrSymbol"
+  | "lowercaseSubscript";
+
+function analyzeInlineMathArtifactBridgeLine(
   line: TextLine,
   previousLine: TextLine,
-): string | undefined {
+): { artifactText: string | undefined } | undefined {
   if (line.pageIndex !== previousLine.pageIndex) return undefined;
+  const parsed = parseInlineMathArtifactBridgeTextParts(line);
+  if (!parsed) return undefined;
+  if (!hasPositiveInlineMathBridgeVerticalGap(line, previousLine)) return undefined;
+  const bridgeKind = classifyInlineMathArtifactBridgeKind(parsed.tokens, line, previousLine);
+  if (!bridgeKind) return undefined;
+  return {
+    artifactText: toInlineMathArtifactBridgeText(bridgeKind, parsed.normalized, parsed.tokens),
+  };
+}
+
+function hasPositiveInlineMathBridgeVerticalGap(
+  line: TextLine,
+  previousLine: TextLine,
+): boolean {
+  const verticalGap = previousLine.y - line.y;
+  const maxVerticalGap = Math.max(previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO, 3);
+  return verticalGap > 0 && verticalGap <= maxVerticalGap;
+}
+
+function parseInlineMathArtifactBridgeTextParts(
+  line: TextLine,
+): { normalized: string; tokens: string[] } | undefined {
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0 || normalized.length > INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH) return undefined;
+  if (!INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN.test(normalized)) return undefined;
 
   const tokens = normalized.split(/\s+/).filter((token) => token.length > 0);
   if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT) return undefined;
-  if (isDetachedSingleTokenInlineMathArtifact(tokens, line, previousLine)) return normalized;
-
-  const hasNumericOrSymbol = tokens.some(
-    (token) =>
-      INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
-      INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token),
-  );
-  if (hasNumericOrSymbol) return normalized;
-  if (tokens.every((token) => INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN.test(token))) {
-    return normalized;
-  }
-  return undefined;
+  return { normalized, tokens };
 }
 
-function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine): boolean {
-  if (line.pageIndex !== previousLine.pageIndex) return false;
-
-  const normalized = normalizeSpacing(line.text);
-  if (normalized.length === 0 || normalized.length > INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH) return false;
-  if (!INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN.test(normalized)) return false;
-
-  const tokens = normalized.split(/\s+/).filter((token) => token.length > 0);
-  if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT) return false;
-
+function classifyInlineMathArtifactBridgeKind(
+  tokens: string[],
+  line: TextLine,
+  previousLine: TextLine,
+): InlineMathArtifactBridgeKind | undefined {
   const isDetachedSingleTokenArtifact = isDetachedSingleTokenInlineMathArtifact(
     tokens,
     line,
     previousLine,
   );
-  const verticalGap = previousLine.y - line.y;
-  const maxVerticalGap = Math.max(previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO, 3);
-  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
   if (
     !isDetachedSingleTokenArtifact &&
     line.estimatedWidth > previousLine.estimatedWidth * INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO
   ) {
-    return false;
+    return undefined;
   }
-  if (isDetachedSingleTokenArtifact) return true;
+  if (isDetachedSingleTokenArtifact) return "detachedSingleToken";
 
   const hasNumericOrSymbol = tokens.some(
     (token) =>
@@ -2764,15 +2771,30 @@ function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine):
       INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token),
   );
   if (!hasNumericOrSymbol) {
-    return isLowercaseSubscriptBridgeTokenLine(tokens, line, previousLine);
+    return isLowercaseSubscriptBridgeTokenLine(tokens, line, previousLine)
+      ? "lowercaseSubscript"
+      : undefined;
   }
 
-  return tokens.every(
+  const hasValidNumericOrSymbolTokens = tokens.every(
     (token) =>
       INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
       INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token) ||
       INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN.test(token),
   );
+  return hasValidNumericOrSymbolTokens ? "numericOrSymbol" : undefined;
+}
+
+function toInlineMathArtifactBridgeText(
+  kind: InlineMathArtifactBridgeKind,
+  normalized: string,
+  tokens: string[],
+): string | undefined {
+  if (kind !== "lowercaseSubscript") return normalized;
+  if (tokens.every((token) => INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN.test(token))) {
+    return normalized;
+  }
+  return undefined;
 }
 
 function isDetachedSingleTokenInlineMathArtifact(
