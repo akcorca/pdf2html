@@ -379,8 +379,11 @@ function isRepeatedAuthorRunningLabel(text: string, coverage: RepeatedEdgeCovera
 function isRepeatedEdgeLabel(text: string, coverage: RepeatedEdgeCoverage): boolean {
   if (coverage.pageCoverage < MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE) return false;
   if (coverage.edgeRatio >= MIN_REPEATED_EDGE_OCCURRENCE_RATIO) return true;
-  if (coverage.edgePageCoverage < MIN_RUNNING_LABEL_EDGE_PAGE_COVERAGE) return false;
-  return isLikelyRunningLabelText(text);
+  if (!isLikelyRunningLabelText(text)) return false;
+  // Running-label text that appears on enough pages and has at least some edge
+  // occurrences is still a running header even if some instances sit slightly
+  // below the physical page top (e.g. in alternating-column layouts).
+  return coverage.edgePageCoverage >= MIN_REPEATED_EDGE_TEXT_PAGE_COVERAGE;
 }
 
 function isLikelyAuthorRunningLabelText(text: string): boolean {

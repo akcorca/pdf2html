@@ -338,6 +338,18 @@ describe("convertPdfToHtml", () => {
     expect(admissions).toBeLessThan(represents);
   });
 
+  it("does not merge left-column back-matter with right-column references on covid.pdf page 7", () => {
+    // Page 7 has short back-matter sections (Funding, Ethical approval, etc.) in
+    // the left column and numbered references in the right column. These must not
+    // be merged into a single text line even though they share the same Y position.
+    // "Funding" must not be followed by "[6] G. Piazza..." in the same paragraph.
+    expect(covidHtml).not.toMatch(/Funding.*\[6\]/);
+    // "CRediT authorship contribution statement" must not contain reference text
+    expect(covidHtml).not.toMatch(/CRediT authorship contribution statement.*1054/);
+    // The supplementary data line must not include reference text from the right column
+    expect(covidHtml).not.toMatch(/found online at.*admissions with heart failure/);
+  });
+
   it("merges wrapped respect paper title lines into a single h1 heading", () => {
     expect(respectHtml).toContain(
       "<h1>Should We Respect LLMs? A Cross-Lingual Study on the Influence of Prompt Politeness on LLM Performance</h1>",

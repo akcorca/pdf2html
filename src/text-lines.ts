@@ -255,16 +255,18 @@ function collectPageLines(
   const rowBasedMultiColumn = hasRowBasedMultiColumnEvidence(buckets, page.width);
   const spatialMultiColumn = !rowBasedMultiColumn && hasColumnGapFromSpatialDistribution(buckets, page.width);
   const isMultiColumn = rowBasedMultiColumn || spatialMultiColumn;
-  // Only use row-based detection for fragment splitting (midpoint fallback).
-  // Spatial detection indicates two-column layout for reading order purposes
-  // but doesn't provide reliable enough evidence for row-level fragment splitting.
+  // Row-based detection enables full splitting (including midpoint fallback).
+  // Spatial detection enables splitting only for rows with a detected column
+  // break — the gap evidence within a single row is reliable even when the
+  // page-level row ratio threshold wasn't met.
   const splitByColumn = rowBasedMultiColumn;
+  const splitAtDetectedBreaks = isMultiColumn;
   const lines: TextLine[] = [];
   const columnGapMidpoints: number[] = [];
 
   for (const [bucket, bucketFragments] of buckets) {
     const sorted = [...bucketFragments].sort((left, right) => left.x - right.x);
-    const { groups, breakIndexes } = splitRowIntoGroups(sorted, page.width, splitByColumn);
+    const { groups, breakIndexes } = splitRowIntoGroups(sorted, page.width, splitByColumn, splitAtDetectedBreaks);
 
     if (splitByColumn) {
       for (const breakIndex of breakIndexes) {
@@ -333,6 +335,7 @@ function splitRowIntoGroups(
   sorted: ExtractedFragment[],
   pageWidth: number,
   splitByColumn: boolean,
+  splitAtDetectedBreaks: boolean,
 ): { groups: ExtractedFragment[][]; breakIndexes: number[] } {
   const breakIndexes = findColumnBreakIndexes(sorted, pageWidth);
   const bridgedBreakIndexes = findBridgedColumnBreakIndexes(sorted, pageWidth);
@@ -340,7 +343,8 @@ function splitRowIntoGroups(
   const shouldSplit =
     splitByColumn ||
     shouldForceSplitHeadingPrefixedRow(sorted, effectiveBreakIndexes) ||
-    bridgedBreakIndexes.length > 0;
+    bridgedBreakIndexes.length > 0 ||
+    (splitAtDetectedBreaks && effectiveBreakIndexes.length > 0);
   const groups = shouldSplit
     ? splitFragmentsByColumnBreaks(sorted, pageWidth, effectiveBreakIndexes, {
         allowMidpointFallback: splitByColumn,
@@ -1899,7 +1903,16 @@ function findBridgedColumnBreakIndex(
 
     const bridgeFragments = fragments.slice(leftIndex + 1, rightIndex);
     const isBridgeValid = bridgeFragments.every(isIgnorableColumnBreakBridgeFragment);
-    if (isBridgeValid) return rightIndex - 1;
+    if (isBridgeValid) {
+      // Place the break so bridge fragments go to whichever side they are
+      // spatially closer to. If the first bridge fragment's center is past
+      // the page midpoint, it belongs to the right column → break at leftIndex.
+      const firstBridge = fragments[leftIndex + 1];
+      const bridgeCenter = estimateFragmentCenterX(firstBridge);
+      return bridgeCenter > pageWidth * MULTI_COLUMN_SPLIT_RATIO
+        ? leftIndex
+        : rightIndex - 1;
+    }
   }
   return undefined;
 }
@@ -1920,7 +1933,9 @@ function isIgnorableColumnBreakBridgeFragment(fragment: ExtractedFragment): bool
   if (countSubstantiveChars(normalized) > COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS) {
     return false;
   }
-  return /^[^\p{L}\p{N}]+$/u.test(normalized);
+  // Accept purely non-alphanumeric fragments (dashes, bullets, etc.)
+  // and bracket-enclosed tokens like "[6]" which are reference markers.
+  return /^[^\p{L}\p{N}]+$/u.test(normalized) || /^\[\d+\]$/.test(normalized);
 }
 
 function isLikelyColumnBreak(
