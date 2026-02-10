@@ -53,8 +53,7 @@ squeeze ()
 <p>Common Steps of Data Standardization.</p>
 <p>Inspired by the steps of</p>
 <p>(ideally one line of code per column type). The second challenge ( C2 ) centers on optimizing the interaction between data scientists and LLMs. Our goal is to minimize human involvement, ideally allowing data scientists to input their standardization requirements in one instance, thereby enabling an autonomous and hands-off data standardization process.</p>
-<p>To solve C1 , we propose the type-specific Clean module in the Dataprep Library, named Dataprep.Clean . By observing and sum-marizing the common steps of data standardization for specific col-umn types, we design unified APIs clean_type(df, column_name, target_format) , where the type represents the desired standard-ization type, such as date, address, and phone, etc. These unified APIs offer enhanced expressiveness compared to raw Pandas code, reducing the complexity of standardizing specific column types and allowing one to standardize a column with only one line of code. To solve C2 , we propose the CleanAgent framework which</p>
-<p>automates data standardization with Dataprep.Clean and LLM-based Agents [ 5 , 6 ]. Once users have entered their final goals, the LLM-based Agents can free their hands, autonomously generate reasoning steps, and execute particular tasks. Data scientists only need to input the table being standardized and their requirements,</p>
+<p>To solve C1 , we propose the type-specific Clean module in the Dataprep Library, named Dataprep.Clean . By observing and sum-marizing the common steps of data standardization for specific col-umn types, we design unified APIs clean_type(df, column_name, target_format) , where the type represents the desired standard-ization type, such as date, address, and phone, etc. These unified APIs offer enhanced expressiveness compared to raw Pandas code, reducing the complexity of standardizing specific column types and allowing one to standardize a column with only one line of code. To solve C2 , we propose the CleanAgent framework which automates data standardization with Dataprep.Clean and LLM-based Agents [ 5 , 6 ]. Once users have entered their final goals, the LLM-based Agents can free their hands, autonomously generate reasoning steps, and execute particular tasks. Data scientists only need to input the table being standardized and their requirements,</p>
 <p>value like NaN . Intuitively, a valid string indicates that each part</p>
 <p>CleanAgent will complete the data standardization process au-tomatically with three steps: annotating the type of each column, generating concise Python code for standardization, and executing</p>
 <p>valid. For instance, the token ’Sep’ can be recognized as a valid</p>
@@ -76,8 +75,7 @@ squeeze ()
 <p>Assume a data scientist is dealing with an</p>
 <p>datetime column</p>
 <p>including two records "Thu Sep 25 10:36:28 2003" and "1996.07.10 AD at 15:08:56" . The data scientist wants to unify the messy column into a target format "YYYY-MM-DD hh:mm:ss" .</p>
-<p>(1) Split. In the beginning, the data scientist needs to split the datetime string into several single parts, which include one kind of specific information. In our example, the data scientist can get sev-eral tokens {’Thu’,’Sep’,’25’,’10’,’36’,’28’,’2003’} from</p>
-<p>the first record by using space and colon as separators. Each differ-ent type has its splitting strategy, which may not always be splitting the string into tokens. For example, the data scientist will split the email string into the username part and the domain part.</p>
+<p>(1) Split. In the beginning, the data scientist needs to split the datetime string into several single parts, which include one kind of specific information. In our example, the data scientist can get sev-eral tokens {’Thu’,’Sep’,’25’,’10’,’36’,’28’,’2003’} from the first record by using space and colon as separators. Each differ-ent type has its splitting strategy, which may not always be splitting the string into tokens. For example, the data scientist will split the email string into the username part and the domain part.</p>
 <p>(2) Validate. Standardization can only be performed on valid inputs. Thus, the second step should be validation. For example, if the string “little cat” is an instance of the</p>
 <p>datetime column, this</p>
 <p>string is invalid, and the data scientist will transform it to a default</p>
@@ -86,15 +84,11 @@ squeeze ()
 <p>(3) Transform. The last step of standardization is to transform each split part and combine them into the target format. In our example, because the target format is</p>
 <p>"YYYY-MM-DD hh:mm:ss" ,</p>
 <p>the month Sep is transformed into number 09 and recombined with other parts to the target "2003-09-25 10:36:28" .</p>
-<p>enable data scientists to complete all the common steps of stan-dardizing one column with a single function call. Simplicity and consistency are considered the principles of API design. The ob-servation of the common steps of data standardization brings the type-specific API design idea. More specifically, we design the API to be in the following form:</p>
-<p>clean_ type (df, column_name, target_format)</p>
-<p>where clean_type is the function name, type represents the</p>
-<p>type of the current column. The first argument df represents the input DataFrame, the second argument</p>
+<p>enable data scientists to complete all the common steps of stan-dardizing one column with a single function call. Simplicity and consistency are considered the principles of API design. The ob-servation of the common steps of data standardization brings the type-specific API design idea. More specifically, we design the API to be in the following form: clean_ type (df, column_name, target_format) where clean_type is the function name, type represents the type of the current column. The first argument df represents the input DataFrame, the second argument</p>
 <p>column_name is the column</p>
 <p>being standardized, and the third argument</p>
 <p>target_format is the</p>
-<p>target standardization format users specified. Our API design is flexible and extensible, which makes it convenient for users to add their standardization functions for new data types. Currently, Dataprep.Clean , each</p>
-<p>handles one data type. These functions serve to demonstrate the</p>
+<p>target standardization format users specified. Our API design is flexible and extensible, which makes it convenient for users to add their standardization functions for new data types. Currently, Dataprep.Clean , each handles one data type. These functions serve to demonstrate the</p>
 <p>Table 𝑻 Standardized</p>
 <p>cannot figure out the specific type of one column, the</p>
 <p>Column-</p>
@@ -102,8 +96,7 @@ squeeze ()
 <p>type Annotator outputs “I do not know”. The annotation result is</p>
 <p>CleanAgent</p>
 <p>returned to the Chat Manager and stored in the Chat Manager ’s</p>
-<p>1 Historical 5 Historical</p>
-<p>Message Chat Message</p>
+<p>1 Historical 5 Historical Message Chat Message</p>
 <p>memory ( ② in Figure 2).</p>
 <p>Manager</p>
 <p>Thirdly, the Python Programmer receives historical messages</p>
@@ -121,13 +114,13 @@ squeeze ()
 <p>Tools</p>
 <p>Message</p>
 <p>df = clean_date (</p>
+<p>Programmer</p>
 <p>and generates Python code for the data standardization process. The</p>
 <p>df, “ date”)</p>
-<p>Tools stored in the Chat Manager ’s memory ( ④ in Figure 2). Finally, the</p>
 <p>Until successfully</p>
+<p>Tools stored in the Chat Manager ’s memory ( ④ in Figure 2). Finally, the</p>
 <p>Python 1 - 6</p>
 <p>standardize input table 𝑻</p>
-<p>Programmer</p>
 <p>4o. (2) Cocoon [8] . Cocoon is a one-shot data cleaning system that</p>
 <p>within a workflow designed to mimic human cleaning processes,</p>
 <p>sults ( ③ in Figure 2), picks up the corresponding clean functions,</p>
@@ -199,8 +192,7 @@ squeeze ()
 <p>Figure 3 shows the user interface of CleanAgent . As area ① shows, users must first upload a CSV file that needs to be cleaned.</p>
 <p>blob/main/demo/Cocoon_Stage_Demo.ipynb</p>
 <p>file (number of rows and number of columns). If the users can click the “Start Standardization” button to start the data standardization process by want CleanAgent .</p>
-<p>After clicking the “Start Standardization” button, as area ② shows, the User_Proxy generates three detailed steps to complete Column-type Annotator</p>
-<p>receives messages from the Chat Manager , annotates and out-puts the type of each column, as area ③ shows. Then, the Python Programmer picks up standardization functions from Dataprep.Clean based on the type of each column, and write proper Python code using the standardization functions, as area ④ shows. Thirdly, the Code Executor executes the Python code by the Python Programmer and collects the execution messages, as area ⑤ shows. If the Code Executor gets an error message when executing generated Python code, the error message is sent to the</p>
+<p>After clicking the “Start Standardization” button, as area ② shows, the User_Proxy generates three detailed steps to complete Column-type Annotator receives messages from the Chat Manager , annotates and out-puts the type of each column, as area ③ shows. Then, the Python Programmer picks up standardization functions from Dataprep.Clean based on the type of each column, and write proper Python code using the standardization functions, as area ④ shows. Thirdly, the Code Executor executes the Python code by the Python Programmer and collects the execution messages, as area ⑤ shows. If the Code Executor gets an error message when executing generated Python code, the error message is sent to the</p>
 <p>Chat Manager and becomes</p>
 <p>part of the prompt of the next try. If the</p>
 <p>Code Executor gets the</p>
@@ -277,12 +269,7 @@ squeeze ()
 <p>default setting and set the temperature to 1. For the GPT-4o baseline, the temperature is also set to 0 for consistency with CleanAgent</p>
 <p>You are an expert data standardizer.</p>
 <p>.</p>
-<p>Task: Given a CSV file **raw.csv** in the current working directory, do two things:</p>
-<p>1. Column typing</p>
-<p>Inspect the data and output one best-fit type for each col-umn, line by line in the form:</p>
-<p>columnName: class</p>
-<p>2. Generate Python script</p>
-<p>After a blank line, provide a single Python script (inside</p>
+<p>Task: Given a CSV file **raw.csv** in the current working directory, do two things: 1. Column typing Inspect the data and output one best-fit type for each col-umn, line by line in the form: columnName: class 2. Generate Python script After a blank line, provide a single Python script (inside</p>
 <p>“‘python fences) that:</p>
 <p>- reads raw.csv</p>
 <p>- standardizes every column WITHOUT USING ANY</p>
@@ -293,11 +280,7 @@ squeeze ()
 <p>- formatting rules for column types:</p>
 <p>(1) date → yyyy-mm-dd hh:mm:ss</p>
 <p>(2) address → Apt apartment_number, house_number,</p>
-<p>street_name, city, state_abbreviation, country, zip-code (skip any missing part silently)</p>
-<p>(3) phone_number → E.164 format</p>
-<p>(4) location → (lat,lon)</p>
-<p>(5) ip → plain IP without subnet mask</p>
-<p>(6) url → JSON object with keys:</p>
+<p>street_name, city, state_abbreviation, country, zip-code (skip any missing part silently) (3) phone_number → E.164 format (4) location → (lat,lon) (5) ip → plain IP without subnet mask (6) url → JSON object with keys:</p>
 <p>{</p>
 <p>’scheme’: ’http’,</p>
 <p>’host’: ’www.example.com’,</p>
@@ -310,10 +293,7 @@ squeeze ()
 <p>(7) duration → hh:mm:ss</p>
 <p>(8) temperatures → Celsius format, e.g., 23 ℃</p>
 <p>(9) colors → hexadecimal, e.g., #a1b2c3</p>
-<p>(10) names → "firstname lastname" - If format is "last-name, firstname", convert it - If already "firstname lastname", keep it unchanged</p>
-<p>Writes cleaned_data.csv in the same directory</p>
-<p>The script must be runnable with ‘python script.py‘ in a standard Python environment (pandas &amp; common pip packages installed)</p>
-<p>Return only the column typing and script. No additional explanations.</p>
+<p>(10) names → "firstname lastname" - If format is "last-name, firstname", convert it - If already "firstname lastname", keep it unchanged Writes cleaned_data.csv in the same directory The script must be runnable with ‘python script.py‘ in a standard Python environment (pandas &amp; common pip packages installed) Return only the column typing and script. No additional explanations.</p>
 <p>Sample rows of the given table is shown as follows: {df}</p>
 <p>1 <a href="https://colab.research.google.com/github/Cocoon-Data-Transformation/cocoon/">https://colab.research.google.com/github/Cocoon-Data-Transformation/cocoon/</a></p>
 <p>2 <a href="https://cocoon-data-transformation.github.io/page/clean">https://cocoon-data-transformation.github.io/page/clean</a></p>

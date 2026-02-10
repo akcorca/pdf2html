@@ -202,7 +202,7 @@ function collectPageLines(
         pageHeight: page.height,
         pageWidth: page.width,
         estimatedWidth: estimateLineWidth(fragments),
-        x: Math.min(...fragments.map((f) => f.x)),
+        x: estimateLineStartX(fragments),
         y: bucket,
         fontSize: Math.max(...fragments.map((f) => f.fontSize)),
         text,
@@ -1804,6 +1804,33 @@ export function groupLinesByPage(lines: TextLine[]): Map<number, TextLine[]> {
     grouped.set(line.pageIndex, pageLines);
     return grouped;
   }, new Map<number, TextLine[]>());
+}
+
+/**
+ * Returns the x position of the dominant fragment in a group, using the
+ * fragment with the largest font size. This prevents tiny superscript
+ * markers (e.g. footnote numbers) from pulling the line's x position away
+ * from the actual body text start.
+ */
+function estimateLineStartX(fragments: ExtractedFragment[]): number {
+  if (fragments.length === 1) return fragments[0].x;
+  let dominantFragment = fragments[0];
+  for (let i = 1; i < fragments.length; i++) {
+    if (fragments[i].fontSize > dominantFragment.fontSize) {
+      dominantFragment = fragments[i];
+    }
+  }
+  // Only override when the dominant fragment has a significantly larger font
+  // and the minimum-x fragment is far from the dominant one.
+  const minX = Math.min(...fragments.map((f) => f.x));
+  if (dominantFragment.x === minX) return minX;
+  const maxFontSize = dominantFragment.fontSize;
+  const minFontFragment = fragments.reduce((a, b) => (a.x < b.x ? a : b));
+  const fontDelta = maxFontSize - minFontFragment.fontSize;
+  if (fontDelta < maxFontSize * 0.2) return minX;
+  const gap = dominantFragment.x - (minFontFragment.x + estimateTextWidth(minFontFragment.text, minFontFragment.fontSize));
+  if (gap < 30) return minX;
+  return dominantFragment.x;
 }
 
 export function estimateLineWidth(fragments: ExtractedFragment[]): number {

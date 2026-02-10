@@ -1492,6 +1492,25 @@ function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): 
   return result;
 }
 
+const LOCAL_FONT_SIZE_TYPICAL_WIDTH_MIN_LINES = 8;
+const LOCAL_FONT_SIZE_MAX_DELTA = 0.5;
+
+function computeLocalFontSizeTypicalWidth(
+  lines: TextLine[],
+  referenceLine: TextLine,
+): number | undefined {
+  const widths: number[] = [];
+  for (const line of lines) {
+    if (line.pageIndex !== referenceLine.pageIndex) continue;
+    if (Math.abs(line.fontSize - referenceLine.fontSize) > LOCAL_FONT_SIZE_MAX_DELTA) continue;
+    if (normalizeSpacing(line.text).length < 20) continue;
+    widths.push(line.estimatedWidth);
+  }
+  if (widths.length < LOCAL_FONT_SIZE_TYPICAL_WIDTH_MIN_LINES) return undefined;
+  widths.sort((a, b) => a - b);
+  return widths[Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)];
+}
+
 function consumeBodyParagraph(
   lines: TextLine[],
   startIndex: number,
@@ -1501,8 +1520,15 @@ function consumeBodyParagraph(
   pageTypicalWidths: Map<number, number>,
 ): { text: string; nextIndex: number } | undefined {
   const startLine = lines[startIndex];
-  const typicalWidth = pageTypicalWidths.get(startLine.pageIndex);
+  let typicalWidth = pageTypicalWidths.get(startLine.pageIndex);
   if (typicalWidth === undefined) return undefined;
+  // When the start line's font size differs from body font, compute a local
+  // typical width from same-font-size lines on the same page so that
+  // narrower text blocks (e.g. abstracts) can qualify as full-width leads.
+  if (Math.abs(startLine.fontSize - bodyFontSize) > 1.0) {
+    const localTypical = computeLocalFontSizeTypicalWidth(lines, startLine);
+    if (localTypical !== undefined) typicalWidth = localTypical;
+  }
 
   const startNormalized = parseParagraphMergeCandidateText(startLine, {
     titleLine,
@@ -1649,13 +1675,51 @@ function consumeBodyParagraphContinuationParts(
       bodyFontSize,
       hasDottedSubsectionHeadings,
     );
-    if (sameRowContinuation === undefined) break;
-    parts.push(sameRowContinuation.text);
-    previousLine = sameRowContinuation.line;
-    nextIndex = sameRowContinuation.nextIndex;
+    if (sameRowContinuation !== undefined) {
+      parts.push(sameRowContinuation.text);
+      previousLine = sameRowContinuation.line;
+      nextIndex = sameRowContinuation.nextIndex;
+      continue;
+    }
+    if (shouldContinuePastShortBodyLine(
+      candidate,
+      lines,
+      nextIndex,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )) {
+      continue;
+    }
+    break;
   }
 
   return nextIndex;
+}
+
+function shouldContinuePastShortBodyLine(
+  currentLine: TextLine,
+  lines: TextLine[],
+  nextIndex: number,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(normalizeSpacing(currentLine.text))) {
+    return false;
+  }
+  const nextLine = lines[nextIndex];
+  if (!nextLine) return false;
+  return isBodyParagraphContinuationLine(
+    nextLine,
+    currentLine,
+    startLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  );
 }
 
 function appendBodyParagraphPart(parts: string[], text: string): void {

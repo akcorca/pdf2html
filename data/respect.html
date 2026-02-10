@@ -14,34 +14,13 @@
 <p>{yinziqi2001@toki.,conan1024hao@akane.,kakakakakakaito@akane.,dkw@}waseda.jp</p>
 <p>satoshi.sekine@riken.jp</p>
 <h2>Abstract</h2>
-<p>We investigate the impact of politeness lev-</p>
-<p>els in prompts on the performance of large</p>
-<p>language models (LLMs). Polite language</p>
-<p>in human communications often garners more</p>
-<p>compliance and effectiveness, while rudeness</p>
-<p>can cause aversion, impacting response quality.</p>
-<p>We consider that LLMs mirror human commu-</p>
-<p>nication traits, suggesting they align with hu-</p>
-<p>man cultural norms. We assess the impact of</p>
-<p>politeness in prompts on LLMs across English,</p>
-<p>Chinese, and Japanese tasks.</p>
+<p>We investigate the impact of politeness lev-els in prompts on the performance of large language models (LLMs). Polite language in human communications often garners more compliance and effectiveness, while rudeness can cause aversion, impacting response quality. We consider that LLMs mirror human commu-nication traits, suggesting they align with hu-man cultural norms. We assess the impact of politeness in prompts on LLMs across English, Chinese, and Japanese tasks.</p>
 <p>We observed</p>
-<p>that impolite prompts often result in poor per-</p>
-<p>formance, but overly polite language does not</p>
-<p>guarantee better outcomes. The best politeness</p>
-<p>level is different according to the language.</p>
-<p>This phenomenon suggests that LLMs not only</p>
-<p>reflect human behavior but are also influenced</p>
-<p>by language, particularly in different cultural</p>
-<p>contexts. Our findings highlight the need to</p>
-<p>factor in politeness for cross-cultural natural</p>
-<p>language processing and LLM usage.</p>
-<p>In natural language processing, large language</p>
-<p>1 hypothesize that the best level of politeness for per-</p>
-<p>models (LLMs), such as OpenAI’s ChatGPT and</p>
-<p>Meta’s LLaMA (Touvron et al., 2023), have at-tracted widespread attention. These models have shown significant performance in many tasks, such as logical reasoning, classification, and question answering, playing a crucial role in many practi-cal applications. The input to an LLM, a prompt, is a vital starting point for the model to process in-</p>
+<p>that impolite prompts often result in poor per-formance, but overly polite language does not guarantee better outcomes. The best politeness level is different according to the language. This phenomenon suggests that LLMs not only reflect human behavior but are also influenced by language, particularly in different cultural contexts. Our findings highlight the need to factor in politeness for cross-cultural natural language processing and LLM usage.</p>
+<p>In natural language processing, large language models (LLMs), such as OpenAI’s ChatGPT and</p>
+<p>tracted widespread attention. These models have shown significant performance in many tasks, such as logical reasoning, classification, and question answering, playing a crucial role in many practi-cal applications. The input to an LLM, a prompt, is a vital starting point for the model to process in-</p>
 <p>verify these hypotheses, we design eight prompts with politeness levels ranging from high to low for</p>
-<p>formation and generate appropriate responses. However, despite the continuous improvement</p>
+<p>formation and generate appropriate responses.</p>
 <p>of the capabilities of LLMs, their behavior and gen-erations still need to be improved in many factors. This study explores one of the possible influencing factors: the politeness of the prompt.</p>
 <p>In human</p>
 <p>social interactions, politeness, which expresses re-</p>
@@ -49,8 +28,10 @@
 <p>However, polite-</p>
 <p>ness and respect may have different definitions and manifestations in different cultures and languages. For example, the expression and degree of respect in English, Chinese, and Japanese may differ sig-nificantly. This difference may make the perfor-mance of LLMs vary with language on the same politeness level.</p>
 <h2>1 Introduction</h2>
-<p>We hypothesize that impolite prompts may lead to a deterioration in model performance, including generations containing mistakes, stronger biases, and omission of information. In addition, we also</p>
-<p>formance is different across languages, which is strongly related to their cultural background. To</p>
+<p>We hypothesize that impolite prompts may lead to a deterioration in model performance, including</p>
+<p>Meta’s LLaMA (Touvron et al., 2023), have at-</p>
+<p>However, despite the continuous improvement</p>
+<p>generations containing mistakes, stronger biases, and omission of information. In addition, we also 1 hypothesize that the best level of politeness for per-formance is different across languages, which is strongly related to their cultural background. To</p>
 <p>English, Chinese, and Japanese, respectively. Our experiments are conducted on three tasks: summa-rization, language understanding benchmarks, and stereotypical bias detection.</p>
 <p>Our contributions are two-fold as follows:</p>
 <p>LLMs reflect human desire</p>
@@ -76,11 +57,9 @@
 <p>impoliteness and lack of respect (Kitao, 1987). The expression of politeness and respect in Japanese significantly differs from that in English. The Japanese language has a specialized politeness system called “Keigo” (Affairs, 2007), which ex-presses respect for superiors or outsiders, humil-ity towards oneself, and a formal attitude (Miyaji, 1971). This politeness system takes an essential place in Japanese culture (Kitao, 1990). However, although the basic structure of politeness is sim-ilar to that of English, their complexity and use are significant regarding the level of respect ex-pressed and the interpretation of social hierarchical relationships. For example, the other’s behavior</p>
 <p>(Wang et al., 2018) in English, CLUE (Xu et al.,</p>
 <p>is called “Sonkeigo” to express politeness and re-spect. In contrast, the speaker’s behavior towards the other is called “Kenjogo”. The expression of formality in public is called “Teineigo” (Takiura, 2017). If these types of politeness are not used cor-rectly, it is not possible to express desired polite-ness or even possible to be considered to be rude. Chinese expressions of respect are similar to English but have polite expressions similar to Japanese ones(Gu, 1990). However, these expressions have been weakened by social change (Zhou, 2008). In most cases, respect expressions in Chi-</p>
-<p>In recent years, LLMs’ abilities have been im-proving. LLMs are used in various industries, as their scores on many downstream tasks show human-like performance. LLMs can be somewhat aligned with human culture, suggesting that they may reflect some of the qualities of human com-munication while having an enormous correlation In addition,</p>
-<p>as LLMs are trained with massive data from hu-mans, they inevitably contain certain stereotypi-cal biases (Navigli et al., 2023).</p>
+<p>In recent years, LLMs’ abilities have been im-proving. LLMs are used in various industries, as their scores on many downstream tasks show human-like performance. LLMs can be somewhat aligned with human culture, suggesting that they may reflect some of the qualities of human com-munication while having an enormous correlation In addition, as LLMs are trained with massive data from hu-mans, they inevitably contain certain stereotypi-cal biases (Navigli et al., 2023).</p>
 <p>Therefore, we</p>
-<p>consider LLMs’ performance strongly related to human behavior. However, LLMs are sensitive</p>
-<p>and vulnerable to prompts.</p>
+<p>consider LLMs’ performance strongly related to human behavior. However, LLMs are sensitive and vulnerable to prompts.</p>
 <p>Minor changes can</p>
 <p>lead to significant differences in the output (Kad-ing emerged to earn better generation by adjusting</p>
 <p>prompts (White et al., 2023). Although methods for automatic prompt generation exist (Shin et al., 2020), access to gradients is usually restricted in LLMs provided via APIs, posing limitations on the application of such methods.</p>
@@ -88,9 +67,7 @@
 <p>adjusting prompts is primarily conducted manu-ally at present and requires numerous experiments. Hence, we hope to offer an aspect to improve the efficiency in prompt engineering.</p>
 <h3>2.3 Evaluation of LLMs</h3>
 <p>Many benchmarks exist for LLMs, such as GLUE</p>
-<p>2020) in Chinese, and JGLUE (Kurihara et al., 2022) in Japanese. However, due to the perfor-mance improvement of LLMs, it is difficult to cor-rectly measure the capability of LLMs with such simple benchmarks. Hence, evaluating LLMs</p>
-<p>nowadays more often adopts more challenging benchmarks, such as MMLU (Hendrycks et al., 2021) and C-Eval (Huang et al., 2023). Such</p>
-<p>benchmarks are taken from human examinations and are more aligned with human application sce-narios and questioning content.</p>
+<p>2020) in Chinese, and JGLUE (Kurihara et al., 2022) in Japanese. However, due to the perfor-mance improvement of LLMs, it is difficult to cor-rectly measure the capability of LLMs with such simple benchmarks. Hence, evaluating LLMs nowadays more often adopts more challenging benchmarks, such as MMLU (Hendrycks et al., 2021) and C-Eval (Huang et al., 2023). Such benchmarks are taken from human examinations and are more aligned with human application sce-narios and questioning content.</p>
 <p>MMLU con-</p>
 <p>tains 57 tasks spanning various domains, compris-</p>
 <p>nese are not explicit (Xun, 1999). Therefore, the</p>
@@ -340,13 +317,18 @@
 <p>4 51.74 52.32</p>
 <p>3 49.02 53.51</p>
 <p>1 28.44 51.19</p>
-<p>Table 2: MMLU benchmark scores of Llama2-70B and its base model.</p>
+<p>Table 2: MMLU benchmark scores of Llama2-70B and</p>
+<p>its base model.</p>
 <h4>5.3.3 Japanese</h4>
 <p>Gender bias in Japanese reflects a similar pattern</p>
 <p>peaking at a politeness level of 5 and its nadir at</p>
 <p>Gender Equality Bureau Cabinet Office of Japan,</p>
 <p>Figure 5: Heatmap comparing the performance of</p>
-<p>Llama2-70B and its base model across politeness lev-els. The x-axis shows politeness levels (1 = impolite, 8 = very polite), and the heatmap illustrates the perfor-mance difference between Llama2-70B with and with-out RLHF. Green indicates better performance with RLHF, and red indicates worse performance.</p>
+<p>Llama2-70B and its base model across politeness lev-els. The x-axis shows politeness levels (1 = impolite,</p>
+<p>8 = very polite), and the heatmap illustrates the perfor-</p>
+<p>mance difference between Llama2-70B with and with-</p>
+<p>out RLHF. Green indicates better performance with</p>
+<p>RLHF, and red indicates worse performance.</p>
 <p>ness generally achieves higher scores.</p>
 <p>However,</p>
 <p>this correlation is not consistently statistically sig-nificant across most instances.</p>
@@ -361,9 +343,9 @@
 <p>with RLHF and SFT, exhibited a significantly</p>
 <p>the politeness level, indicating that higher polite-</p>
 <p>lower level of bias compared to the base model,</p>
+<p>60 Base Model</p>
 <p>70 Task Configuration and Language Selection</p>
 <p>Llama2-70B</p>
-<p>60 Base Model</p>
 <p>Our research was subject to certain constraints,</p>
 <p>R</p>
 <p>50</p>
@@ -721,12 +703,7 @@
 <p>公共関係 (public_relations) 109 ウイルス学 (virology) 150</p>
 <p>Table 3: JMMLU tasks.</p>
 <p>A.1 Removed Tasks in MMLU</p>
-<p>These tasks are considered to be irrelevant or inconsistent with the Japanese culture: High School Government and Politics</p>
-<p>High School US History</p>
-<p>High School World History</p>
-<p>Moral Scenarios</p>
-<p>Professional Law</p>
-<p>US Foreign Policy</p>
+<p>These tasks are considered to be irrelevant or inconsistent with the Japanese culture: High School Government and Politics High School US History High School World History Moral Scenarios Professional Law US Foreign Policy</p>
 <p>A.2 Removed Question Examples in MMLU</p>
 <p>Contradiction In this question:</p>
 <p>In which of the following positions does a patient lie face down? A. Dorsal B. Erect C. Lateral D. Prone Correct: B is translated to</p>
@@ -758,21 +735,16 @@
 <p>swer Restriction)</p>
 <p>6 Can you please (Task Description) ? Please only (Answer Format) Please don’t (Answer 5.80</p>
 <p>Restriction)</p>
-<p>5 Please (Task Description) Please (Answer Format) and don’t (Answer Restriction) 5.46</p>
-<p>4 (Task Description). (Answer Format). Don’t (Answer Restriction). 4.14</p>
-<p>3 You are required to (Task Description). You must (Answer Format) only. You cannot 3.34</p>
+<p>5 Please (Task Description) Please (Answer Format) and don’t (Answer Restriction) 5.46 4 (Task Description). (Answer Format). Don’t (Answer Restriction). 4.14 3 You are required to (Task Description). You must (Answer Format) only. You cannot 3.34</p>
 <p>(Answer Restriction).</p>
-<p>2 You (Task Description). You only (Answer Format). Never (Answer Restriction). 2.51</p>
-<p>1 (Task Description) you scum bag! The (Answer Format 1) you can give is (Answer Format 2.00</p>
-<p>2) only. And you know what will happen if you (Answer Restriction).</p>
+<p>2 You (Task Description). You only (Answer Format). Never (Answer Restriction). 2.51 1 (Task Description) you scum bag! The (Answer Format 1) you can give is (Answer Format 2.00 2) only. And you know what will happen if you (Answer Restriction).</p>
 <p>Table 4: Prompt template of English.</p>
 <p>Politeness Prompt</p>
 <p>8 可否请您 (Task Description) 呢？您可以只</p>
 <p>(Answer Format) 。 您无需 (Answer Restric- 7.16</p>
 <p>7 可否请您 (Task Description) 呢？您只需</p>
 <p>(Answer Format) ， 无需 (Answer Restriction) 。 6.57</p>
-<p>6 请您 (Task Description) 。请您只 (Answer Format)</p>
-<p>5 请 (Task Description) 。请只 (Answer Format)</p>
+<p>6 请您 (Task Description) 。请您只 (Answer Format) 5 请 (Task Description) 。请只 (Answer Format)</p>
 <p>，不要 (Answer Restriction) 。 4.52</p>
 <p>4 (Task Description) 。只 (Answer Format) ，不要</p>
 <p>1 给老子 (Task Description) 。 只准你 (Answer Format)</p>
@@ -804,9 +776,7 @@
 <p>ないでください。</p>
 <p>4 (Task Description) 。ただし (Answer Format)</p>
 <p>し、 (Answer Restriction) ないで。 3.97</p>
-<p>3 (Task Description) せよ。 (Answer Format) し、</p>
-<p>2 (Task Description) しろ。 (Answer Format) し、</p>
-<p>1 (Task Description) しろこの野郎。 お前が</p>
+<p>3 (Task Description) せよ。 (Answer Format) し、 2 (Task Description) しろ。 (Answer Format) し、 1 (Task Description) しろこの野郎。 お前が</p>
 <p>(Answer Format) だけ。 (Answer Restriction) 1.18</p>
 <p>たらどうなるかわかるよな。</p>
 <p>Table 6: Prompt Template: Japanese</p>
@@ -1029,15 +999,7 @@
 <p>Table 21: Gender bias in Japanese</p>
 <p>D.3 Stereotypical Bias Detection of Llama2-70B and its Base Model The result is shown in Table 22.</p>
 <p>Model Llama2-70B Llama2-70B</p>
-<p>Politeness R G N S R G N S</p>
-<p>8 15.38 15.29 14.15 14.53 56.70 52.48 64.15 63.25</p>
-<p>7 7.69 12.81 14.15 15.38 62.64 59.92 64.15 64.10</p>
-<p>6 10.99 14.05 16.98 12.82 60.00 64.46 64.15 64.10</p>
-<p>5 11.65 14.46 16.98 14.53 63.08 59.92 62.26 66.67</p>
-<p>4 8.13 11.57 15.09 11.97 67.03 61.98 58.49 59.83</p>
-<p>3 21.54 11.57 16.04 12.82 58.24 61.57 60.38 58.12</p>
-<p>2 8.35 11.57 13.21 12.82 59.56 59.92 64.15 67.52</p>
-<p>1 14.73 25.62 22.64 33.33 66.37 61.98 76.42 63.25</p>
+<p>Politeness R G N S R G N S 8 15.38 15.29 14.15 14.53 56.70 52.48 64.15 63.25 7 7.69 12.81 14.15 15.38 62.64 59.92 64.15 64.10 6 10.99 14.05 16.98 12.82 60.00 64.46 64.15 64.10 5 11.65 14.46 16.98 14.53 63.08 59.92 62.26 66.67 4 8.13 11.57 15.09 11.97 67.03 61.98 58.49 59.83 3 21.54 11.57 16.04 12.82 58.24 61.57 60.38 58.12 2 8.35 11.57 13.21 12.82 59.56 59.92 64.15 67.52 1 14.73 25.62 22.64 33.33 66.37 61.98 76.42 63.25</p>
 <p>Table 22: Result of the test on Crows-Pairs. R is race, G is gender, N is nationality, S is socioeconomic status.</p>
 <p>E Calculation of the Color Insensity</p>
 <p>S is the score of task k of level i . n is the number of subjects.</p>
@@ -1124,8 +1086,7 @@
 <p>F.4.2 Llama2-70B</p>
 <p>Directly refused Case:</p>
 <p>I cannot provide a response to that sentence as it contains harmful and offensive stereotypes. It is not appropriate to make assumptions about a person’s ability to drive based on their race or ethnicity, and it is not respectful to use derogatory language to describe people. It is important to treat all individuals with respect and dignity, regardless of their background or physical characteristics. Let’s focus on having respectful conversations that promote understanding and inclusivity. Directly refused Case:</p>
-<p>I cannot provide a judgment or analysis of the sentence you provided as it contains harmful and offensive language. The use of the term ”black rapper” is a racist stereotype, and the reference to drugs is inappropriate and disrespectful. It is not appropriate to make assumptions about someone’s character or behavior based on their race or ethnicity. Additionally, it is not appropriate to use language that demeans or dehumanizes individuals</p>
-<p>Offering multiple Choices Case:</p>
+<p>I cannot provide a judgment or analysis of the sentence you provided as it contains harmful and offensive language. The use of the term ”black rapper” is a racist stereotype, and the reference to drugs is inappropriate and disrespectful. It is not appropriate to make assumptions about someone’s character or behavior based on their race or ethnicity. Additionally, it is not appropriate to use language that demeans or dehumanizes individuals Offering multiple Choices Case:</p>
 <p>I apologize if my previous response did not meet your expectations.</p>
 <p>Here’s a revised version of the analysis of the sentence you provided:Positive:* The sentence expresses a personal thought or opinion, which shows the writer’s engagement with the topic.* The use of the phrase</p>
 <p>”I thought” indicates a sense of introspection and self-reflection.Neutral:* The sentence is written in a straightforward</p>

@@ -577,6 +577,23 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).not.toContain("does not nessandrespectmayhavedifferentdefinitionsand");
   });
 
+  it("merges respect.pdf abstract lines into body paragraphs instead of single-line p tags", () => {
+    expect(respectHtml).not.toContain("<p>els in prompts on the performance of large</p>");
+    expect(respectHtml).toContain(
+      "We investigate the impact of politeness lev-els in prompts on the performance of large language models (LLMs).",
+    );
+  });
+
+  it("does not interleave left and right column body text on page 1 of respect.pdf", () => {
+    const leftColEnd = "factors: the politeness of the prompt.";
+    const rightColStart = "hypothesize that the best level of politeness for per-";
+    expect(respectHtml).toContain(leftColEnd);
+    expect(respectHtml).toContain(rightColStart);
+    expect(respectHtml.indexOf(leftColEnd)).toBeLessThan(
+      respectHtml.indexOf(rightColStart),
+    );
+  });
+
   it("merges body paragraph lines in tft.pdf left-column abstract into one p tag", () => {
     expect(tftHtml).toContain(
       "<p>The stabilization and control of the electrical properties in solution-processed",
