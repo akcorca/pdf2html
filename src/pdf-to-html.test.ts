@@ -57,6 +57,16 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("preserves first-page author names in clean.pdf authors block", () => {
+    expect(cleanHtml).toContain("Danrui Qi, Zhengjie Miao, Jiannan Wang");
+  });
+
+  it("removes repeated running-header author lines from clean.pdf body", () => {
+    expect(cleanHtml).not.toContain(
+      "<p>Danrui Qi, Zhengjie Miao, Jiannan Wang</p>",
+    );
+  });
+
   it("removes repeated running-header title lines from clean.pdf body", () => {
     expect(cleanHtml).not.toContain(
       "<p>CleanAgent: Automating Data Standardization with LLM-based Agents</p>",

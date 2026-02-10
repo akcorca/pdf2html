@@ -41,6 +41,7 @@ const AUTHOR_RUNNING_LABEL_PATTERN = /\bet\s+al\.?$/iu;
 const AUTHOR_RUNNING_LABEL_MIN_PAGE_COVERAGE = 0.45;
 const AUTHOR_RUNNING_LABEL_MIN_PAGE_COUNT = 4;
 const MIN_REPEATED_EDGE_OCCURRENCE_RATIO = 0.85;
+const REPEATED_EDGE_TEXT_FONT_SIZE_TOLERANCE = 1.5;
 const TOP_MATTER_AFFILIATION_INDEX_PATTERN = /^[\d\s,.;:()[\]{}+-]+$/;
 const TOP_MATTER_AFFILIATION_MIN_VERTICAL_RATIO = 0.72;
 const TOP_MATTER_AFFILIATION_MAX_FONT_RATIO = 0.82;
@@ -157,7 +158,7 @@ interface RepeatedEdgeCoverage {
 interface PageArtifactContext {
   bodyFontSize: number;
   pageExtents: Map<number, PageVerticalExtent>;
-  repeatedEdgeTexts: Set<string>;
+  repeatedEdgeTexts: Map<string, number>;
   removableLines: Set<TextLine>;
 }
 
@@ -216,9 +217,18 @@ function mergeLineSets(lineSets: ReadonlyArray<Set<TextLine>>): Set<TextLine> {
 function isRemovablePageArtifact(line: TextLine, context: PageArtifactContext): boolean {
   if (line.text.length === 0) return true;
   if (context.removableLines.has(line)) return true;
-  if (context.repeatedEdgeTexts.has(line.text)) return true;
+  if (isRepeatedEdgeTextInstance(line, context.repeatedEdgeTexts)) return true;
   if (isStandaloneCitationMarker(line.text)) return true;
   return isLikelyIntrinsicArtifact(line, context.bodyFontSize, context.pageExtents);
+}
+
+function isRepeatedEdgeTextInstance(
+  line: TextLine,
+  repeatedEdgeTexts: Map<string, number>,
+): boolean {
+  const minEdgeFontSize = repeatedEdgeTexts.get(line.text);
+  if (minEdgeFontSize === undefined) return false;
+  return line.fontSize <= minEdgeFontSize + REPEATED_EDGE_TEXT_FONT_SIZE_TOLERANCE;
 }
 
 function isLikelyIntrinsicArtifact(
@@ -272,7 +282,7 @@ function matchesLineRegion(
 export function findRepeatedEdgeTexts(
   lines: TextLine[],
   pageExtents: Map<number, PageVerticalExtent>,
-): Set<string> {
+): Map<string, number> {
   const totalPages = new Set(lines.map((l) => l.pageIndex)).size;
   const stats = collectEdgeTextStats(lines, pageExtents);
   return selectRepeatedEdgeTexts(stats, totalPages);
@@ -287,7 +297,7 @@ function collectEdgeTextStats(
     const nearRelative = isNearPageEdge(line, pageExtents);
     const nearBroad = nearRelative || isNearPhysicalPageEdge(line);
     const stat = getOrCreateEdgeTextStat(stats, line.text);
-    addEdgeTextOccurrence(stat, line.pageIndex, nearRelative, nearBroad);
+    addEdgeTextOccurrence(stat, line.pageIndex, nearRelative, nearBroad, line.fontSize);
   }
   return stats;
 }
@@ -305,6 +315,7 @@ function getOrCreateEdgeTextStat(
     pageIndexes: new Set<number>(),
     edgePageIndexes: new Set<number>(),
     broadEdgePageIndexes: new Set<number>(),
+    minEdgeFontSize: Number.POSITIVE_INFINITY,
   };
   stats.set(text, created);
   return created;
@@ -315,12 +326,14 @@ function addEdgeTextOccurrence(
   pageIndex: number,
   nearRelative: boolean,
   nearBroad: boolean,
+  fontSize: number,
 ): void {
   stat.totalOccurrences += 1;
   stat.pageIndexes.add(pageIndex);
   if (nearRelative) {
     stat.edgeOccurrences += 1;
     stat.edgePageIndexes.add(pageIndex);
+    stat.minEdgeFontSize = Math.min(stat.minEdgeFontSize, fontSize);
   }
   if (nearBroad) stat.broadEdgePageIndexes.add(pageIndex);
 }
@@ -328,13 +341,13 @@ function addEdgeTextOccurrence(
 function selectRepeatedEdgeTexts(
   stats: Map<string, RepeatedEdgeTextStat>,
   totalPages: number,
-): Set<string> {
-  const result = new Set<string>();
+): Map<string, number> {
+  const result = new Map<string, number>();
   for (const [text, stat] of stats) {
     const coverage = computeRepeatedEdgeCoverage(stat, totalPages);
     if (coverage.pageCount < MIN_REPEATED_EDGE_TEXT_PAGES) continue;
     if (isRepeatedAuthorRunningLabel(text, coverage) || isRepeatedEdgeLabel(text, coverage)) {
-      result.add(text);
+      result.set(text, stat.minEdgeFontSize);
     }
   }
   return result;
@@ -461,14 +474,21 @@ function findPageNumberOffsets(entries: NumericEdgeLine[], totalPages: number): 
 
 function stripRepeatedEdgeTextAffixes(
   lines: TextLine[],
-  repeatedEdgeTexts: Set<string>,
+  repeatedEdgeTexts: Map<string, number>,
 ): TextLine[] {
   if (repeatedEdgeTexts.size === 0) return lines;
-  const edgeTexts = [...repeatedEdgeTexts]
-    .filter((t) => t.length >= MIN_EDGE_TEXT_AFFIX_LENGTH)
-    .sort((a, b) => b.length - a.length);
-  if (edgeTexts.length === 0) return lines;
-  return mapLinesWithTextTransform(lines, (text) => stripEdgeTextAffixes(text, edgeTexts));
+  const edgeTextEntries = [...repeatedEdgeTexts.entries()]
+    .filter(([t]) => t.length >= MIN_EDGE_TEXT_AFFIX_LENGTH)
+    .sort(([a], [b]) => b.length - a.length);
+  if (edgeTextEntries.length === 0) return lines;
+  return lines.map((line) => {
+    const applicableTexts = edgeTextEntries
+      .filter(([, minFS]) => line.fontSize <= minFS + REPEATED_EDGE_TEXT_FONT_SIZE_TOLERANCE)
+      .map(([t]) => t);
+    if (applicableTexts.length === 0) return line;
+    const transformed = stripEdgeTextAffixes(line.text, applicableTexts);
+    return transformed === line.text ? line : { ...line, text: transformed };
+  });
 }
 
 function stripArxivSubmissionStampAffixes(lines: TextLine[]): TextLine[] {

@@ -51,6 +51,7 @@ export interface RepeatedEdgeTextStat {
   pageIndexes: Set<number>;
   edgePageIndexes: Set<number>;
   broadEdgePageIndexes: Set<number>;
+  minEdgeFontSize: number;
 }
 
 export interface NumericEdgeLine {
