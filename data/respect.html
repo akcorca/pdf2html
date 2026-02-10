@@ -143,11 +143,11 @@
 <p>alignment. To accommodate the intricate cul-tural nuances, especially in Japanese, where polite-ness is deeply embedded in social interactions, we asked 2 or 3 native speakers to refine these lev-els for each language. This refinement was done by adding intermediate levels to the four foundational levels to have eight levels. This approach is crucial as it captures the subtle gradations in lan-guages like Japanese.</p>
 <p>To validate these politeness scales, we adminis-tered questionnaires to native speakers, who were asked to rank the politeness of each prompt. The full questionnaires are shown in Appendix B. This process provided empirical data to validate our scales, ensuring they accurately reflected the per-ceived levels of politeness across different cultures.</p>
 <p>the alignment of our prompts with real-world lin-guistic practices, thereby enhancing the relevance and effectiveness of language models in multilin-gual contexts. The prompts and the questionnaire results are shown in Appendix C.</p>
-<h3>4.2 Tasks</h3>
 <p>task language understanding benchmarks, and</p>
 <p>We use the following languages, LLMs, and 4</p>
 <p><a href="https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf">https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf</a></p>
 <p>prompts for our experiments.</p>
+<h3>4.2 Tasks</h3>
 <p>stereotypical bias detection.</p>
 <p>each consisting of two sentences with varying de-grees of bias. The sentences are identical apart</p>
 <p>Summarization We use CNN/Dailymail (Her-</p>
@@ -221,11 +221,11 @@
 <p>GPT-3.5 and GPT-4 almost always accurately sum-marize the article content, and their output content</p>
 <p>from high to low. Nevertheless, when the prompts are extremely rude, GPT-3.5’s generation length-ens again, while GPT-4’s length decreases.</p>
 <p>ChatGLM3 reveals different trends. When the politeness level is moderate, the length of this model’s generation is shorter than that in extraor-dinarily polite and rude situations. However, the changes from moderately polite to moderately im-polite (level 6 to 3) are absent. Considering that Chinese is the primary training language of Chat-GLM3, this could hint at a unique social prefer-ence within Chinese culture: unless in extremely polite or impolite situations, people would not par-ticularly pay attention to the change in politeness in daily communication.</p>
-<h4>5.1.3 Japanese</h4>
 <p>ities to Chinese and English ones to some extent, its length variation has unique features. As the level of politeness decreases from high to low, the</p>
 <p>is also associated with extended lengths. These</p>
 <p>generation’s length of GPT-3.5 becomes shorter</p>
 <p>facets reflect the nuances of human social behav-</p>
+<h4>5.1.3 Japanese</h4>
 <p>initially and then increases when the politeness</p>
 <p>MMLU C-Eval JMMLU</p>
 <p>P GPT-3.5 GPT-4 Llama2-70B GPT-3.5</p>

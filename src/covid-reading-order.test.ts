@@ -33,15 +33,18 @@ describe("covid numbered heading order", () => {
 
   it("keeps left-column 2.1 body continuation before the right-column 2.2 heading", () => {
     const dataCollectionHeading = "<h3>2.1. Data collection</h3>";
-    const leftBodyContinuation =
-      "<p>linked to SARS-CoV-2, which causes COVID-19, could predispose</p>";
+    const leftBodyText = "re-hospitalisations due to TE during the study period were excluded";
     const deathDataHeading = "<h3>2.2. Death data</h3>";
 
     expect(covidHtml).toContain(dataCollectionHeading);
-    expect(covidHtml).toContain(leftBodyContinuation);
+    expect(covidHtml).toContain(leftBodyText);
     expect(covidHtml).toContain(deathDataHeading);
-    expect(covidHtml.indexOf(dataCollectionHeading)).toBeLessThan(covidHtml.indexOf(leftBodyContinuation));
-    expect(covidHtml.indexOf(leftBodyContinuation)).toBeLessThan(covidHtml.indexOf(deathDataHeading));
+    expect(covidHtml.indexOf(dataCollectionHeading)).toBeLessThan(
+      covidHtml.indexOf(leftBodyText),
+    );
+    expect(covidHtml.indexOf(leftBodyText)).toBeLessThan(
+      covidHtml.indexOf(deathDataHeading),
+    );
   });
 
   it("renders inline research-in-context labels as semantic headings with body text", () => {
@@ -57,6 +60,34 @@ describe("covid numbered heading order", () => {
 
   it("does not merge opposite-column lines into a single paragraph around the introduction transition", () => {
     expect(covidHtml).not.toContain("major cardio - on acute CV events");
+  });
+
+  it("reads left column of Introduction fully before right column", () => {
+    // Left column starts: "Thrombo-embolism has been described as one of the major cardio-vascular..."
+    // Left column ends near: "...the pandemic may also have had unintended consequences..."
+    // Right column starts: "embolism [PE] and deep venous thrombosis [DVT])."
+    const leftColumnIntroText = "contributing to worse outcomes";
+    const rightColumnStartText = "embolism [PE] and deep venous thrombosis";
+
+    expect(covidHtml).toContain(leftColumnIntroText);
+    expect(covidHtml).toContain(rightColumnStartText);
+    expect(covidHtml.indexOf(leftColumnIntroText)).toBeLessThan(
+      covidHtml.indexOf(rightColumnStartText),
+    );
+  });
+
+  it("does not interleave left and right column lines in Introduction section", () => {
+    // These are left-column lines that should NOT be interrupted by right-column content
+    // "vascular (CV) complications" is left column, "on acute CV events" is right column
+    // In correct reading order, left-column "vascular" should come well before right-column "on acute CV events"
+    const leftLine = "vascular (CV) complications";
+    const rightLine = "on acute CV events";
+
+    expect(covidHtml).toContain(leftLine);
+    expect(covidHtml).toContain(rightLine);
+    expect(covidHtml.indexOf(leftLine)).toBeLessThan(
+      covidHtml.indexOf(rightLine),
+    );
   });
 
   it("keeps the 2.3 left-column narrative contiguous before right-column statistical detail starts", () => {

@@ -75,6 +75,7 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
     pageIndex: number;
     lines: TextLine[];
     columnSplitX: number | undefined;
+    hasRowBasedSplitX: boolean;
   }> = [];
   for (const page of document.pages) {
     const collectedPage = collectPageLines(page);
@@ -85,11 +86,17 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
         pageIndex: page.pageIndex,
         lines: collectedPage.lines,
         columnSplitX: collectedPage.columnSplitX,
+        hasRowBasedSplitX: collectedPage.hasRowBasedSplitX,
       });
     }
   }
 
-  const documentColumnSplitX = computeDocumentColumnSplitX(collectedPages);
+  // Only use row-based columnSplitX values for the document-wide median
+  // to avoid spatial-estimated values from skewing the split position.
+  const rowBasedPages = collectedPages.filter((p) => p.hasRowBasedSplitX);
+  const documentColumnSplitX = computeDocumentColumnSplitX(
+    rowBasedPages.length > 0 ? rowBasedPages : collectedPages,
+  );
   const pageColumnSplitXs = new Map<number, number>();
   for (const cp of collectedPages) {
     const effectiveSplitX = documentColumnSplitX ?? cp.columnSplitX;
@@ -110,7 +117,7 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
       pageColumnSplitXs,
     ),
   );
-  return applyReadingOrderReorders(sorted, multiColumnPageIndexes);
+  return applyReadingOrderReorders(sorted, multiColumnPageIndexes, columnMajorPageIndexes, pageColumnSplitXs);
 }
 
 function computeDocumentColumnSplitX(
@@ -129,11 +136,16 @@ function medianOrUndefined(values: number[]): number | undefined {
 function applyReadingOrderReorders(
   lines: TextLine[],
   multiColumnPageIndexes: Set<number>,
+  columnMajorPageIndexes: Set<number>,
+  pageColumnSplitXs: Map<number, number>,
 ): TextLine[] {
   const reorderSteps: Array<(currentLines: TextLine[]) => TextLine[]> = [
     reorderMisorderedTopLevelHeadings,
     (currentLines) => reorderLeftColumnTopLevelHeadings(currentLines, multiColumnPageIndexes),
-    (currentLines) => reorderMisorderedNumberedHeadings(currentLines, multiColumnPageIndexes),
+    (currentLines) =>
+      reorderMisorderedNumberedHeadings(currentLines, multiColumnPageIndexes, columnMajorPageIndexes),
+    (currentLines) =>
+      deferRightColumnHeadingsOnColumnMajorPages(currentLines, columnMajorPageIndexes, pageColumnSplitXs),
     reorderRightColumnHeadingsAfterLeftBodyContinuations,
     (currentLines) =>
       reorderRightColumnBodyAfterLeftBodyContinuations(currentLines, multiColumnPageIndexes),
@@ -153,11 +165,18 @@ function applyReadingOrderReorders(
   return reorderSteps.reduce((currentLines, reorderStep) => reorderStep(currentLines), lines);
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-column detection + fragment grouping in one pass.
 function collectPageLines(
   page: ExtractedPage,
-): { lines: TextLine[]; isMultiColumn: boolean; columnSplitX: number | undefined } {
+): { lines: TextLine[]; isMultiColumn: boolean; columnSplitX: number | undefined; hasRowBasedSplitX: boolean } {
   const buckets = bucketFragments(page);
-  const splitByColumn = isLikelyMultiColumnPage(buckets, page.width);
+  const rowBasedMultiColumn = hasRowBasedMultiColumnEvidence(buckets, page.width);
+  const spatialMultiColumn = !rowBasedMultiColumn && hasColumnGapFromSpatialDistribution(buckets, page.width);
+  const isMultiColumn = rowBasedMultiColumn || spatialMultiColumn;
+  // Only use row-based detection for fragment splitting (midpoint fallback).
+  // Spatial detection indicates two-column layout for reading order purposes
+  // but doesn't provide reliable enough evidence for row-level fragment splitting.
+  const splitByColumn = rowBasedMultiColumn;
   const lines: TextLine[] = [];
   const columnGapMidpoints: number[] = [];
 
@@ -191,7 +210,41 @@ function collectPageLines(
     }
   }
 
-  return { lines, isMultiColumn: splitByColumn, columnSplitX: medianOrUndefined(columnGapMidpoints) };
+  const rowBasedSplitX = medianOrUndefined(columnGapMidpoints);
+  let columnSplitX = rowBasedSplitX;
+  if (isMultiColumn && columnSplitX === undefined) {
+    columnSplitX = estimateColumnSplitXFromLines(lines, page.width);
+  }
+
+  return { lines, isMultiColumn, columnSplitX, hasRowBasedSplitX: rowBasedSplitX !== undefined };
+}
+
+/**
+ * Estimates the column split X position by finding the gap between
+ * left-column right edges and right-column left edges.
+ * Used when row-based column break detection doesn't yield gap midpoints
+ * but the page was detected as multi-column by spatial distribution.
+ */
+function estimateColumnSplitXFromLines(lines: TextLine[], pageWidth: number): number | undefined {
+  const midX = pageWidth * MULTI_COLUMN_SPLIT_RATIO;
+  const leftEdges: number[] = [];
+  const rightEdges: number[] = [];
+  for (const line of lines) {
+    const rightEdge = line.x + line.estimatedWidth;
+    const lineCenter = line.x + line.estimatedWidth / 2;
+    if (line.estimatedWidth > pageWidth * MULTI_COLUMN_SPANNING_LINE_WIDTH_RATIO) continue;
+    if (lineCenter < midX) {
+      leftEdges.push(rightEdge);
+    } else {
+      rightEdges.push(line.x);
+    }
+  }
+  if (leftEdges.length === 0 || rightEdges.length === 0) return undefined;
+  leftEdges.sort((a, b) => a - b);
+  rightEdges.sort((a, b) => a - b);
+  const leftP75 = leftEdges[Math.floor(leftEdges.length * 0.75)];
+  const rightP25 = rightEdges[Math.floor(rightEdges.length * 0.25)];
+  return (leftP75 + rightP25) / 2;
 }
 
 function splitRowIntoGroups(
@@ -322,10 +375,74 @@ function reorderMisorderedTopLevelHeadings(
 function reorderMisorderedNumberedHeadings(
   lines: TextLine[],
   multiColumnPageIndexes: Set<number>,
+  columnMajorPageIndexes: Set<number>,
 ): TextLine[] {
   return reorderLinesByForwardPromotion(lines, (reordered, index) =>
-    findNumberedHeadingPromotionIndex(reordered, index, multiColumnPageIndexes),
+    findNumberedHeadingPromotionIndex(reordered, index, multiColumnPageIndexes, columnMajorPageIndexes),
   );
+}
+
+/**
+ * On column-major pages, a right-column numbered heading may appear before
+ * left-column body text due to row-based Y-position sorting.  This step
+ * finds such headings and moves them to just after the last left-column body
+ * line on the same page.
+ *
+ * @remarks biome-ignore below: heading deferral with continuation detection requires nested loops.
+ */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: heading deferral with continuation detection requires nested loops.
+function deferRightColumnHeadingsOnColumnMajorPages(
+  lines: TextLine[],
+  columnMajorPageIndexes: Set<number>,
+  pageColumnSplitXs: Map<number, number>,
+): TextLine[] {
+  const result = [...lines];
+  for (let i = 0; i < result.length; i++) {
+    const line = result[i];
+    if (!columnMajorPageIndexes.has(line.pageIndex)) continue;
+    if (!isLikelyColumnHeadingLine(line.text)) continue;
+    const columnSplitX = pageColumnSplitXs.get(line.pageIndex);
+    if (classifyColumnByDetectedSplit(line, columnSplitX) !== "right") continue;
+
+    // Skip headings that have a nearby same-column continuation line.
+    // The continuation may not be the immediate neighbor in the sorted array
+    // because short lines (e.g., "DESIGN") can be scattered by the column-major
+    // body sort. Search both forward and backward for any same-page,
+    // same-column, vertically adjacent line.
+    let hasNearbyContinuation = false;
+    for (let k = 0; k < result.length; k++) {
+      if (k === i) continue;
+      const candidate = result[k];
+      if (candidate.pageIndex !== line.pageIndex) continue;
+      if (classifyColumnByDetectedSplit(candidate, columnSplitX) !== "right") continue;
+      if (Math.abs(candidate.y - line.y) <= line.fontSize * 2) {
+        hasNearbyContinuation = true;
+        break;
+      }
+    }
+    if (hasNearbyContinuation) continue;
+
+    // Find the last left-column line for this page after this heading.
+    // Use column classification directly (not isLikelyColumnMajorBodyLine)
+    // because lines near the page bottom are still real left-column content
+    // even if they fail the near-row-body Y-range check.
+    let lastLeftBodyIndex = -1;
+    for (let j = i + 1; j < result.length; j++) {
+      if (result[j].pageIndex !== line.pageIndex) break;
+      if (classifyColumnByDetectedSplit(result[j], columnSplitX) === "left" &&
+        !isLikelyColumnHeadingLine(result[j].text)) {
+        lastLeftBodyIndex = j;
+      }
+    }
+    if (lastLeftBodyIndex <= i) continue;
+
+    // Move the heading to after the last left-column body line
+    const [heading] = result.splice(i, 1);
+    result.splice(lastLeftBodyIndex, 0, heading);
+    // Re-check the same position (a new line is now at index i)
+    i--;
+  }
+  return result;
 }
 
 function reorderLeftColumnTopLevelHeadings(
@@ -1102,9 +1219,14 @@ function findNumberedHeadingPromotionIndex(
   lines: TextLine[],
   currentIndex: number,
   multiColumnPageIndexes: Set<number>,
+  columnMajorPageIndexes: Set<number>,
 ): number | undefined {
   const current = lines[currentIndex];
   if (!isRightColumnHeadingCandidate(current)) return undefined;
+  // On column-major pages, the sort already placed left-column content before
+  // right-column content. Promoting a right-column heading forward would
+  // incorrectly insert it into the middle of left-column text.
+  if (columnMajorPageIndexes.has(current.pageIndex)) return undefined;
   const currentPath = parseNumberedHeadingPathForReorder(current.text);
   if (!currentPath) return undefined;
   const isDetectedMultiColumnPage = multiColumnPageIndexes.has(current.pageIndex);
@@ -1323,7 +1445,7 @@ function bucketFragments(page: ExtractedPage): Map<number, ExtractedFragment[]> 
   return buckets;
 }
 
-function isLikelyMultiColumnPage(
+function hasRowBasedMultiColumnEvidence(
   buckets: Map<number, ExtractedFragment[]>,
   pageWidth: number,
 ): boolean {
@@ -1333,10 +1455,62 @@ function isLikelyMultiColumnPage(
     if (fragments.length < 2) continue;
     multiFragmentRows += 1;
     const sorted = [...fragments].sort((left, right) => left.x - right.x);
-    if (findColumnBreakIndexes(sorted, pageWidth).length > 0) rowsWithColumnBreak += 1;
+    const directBreaks = findColumnBreakIndexes(sorted, pageWidth);
+    if (directBreaks.length > 0) {
+      rowsWithColumnBreak += 1;
+    } else if (findBridgedColumnBreakIndexes(sorted, pageWidth).length > 0) {
+      rowsWithColumnBreak += 1;
+    }
   }
-  if (rowsWithColumnBreak < MIN_MULTI_COLUMN_BREAK_ROWS) return false;
-  return rowsWithColumnBreak / Math.max(multiFragmentRows, 1) >= MIN_MULTI_COLUMN_BREAK_ROW_RATIO;
+  return (
+    rowsWithColumnBreak >= MIN_MULTI_COLUMN_BREAK_ROWS &&
+    rowsWithColumnBreak / Math.max(multiFragmentRows, 1) >= MIN_MULTI_COLUMN_BREAK_ROW_RATIO
+  );
+}
+
+/**
+ * Fallback multi-column detection based on spatial distribution of text.
+ * Groups single-row fragments into "lines" and checks if they cluster into
+ * two horizontal bands (left and right) separated by a clear vertical gap.
+ * This catches pages where left/right column text lines don't align vertically
+ * (so row-based gap detection fails), but the overall spatial layout is clearly
+ * two-column.
+ */
+function hasColumnGapFromSpatialDistribution(
+  buckets: Map<number, ExtractedFragment[]>,
+  pageWidth: number,
+): boolean {
+  const midX = pageWidth * MULTI_COLUMN_SPLIT_RATIO;
+  const minBodyY = 0.08;
+  const maxBodyY = 0.92;
+  const minSideLines = 8;
+  const maxNarrowLineWidthRatio = 0.55;
+
+  let leftNarrowLines = 0;
+  let rightNarrowLines = 0;
+
+  for (const fragments of buckets.values()) {
+    const sorted = [...fragments].sort((left, right) => left.x - right.x);
+    const startX = sorted[0].x;
+    const lastFrag = sorted[sorted.length - 1];
+    const endX = lastFrag.x + estimateTextWidth(lastFrag.text, lastFrag.fontSize);
+    const lineWidth = endX - startX;
+    const lineCenter = (startX + endX) / 2;
+    const y = sorted[0].y;
+
+    // Skip header/footer fragments
+    if (y < pageWidth * minBodyY || y > pageWidth * maxBodyY) continue;
+    // Skip short fragments (page numbers, labels, etc.)
+    const totalChars = sorted.reduce((sum, f) => sum + countSubstantiveChars(f.text), 0);
+    if (totalChars < MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT) continue;
+    // Skip wide lines that span across columns
+    if (lineWidth > pageWidth * maxNarrowLineWidthRatio) continue;
+
+    if (lineCenter < midX) leftNarrowLines++;
+    else rightNarrowLines++;
+  }
+
+  return leftNarrowLines >= minSideLines && rightNarrowLines >= minSideLines;
 }
 
 function splitFragmentsByColumnBreaks(
