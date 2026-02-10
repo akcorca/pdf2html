@@ -81,6 +81,16 @@ describe("attention abstract same-row merge", () => {
     );
   });
 
+  it("merges same-row citation-fragment splits in conclusion paragraphs", () => {
+    expect(attentionHtml).toContain(
+      "In contrast to RNN sequence-to-sequence models [ 37 ], the Transformer outperforms the Berkeley-Parser [29] even when training only on the WSJ training set of 40K sentences.",
+    );
+    expect(attentionHtml).not.toContain("<p>In contrast to RNN sequence-to-sequence models [</p>");
+    expect(attentionHtml).not.toContain(
+      "<p>37 ], the Transformer outperforms the Berkeley-</p>",
+    );
+  });
+
   it("removes soft-wrap hyphen artifacts for common -tion/-sion continuations", () => {
     expect(attentionHtml).toContain(
       "sequence modeling and transduction models in various tasks, allowing modeling of dependencies",
