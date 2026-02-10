@@ -86,6 +86,7 @@ const BODY_PARAGRAPH_SHORT_LEAD_MIN_WIDTH_RATIO = 0.55;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_WORD_COUNT = 4;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_X_BACKSHIFT_RATIO = 0.08;
 const BODY_PARAGRAPH_SHORT_LEAD_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO = 0.25;
+const BODY_PARAGRAPH_INLINE_MATH_ARTIFACT_LEAD_MIN_WIDTH_RATIO = 0.8;
 // Same-row fragments can split after math operators or citation open brackets.
 const BODY_PARAGRAPH_OPERATOR_TRAILING_PATTERN = /[+\-−/=\[]$/u;
 const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MIN_X_DELTA_RATIO = 0.18;
@@ -106,6 +107,7 @@ const INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN = /^[a-z]{1,6}$/u;
 const INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN = /^[a-z]{1,3}$/u;
 const INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN = /^\d{1,4}$/;
 const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}\[\],.;:√∞]+$/u;
+const INLINE_MATH_BRIDGE_LEADING_NUMERIC_MARKER_PATTERN = /^\d{1,4}(?:\s+\d{1,4}){1,2}$/;
 const INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN = /[.!?]["')\]]?$/;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_TOKEN_COUNT = 3;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MIN_TOKEN_LENGTH = 3;
@@ -2230,6 +2232,21 @@ function isBodyParagraphLead(
     return true;
   }
   if (
+    startLine.estimatedWidth >=
+      typicalWidth * BODY_PARAGRAPH_INLINE_MATH_ARTIFACT_LEAD_MIN_WIDTH_RATIO &&
+    findBodyParagraphContinuationAfterInlineMathArtifacts(
+      lines,
+      startIndex + 1,
+      startLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    ) !== undefined
+  ) {
+    return true;
+  }
+  if (
     isIndentedBodyParagraphLead(
       lines,
       startIndex,
@@ -2298,6 +2315,7 @@ function isIndentedBodyParagraphLead(
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: paragraph continuation collects multiple merge types in one pass.
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: paragraph continuation collects multiple merge types in one pass.
 function consumeBodyParagraphContinuationParts(
   lines: TextLine[],
   continuationStartIndex: number,
@@ -2339,7 +2357,18 @@ function consumeBodyParagraphContinuationParts(
       hasDottedSubsectionHeadings,
     );
     if (inlineMathBridge !== undefined) {
+      const shouldDropLeadingNumericMarkers =
+        previousLine === startLine &&
+        startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO &&
+        startLine.estimatedWidth >=
+          typicalWidth * BODY_PARAGRAPH_INLINE_MATH_ARTIFACT_LEAD_MIN_WIDTH_RATIO;
       for (const artifactText of inlineMathBridge.artifactTexts) {
+        if (
+          shouldDropLeadingNumericMarkers &&
+          INLINE_MATH_BRIDGE_LEADING_NUMERIC_MARKER_PATTERN.test(artifactText)
+        ) {
+          continue;
+        }
         appendBodyParagraphPart(parts, artifactText);
       }
       nextIndex = inlineMathBridge.continuationIndex;

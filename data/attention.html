@@ -135,8 +135,7 @@
 <h3>5.2 Hardware and Schedule</h3>
 <p>We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).</p>
 <h3>5.3 Optimizer</h3>
-<p>We used the Adam optimizer [ 20 ] with β = 0 . 9 , β = 0 . 98 and ϵ = 10 . We varied the learning</p>
-<p>rate over the course of training, according to the formula:</p>
+<p>We used the Adam optimizer [ 20 ] with β = 0 . 9 , β = 0 . 98 and ϵ = 10 . We varied the learning rate over the course of training, according to the formula:</p>
 <p>− 0 . 5 − 0 . 5 − 1 . 5 lrate = d · min( step _ num , step _ num · warmup _ steps ) (3)</p>
 <p>This corresponds to increasing the learning rate linearly for the first warmup _ steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup _ steps = 4000 .</p>
 <h3>5.4 Regularization</h3>

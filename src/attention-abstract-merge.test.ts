@@ -38,6 +38,18 @@ describe("attention abstract same-row merge", () => {
     expect(attentionHtml).not.toContain("<p>t t − 1</p>");
   });
 
+  it("merges optimizer paragraph lines split by detached tiny math-marker artifacts", () => {
+    expect(attentionHtml).toContain(
+      "We varied the learning rate over the course of training, according to the formula:",
+    );
+    expect(attentionHtml).not.toContain(
+      "<p>We used the Adam optimizer [ 20 ] with β = 0 . 9 , β = 0 . 98 and ϵ = 10 . We varied the learning</p>",
+    );
+    expect(attentionHtml).not.toContain(
+      "<p>rate over the course of training, according to the formula:</p>",
+    );
+  });
+
   it("merges citation-led continuation lines into the preceding paragraph", () => {
     expect(attentionHtml).toContain(
       "At each step the model is auto-regressive [10], consuming the previously generated symbols as additional input",
