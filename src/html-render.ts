@@ -279,6 +279,19 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       continue;
     }
 
+    const renderedReferenceList = renderReferenceList(
+      lines,
+      index,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    );
+    if (renderedReferenceList !== undefined) {
+      bodyLines.push(...renderedReferenceList.htmlLines);
+      index = renderedReferenceList.nextIndex;
+      continue;
+    }
+
     const renderedStandaloneLink = renderStandaloneLinkParagraph(lines, index);
     if (renderedStandaloneLink !== undefined) {
       bodyLines.push(renderedStandaloneLink.html);
@@ -849,6 +862,65 @@ function isBulletListContinuation(
     return false;
   }
   return line.x >= itemStartLine.x + MIN_LIST_CONTINUATION_INDENT;
+}
+
+const REFERENCE_LIST_MIN_ITEMS = 3;
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: reference list parsing handles orphan fragments between entries.
+function renderReferenceList(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): { htmlLines: string[]; nextIndex: number } | undefined {
+  const startNormalized = normalizeSpacing(lines[startIndex].text);
+  if (!BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
+
+  const items: string[] = [];
+  let index = startIndex;
+
+  while (index < lines.length) {
+    const normalized = normalizeSpacing(lines[index].text);
+    if (!BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized)) break;
+
+    // Start a new reference entry — collect its text and continuation lines
+    const parts = [normalized];
+    let nextIndex = index + 1;
+
+    while (nextIndex < lines.length) {
+      const candidate = lines[nextIndex];
+      const candidateNormalized = normalizeSpacing(candidate.text);
+      if (candidateNormalized.length === 0) { nextIndex += 1; continue; }
+      // Stop at the next reference entry
+      if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(candidateNormalized)) break;
+      // Stop at headings
+      if (detectHeadingCandidate(candidate, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) break;
+      if (candidate === titleLine) break;
+      // Skip cross-column lines (e.g., right column content interleaved with left column references)
+      if (isCrossColumnPair(lines[index], candidate)) { nextIndex += 1; continue; }
+      // Stop at footnote-only markers (e.g., page numbers)
+      if (FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN.test(candidateNormalized)) break;
+      // Font size must be similar to the entry start
+      if (Math.abs(candidate.fontSize - lines[index].fontSize) > REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA) break;
+      appendBodyParagraphPart(parts, candidateNormalized);
+      nextIndex += 1;
+    }
+
+    items.push(normalizeSpacing(parts.join(" ")));
+    index = nextIndex;
+  }
+
+  if (items.length < REFERENCE_LIST_MIN_ITEMS) return undefined;
+
+  return {
+    htmlLines: [
+      "<ol>",
+      ...items.map((item) => `<li>${escapeHtml(item)}</li>`),
+      "</ol>",
+    ],
+    nextIndex: index,
+  };
 }
 
 function parseInlineAcknowledgementsHeading(

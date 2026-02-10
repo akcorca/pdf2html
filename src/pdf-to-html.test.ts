@@ -632,4 +632,28 @@ describe("convertPdfToHtml", () => {
     expect(tftHtml).toContain(rightColumnLine);
     expect(tftHtml.indexOf(leftColumnTailText)).toBeLessThan(tftHtml.indexOf(rightColumnLine));
   });
+
+  it("renders reference entries as an ordered list in attention.pdf", () => {
+    // References should be wrapped in <ol> with <li> items, not <p> tags
+    expect(html).toContain("<ol>");
+    expect(html).toContain("</ol>");
+    // Individual reference entries should be <li>, not <p>
+    expect(html).toMatch(/<li>.*Jimmy Lei Ba.*Layer normalization/);
+    expect(html).toMatch(/<li>.*Dzmitry Bahdanau.*Neural machine translation/);
+    // Reference entries should NOT be rendered as <p> tags
+    expect(html).not.toMatch(/<p>\[1\].*Jimmy Lei Ba/);
+    expect(html).not.toMatch(/<p>\[2\].*Dzmitry Bahdanau/);
+  });
+
+  it("renders reference entries as an ordered list in clean.pdf", () => {
+    expect(cleanHtml).toContain("<ol>");
+    expect(cleanHtml).toContain("</ol>");
+    expect(cleanHtml).toMatch(/<li>.*\[1\]/);
+  });
+
+  it("renders reference entries as an ordered list in covid.pdf", () => {
+    expect(covidHtml).toContain("<ol>");
+    expect(covidHtml).toContain("</ol>");
+    expect(covidHtml).toMatch(/<li>.*\[1\]/);
+  });
 });
