@@ -114,17 +114,16 @@ squeeze ()
 <p>CleanAgent achieves the data standardization task. Firstly, the</p>
 <p>a 42.5% cell-level matching rate, approximately 2 × higher than that of GPT-4o and Cocoon. These results demonstrate that Clean-Agent ’s type-specific standardization API enhances the LLM’s ability to generate more precise and concise standardization code. In addition to higher accuracy, CleanAgent also exhibits lower latency compared to Cocoon. This is because Cocoon generates a one-shot SQL query for all columns without the ability to target specific ones, leading to unnecessary overhead.</p>
 <table>
-<caption>Table 1: Data standardization performance by comparing</caption>
+<caption>Table 1: Data standardization performance by comparing different systems.</caption>
 <thead>
-<tr><th>different systems.</th><th></th><th></th><th></th><th></th><th></th><th></th><th>message of successful execution, CleanAgent will report that</th></tr>
+<tr><th></th><th>Cell-Level</th><th></th><th></th></tr>
 </thead>
 <tbody>
-<tr><td></td><td></td><td></td><td>Cell-Level</td><td></td><td></td><td></td><td>users can click the “Show Cleaned Table” button to check whether</td></tr>
-<tr><td></td><td>System</td><td></td><td></td><td></td><td>Latency (s)</td><td></td><td>users can click the “Show Cleaned Table” button to check whether</td></tr>
-<tr><td></td><td></td><td>Matching Rate(%)</td><td></td><td></td><td></td><td></td><td>the standardized table matches their requirements. If so, users can</td></tr>
-<tr><td></td><td>GPT-4o</td><td></td><td></td><td>22.0</td><td></td><td>19.76</td><td>download the standardized table directly. Otherwise, users can input</td></tr>
-<tr><td></td><td>Cocoon</td><td></td><td></td><td>21.5</td><td></td><td>636.62</td><td>their extra requirements with natural language, and CleanAgent</td></tr>
-<tr><td></td><td>CleanAgent</td><td></td><td></td><td>42.5</td><td></td><td>29.57</td><td>will start a new data standardization process accordingly.</td></tr>
+<tr><td>System</td><td></td><td>Latency (s)</td><td></td></tr>
+<tr><td></td><td>Matching Rate(%)</td><td></td><td></td></tr>
+<tr><td>GPT-4o</td><td>22.0</td><td></td><td>19.76</td></tr>
+<tr><td>Cocoon</td><td>21.5</td><td></td><td>636.62</td></tr>
+<tr><td>CleanAgent</td><td>42.5</td><td></td><td>29.57</td></tr>
 </tbody>
 </table>
 <h2>5 USER INTERFACE OF CLEANAGENT</h2>

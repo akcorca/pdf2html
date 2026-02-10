@@ -828,4 +828,16 @@ describe("convertPdfToHtml", () => {
     expect(html).toMatch(/<caption>.*Table 1:/);
     expect(html).toMatch(/<caption>.*Table 2:/);
   });
+
+  it("keeps clean.pdf Table 1 isolated from right-column prose", () => {
+    const tableBlock = cleanHtml.match(/<table>[\s\S]*?<\/table>/)?.[0];
+    expect(tableBlock).toBeDefined();
+    if (!tableBlock) return;
+
+    expect(tableBlock).toContain(
+      "<caption>Table 1: Data standardization performance by comparing different systems.</caption>",
+    );
+    expect(tableBlock).not.toContain("message of successful execution, CleanAgent will report that");
+    expect(tableBlock).not.toContain("users can click the “Show Cleaned Table” button to check whether");
+  });
 });

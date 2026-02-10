@@ -1,3 +1,4 @@
+// biome-ignore lint/nursery/noExcessiveLinesPerFile: table detection heuristics stay together for row-shape tuning.
 import type { ExtractedDocument, ExtractedFragment, TextLine } from "./pdf-types.ts";
 import { LINE_Y_BUCKET_SIZE } from "./pdf-types.ts";
 
@@ -25,6 +26,11 @@ interface DetectedTable {
   headerRows: string[][];
   dataRows: string[][];
   nextIndex: number;
+}
+
+interface HorizontalBounds {
+  minX: number;
+  maxX: number;
 }
 
 /**
@@ -61,7 +67,7 @@ export function detectTable(
   if (deduped.length < MIN_TABLE_DATA_ROWS) return undefined;
 
   // 3. Build rows from fragment-level column analysis
-  const allParsedRows = buildTableRows(deduped, page.fragments, bodyFontSize);
+  const allParsedRows = buildTableRows(deduped, bodyEntries, page.fragments, bodyFontSize);
   if (allParsedRows.length < MIN_TABLE_DATA_ROWS + 1) return undefined;
 
   // 4. Split into header and data rows
@@ -87,6 +93,7 @@ export function detectTable(
 
 // --- Caption collection ---
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: caption/body boundary needs layered geometric guards.
 function collectCaptionLines(
   lines: TextLine[],
   startIndex: number,
@@ -97,6 +104,7 @@ function collectCaptionLines(
   const captionLineIndexes: number[] = [startIndex];
   let captionText = firstLine.text;
   let nextIdx = startIndex + 1;
+  const captionBounds = firstLine.column !== undefined ? getCaptionBounds(firstLine) : undefined;
 
   while (nextIdx < lines.length) {
     const line = lines[nextIdx];
@@ -105,8 +113,17 @@ function collectCaptionLines(
     const prevLine = lines[nextIdx - 1];
     const vertGap = Math.abs(prevLine.y - line.y) / firstLine.fontSize;
     if (vertGap > TABLE_CAPTION_TO_BODY_MAX_GAP_FONT_RATIO) break;
+    if (firstLine.column !== undefined && line.column === firstLine.column) {
+      const leftOffset = Math.abs(line.x - firstLine.x);
+      if (leftOffset > Math.max(firstLine.fontSize * 3, 24)) break;
+    }
 
-    const rowFragGroups = getFragmentGroupsForRow(fragments, line.y, line.fontSize);
+    const rowFragGroups = getFragmentGroupsForRow(
+      fragments,
+      line.y,
+      line.fontSize,
+      captionBounds,
+    );
     if (rowFragGroups.length >= 2) break;
 
     if (Math.abs(line.fontSize - firstLine.fontSize) < 1.5) {
@@ -161,13 +178,21 @@ function collectTableBodyLines(
 
 function buildTableRows(
   deduped: Array<{ index: number; line: TextLine }>,
+  allEntries: Array<{ index: number; line: TextLine }>,
   fragments: ExtractedFragment[],
   bodyFontSize: number,
 ): string[][] {
   // Get fragment groups for each row
   const rowFragGroupsList: Array<{ groups: FragmentGroup[]; line: TextLine }> = [];
   for (const { line } of deduped) {
-    const groups = getFragmentGroupsForRow(fragments, line.y, line.fontSize);
+    const rowBounds = line.column !== undefined ? estimateRowBounds(allEntries, line) : undefined;
+    const unboundedGroups = getFragmentGroupsForRow(fragments, line.y, line.fontSize);
+    const shouldApplyRowBounds = rowBounds
+      ? unboundedGroups.some((group) => group.endX < rowBounds.minX || group.startX > rowBounds.maxX)
+      : false;
+    const groups = shouldApplyRowBounds
+      ? getFragmentGroupsForRow(fragments, line.y, line.fontSize, rowBounds)
+      : unboundedGroups;
     rowFragGroupsList.push({ groups, line });
   }
 
@@ -239,10 +264,16 @@ function getFragmentGroupsForRow(
   fragments: ExtractedFragment[],
   y: number,
   fontSize: number,
+  bounds?: HorizontalBounds,
 ): FragmentGroup[] {
   const yTolerance = Math.max(LINE_Y_BUCKET_SIZE, fontSize * 0.5);
   const rowFrags = fragments.filter(
-    (f) => Math.abs(f.y - y) <= yTolerance,
+    (f) => {
+      if (Math.abs(f.y - y) > yTolerance) return false;
+      if (!bounds) return true;
+      const fragmentEndX = estimateFragmentEndX(f);
+      return fragmentEndX >= bounds.minX && f.x <= bounds.maxX;
+    },
   );
 
   if (rowFrags.length === 0) return [];
@@ -284,6 +315,40 @@ function getFragmentGroupsForRow(
   });
 
   return groups;
+}
+
+function estimateRowBounds(
+  entries: Array<{ index: number; line: TextLine }>,
+  targetLine: TextLine,
+): HorizontalBounds | undefined {
+  const yTolerance = Math.max(LINE_Y_BUCKET_SIZE, targetLine.fontSize * 0.5);
+  let minX = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let matched = 0;
+
+  for (const { line } of entries) {
+    if (Math.abs(line.y - targetLine.y) > yTolerance) continue;
+    const estimatedWidth = Math.max(line.estimatedWidth, line.fontSize);
+    minX = Math.min(minX, line.x);
+    maxX = Math.max(maxX, line.x + estimatedWidth);
+    matched += 1;
+  }
+  if (matched === 0 || !Number.isFinite(minX) || !Number.isFinite(maxX) || maxX <= minX) return undefined;
+
+  const horizontalPadding = Math.max(targetLine.fontSize * 1.6, 8);
+  return {
+    minX: Math.max(0, minX - horizontalPadding),
+    maxX: maxX + horizontalPadding,
+  };
+}
+
+function getCaptionBounds(firstLine: TextLine): HorizontalBounds {
+  const estimatedWidth = Math.max(firstLine.estimatedWidth, firstLine.fontSize);
+  const horizontalPadding = Math.max(firstLine.fontSize * 1.2, 6);
+  return {
+    minX: Math.max(0, firstLine.x - horizontalPadding),
+    maxX: firstLine.x + estimatedWidth + horizontalPadding,
+  };
 }
 
 function estimateFragmentEndX(frag: ExtractedFragment): number {
