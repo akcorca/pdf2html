@@ -1,8 +1,8 @@
 import { execFile } from "node:child_process";
-import { constants } from "node:fs";
-import { access, mkdir, readdir } from "node:fs/promises";
+import { mkdir, readdir } from "node:fs/promises";
 import { join, parse, resolve } from "node:path";
 import { promisify } from "node:util";
+import { assertReadableFile } from "./file-access.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -102,14 +102,6 @@ export async function convertPdfToPng({
       join(resolvedOutputDirPath, fileName),
     ),
   };
-}
-
-async function assertReadableFile(filePath: string): Promise<void> {
-  try {
-    await access(filePath, constants.R_OK);
-  } catch {
-    throw new Error(`Cannot read input PDF: ${filePath}`);
-  }
 }
 
 function createDefaultDependencies(): ConvertPdfToPngDependencies {

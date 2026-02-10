@@ -1,20 +1,12 @@
-import { constants } from "node:fs";
-import { access, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import type { ExtractedDocument, ExtractedFragment, ExtractedPage } from "./pdf-types.ts";
+export { assertReadableFile } from "./file-access.ts";
 
 interface PdfTextItem {
   str: string;
   transform: number[];
   width: number;
-}
-
-export async function assertReadableFile(filePath: string): Promise<void> {
-  try {
-    await access(filePath, constants.R_OK);
-  } catch {
-    throw new Error(`Cannot read input PDF: ${filePath}`);
-  }
 }
 
 export async function extractDocument(inputPdfPath: string): Promise<ExtractedDocument> {
