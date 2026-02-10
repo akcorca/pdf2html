@@ -419,11 +419,11 @@ export function findLikelyPageNumberLines(
   const totalPages = new Set(lines.map((l) => l.pageIndex)).size;
   const numericEdgeLines = collectNumericEdgeLines(lines, pageExtents);
   const selectedOffsets = findPageNumberOffsets(numericEdgeLines, totalPages);
-  const result = new Set<TextLine>();
-  for (const entry of numericEdgeLines) {
-    if (selectedOffsets.has(entry.offset)) result.add(entry.line);
-  }
-  return result;
+  return new Set(
+    numericEdgeLines
+      .filter((entry) => selectedOffsets.has(entry.offset))
+      .map((entry) => entry.line),
+  );
 }
 
 function collectNumericEdgeLines(
@@ -441,17 +441,18 @@ function collectNumericEdgeLines(
 }
 
 function findPageNumberOffsets(entries: NumericEdgeLine[], totalPages: number): Set<number> {
-  const byOffset = new Map<number, NumericEdgeLine[]>();
+  const pageIndexesByOffset = new Map<number, Set<number>>();
   for (const entry of entries) {
-    const existing = byOffset.get(entry.offset);
-    if (existing) existing.push(entry);
-    else byOffset.set(entry.offset, [entry]);
+    const existing = pageIndexesByOffset.get(entry.offset);
+    if (existing) existing.add(entry.line.pageIndex);
+    else pageIndexesByOffset.set(entry.offset, new Set([entry.line.pageIndex]));
   }
+  const pageCountDenominator = Math.max(totalPages, 1);
   const selected = new Set<number>();
-  for (const [offset, group] of byOffset) {
-    const pageCount = new Set(group.map((e) => e.line.pageIndex)).size;
+  for (const [offset, pageIndexes] of pageIndexesByOffset) {
+    const pageCount = pageIndexes.size;
     if (pageCount < MIN_PAGE_NUMBER_SEQUENCE_PAGES) continue;
-    if (pageCount / Math.max(totalPages, 1) >= MIN_PAGE_NUMBER_SEQUENCE_COVERAGE) {
+    if (pageCount / pageCountDenominator >= MIN_PAGE_NUMBER_SEQUENCE_COVERAGE) {
       selected.add(offset);
     }
   }
