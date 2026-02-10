@@ -161,6 +161,14 @@ interface PageArtifactContext {
   removableLines: Set<TextLine>;
 }
 
+interface LineRegionCriteria {
+  exactPageIndex?: number;
+  maxPageIndex?: number;
+  minVerticalRatio?: number;
+  maxVerticalRatio?: number;
+  maxBodyFontRatio?: number;
+}
+
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
   const bodyFontSize = estimateBodyFontSize(lines);
@@ -230,6 +238,35 @@ function isLikelyIntrinsicArtifact(
     isLikelyTopMatterContactEmailLine(line, bodyFontSize) ||
     isLikelyFirstPageVenueFooterLine(line, bodyFontSize)
   );
+}
+
+function matchesLineRegion(
+  line: TextLine,
+  bodyFontSize: number,
+  criteria: LineRegionCriteria,
+): boolean {
+  if (criteria.exactPageIndex !== undefined && line.pageIndex !== criteria.exactPageIndex) {
+    return false;
+  }
+  if (criteria.maxPageIndex !== undefined && line.pageIndex > criteria.maxPageIndex) return false;
+  if (
+    criteria.maxBodyFontRatio !== undefined &&
+    line.fontSize > bodyFontSize * criteria.maxBodyFontRatio
+  ) {
+    return false;
+  }
+  if (criteria.minVerticalRatio === undefined && criteria.maxVerticalRatio === undefined) {
+    return true;
+  }
+  if (line.pageHeight <= 0) return false;
+  const verticalRatio = line.y / line.pageHeight;
+  if (criteria.minVerticalRatio !== undefined && verticalRatio < criteria.minVerticalRatio) {
+    return false;
+  }
+  if (criteria.maxVerticalRatio !== undefined && verticalRatio > criteria.maxVerticalRatio) {
+    return false;
+  }
+  return true;
 }
 
 export function findRepeatedEdgeTexts(
@@ -549,15 +586,21 @@ function isLikelyAlternatingRunningHeaderLine(
   pageExtents: Map<number, PageVerticalExtent>,
   bodyFontSize: number,
 ): boolean {
-  if (line.pageHeight <= 0) return false;
-  if (line.fontSize > bodyFontSize * ALTERNATING_RUNNING_HEADER_MAX_FONT_RATIO) return false;
+  if (
+    !matchesLineRegion(line, bodyFontSize, {
+      minVerticalRatio: ALTERNATING_RUNNING_HEADER_MIN_TOP_RATIO,
+      maxBodyFontRatio: ALTERNATING_RUNNING_HEADER_MAX_FONT_RATIO,
+    })
+  ) {
+    return false;
+  }
   if (
     !isNearPageEdge(line, pageExtents, ALTERNATING_RUNNING_HEADER_EDGE_MARGIN) &&
     !isNearPhysicalPageEdge(line, ALTERNATING_RUNNING_HEADER_EDGE_MARGIN)
   ) {
     return false;
   }
-  return line.y / line.pageHeight >= ALTERNATING_RUNNING_HEADER_MIN_TOP_RATIO;
+  return true;
 }
 
 function hasStableHorizontalAlignment(lines: TextLine[]): boolean {
@@ -662,9 +705,17 @@ function isLikelyFirstPageInlineFigureCaptionLine(
   pageLines: TextLine[],
   bodyFontSize: number,
 ): boolean {
-  if (line.pageIndex !== 0) return false;
-  if (line.pageWidth <= 0 || line.pageHeight <= 0) return false;
-  if (line.fontSize > bodyFontSize * FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_FONT_RATIO) return false;
+  if (line.pageWidth <= 0) return false;
+  if (
+    !matchesLineRegion(line, bodyFontSize, {
+      exactPageIndex: 0,
+      minVerticalRatio: FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_VERTICAL_RATIO,
+      maxVerticalRatio: FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_VERTICAL_RATIO,
+      maxBodyFontRatio: FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_FONT_RATIO,
+    })
+  ) {
+    return false;
+  }
 
   const normalized = normalizeSpacing(line.text);
   if (!FIRST_PAGE_INLINE_FIGURE_CAPTION_PATTERN.test(normalized)) return false;
@@ -682,15 +733,6 @@ function isLikelyFirstPageInlineFigureCaptionLine(
   if (line.estimatedWidth > line.pageWidth * maxWidthRatio) {
     return false;
   }
-
-  const relativeY = line.y / line.pageHeight;
-  if (
-    relativeY < FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_VERTICAL_RATIO ||
-    relativeY > FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_VERTICAL_RATIO
-  ) {
-    return false;
-  }
-
   return hasNearbyBodyLineInLeftColumn(line, pageLines, bodyFontSize);
 }
 
@@ -776,22 +818,22 @@ function isLikelyInlineFigureLabelLine(
   pageLines: TextLine[],
   bodyFontSize: number,
 ): boolean {
-  if (line.pageWidth <= 0 || line.pageHeight <= 0) return false;
-  if (line.fontSize > bodyFontSize * INLINE_FIGURE_LABEL_MAX_FONT_RATIO) return false;
+  if (line.pageWidth <= 0) return false;
+  if (
+    !matchesLineRegion(line, bodyFontSize, {
+      minVerticalRatio: INLINE_FIGURE_LABEL_MIN_VERTICAL_RATIO,
+      maxVerticalRatio: INLINE_FIGURE_LABEL_MAX_VERTICAL_RATIO,
+      maxBodyFontRatio: INLINE_FIGURE_LABEL_MAX_FONT_RATIO,
+    })
+  ) {
+    return false;
+  }
 
   const normalized = normalizeSpacing(line.text);
   if (countSubstantiveChars(normalized) < INLINE_FIGURE_LABEL_MIN_SUBSTANTIVE_CHARS) return false;
 
   const relativeX = line.x / line.pageWidth;
   if (relativeX < INLINE_FIGURE_LABEL_MIN_RIGHT_X_RATIO) return false;
-
-  const relativeY = line.y / line.pageHeight;
-  if (
-    relativeY < INLINE_FIGURE_LABEL_MIN_VERTICAL_RATIO ||
-    relativeY > INLINE_FIGURE_LABEL_MAX_VERTICAL_RATIO
-  ) {
-    return false;
-  }
 
   return hasNearbyBodyLineInLeftColumn(line, pageLines, bodyFontSize);
 }
@@ -1071,10 +1113,15 @@ function isLikelyFirstPageVenueFooterLine(
   line: TextLine,
   bodyFontSize: number,
 ): boolean {
-  if (line.pageIndex !== 0) return false;
-  if (line.pageHeight <= 0) return false;
-  if (line.y / line.pageHeight > FIRST_PAGE_VENUE_FOOTER_MAX_VERTICAL_RATIO) return false;
-  if (line.fontSize > bodyFontSize * FIRST_PAGE_VENUE_FOOTER_MAX_FONT_RATIO) return false;
+  if (
+    !matchesLineRegion(line, bodyFontSize, {
+      exactPageIndex: 0,
+      maxVerticalRatio: FIRST_PAGE_VENUE_FOOTER_MAX_VERTICAL_RATIO,
+      maxBodyFontRatio: FIRST_PAGE_VENUE_FOOTER_MAX_FONT_RATIO,
+    })
+  ) {
+    return false;
+  }
 
   const normalized = normalizeSpacing(line.text);
   const substantiveCharCount = countSubstantiveChars(normalized);
@@ -1092,10 +1139,15 @@ function isLikelyTopMatterAffiliationIndexLine(
   line: TextLine,
   bodyFontSize: number,
 ): boolean {
-  if (line.pageIndex !== 0) return false;
-  if (line.pageHeight <= 0) return false;
-  if (line.y / line.pageHeight < TOP_MATTER_AFFILIATION_MIN_VERTICAL_RATIO) return false;
-  if (line.fontSize > bodyFontSize * TOP_MATTER_AFFILIATION_MAX_FONT_RATIO) return false;
+  if (
+    !matchesLineRegion(line, bodyFontSize, {
+      exactPageIndex: 0,
+      minVerticalRatio: TOP_MATTER_AFFILIATION_MIN_VERTICAL_RATIO,
+      maxBodyFontRatio: TOP_MATTER_AFFILIATION_MAX_FONT_RATIO,
+    })
+  ) {
+    return false;
+  }
 
   const normalized = normalizeSpacing(line.text);
   if (!TOP_MATTER_AFFILIATION_INDEX_PATTERN.test(normalized)) return false;
@@ -1110,12 +1162,16 @@ function isLikelyTopMatterSymbolicAffiliationLine(
   line: TextLine,
   bodyFontSize: number,
 ): boolean {
-  if (line.pageIndex !== 0) return false;
-  if (line.pageHeight <= 0) return false;
-  const verticalRatio = line.y / line.pageHeight;
-  if (verticalRatio < TOP_MATTER_SYMBOLIC_AFFILIATION_MIN_VERTICAL_RATIO) return false;
-  if (verticalRatio > TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_VERTICAL_RATIO) return false;
-  if (line.fontSize > bodyFontSize * TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_FONT_RATIO) return false;
+  if (
+    !matchesLineRegion(line, bodyFontSize, {
+      exactPageIndex: 0,
+      minVerticalRatio: TOP_MATTER_SYMBOLIC_AFFILIATION_MIN_VERTICAL_RATIO,
+      maxVerticalRatio: TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_VERTICAL_RATIO,
+      maxBodyFontRatio: TOP_MATTER_SYMBOLIC_AFFILIATION_MAX_FONT_RATIO,
+    })
+  ) {
+    return false;
+  }
 
   const normalized = normalizeSpacing(line.text);
   return TOP_MATTER_SYMBOLIC_AFFILIATION_PATTERN.test(normalized);
@@ -1125,12 +1181,16 @@ function isLikelyTopMatterContactEmailLine(
   line: TextLine,
   bodyFontSize: number,
 ): boolean {
-  if (line.pageIndex !== 0) return false;
-  if (line.pageHeight <= 0) return false;
-  const verticalRatio = line.y / line.pageHeight;
-  if (verticalRatio < TOP_MATTER_CONTACT_EMAIL_MIN_VERTICAL_RATIO) return false;
-  if (verticalRatio > TOP_MATTER_CONTACT_EMAIL_MAX_VERTICAL_RATIO) return false;
-  if (line.fontSize > bodyFontSize * TOP_MATTER_CONTACT_EMAIL_MAX_FONT_RATIO) return false;
+  if (
+    !matchesLineRegion(line, bodyFontSize, {
+      exactPageIndex: 0,
+      minVerticalRatio: TOP_MATTER_CONTACT_EMAIL_MIN_VERTICAL_RATIO,
+      maxVerticalRatio: TOP_MATTER_CONTACT_EMAIL_MAX_VERTICAL_RATIO,
+      maxBodyFontRatio: TOP_MATTER_CONTACT_EMAIL_MAX_FONT_RATIO,
+    })
+  ) {
+    return false;
+  }
 
   const normalized = normalizeSpacing(line.text);
   if (!TOP_MATTER_CONTACT_EMAIL_PREFIX_PATTERN.test(normalized)) return false;
@@ -1173,12 +1233,16 @@ function isLikelyTopMatterAlphabeticAffiliationCandidate(
   line: TextLine,
   bodyFontSize: number,
 ): boolean {
-  if (line.pageIndex > TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_PAGE_INDEX) return false;
-  if (line.pageHeight <= 0) return false;
-  const verticalRatio = line.y / line.pageHeight;
-  if (verticalRatio < TOP_MATTER_ALPHABETIC_AFFILIATION_MIN_VERTICAL_RATIO) return false;
-  if (verticalRatio > TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_VERTICAL_RATIO) return false;
-  if (line.fontSize > bodyFontSize * TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_FONT_RATIO) return false;
+  if (
+    !matchesLineRegion(line, bodyFontSize, {
+      maxPageIndex: TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_PAGE_INDEX,
+      minVerticalRatio: TOP_MATTER_ALPHABETIC_AFFILIATION_MIN_VERTICAL_RATIO,
+      maxVerticalRatio: TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_VERTICAL_RATIO,
+      maxBodyFontRatio: TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_FONT_RATIO,
+    })
+  ) {
+    return false;
+  }
 
   const tokens = normalizeSpacing(line.text).toLowerCase().split(/[\s,;:]+/).filter(Boolean);
   if (tokens.length === 0 || tokens.length > TOP_MATTER_ALPHABETIC_AFFILIATION_MAX_TOKENS) {
