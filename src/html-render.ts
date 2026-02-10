@@ -163,6 +163,12 @@ interface NumberedCodeBlockCandidate {
   parsedNumberedLine?: NumberedCodeLine;
 }
 
+interface ReferenceListItem {
+  text: string;
+  marker?: number;
+  sourceOrder: number;
+}
+
 interface ConsumedTitleLineBlock {
   startIndex: number;
   text: string;
@@ -1217,7 +1223,7 @@ function renderReferenceList(
   const startNormalized = normalizeSpacing(lines[startIndex].text);
   if (!BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
 
-  const items: string[] = [];
+  const items: ReferenceListItem[] = [];
   let index = startIndex;
 
   while (index < lines.length) {
@@ -1247,20 +1253,61 @@ function renderReferenceList(
       nextIndex += 1;
     }
 
-    items.push(normalizeSpacing(parts.join(" ")));
+    const itemText = normalizeSpacing(parts.join(" "));
+    items.push({
+      text: itemText,
+      marker: parseReferenceListMarker(itemText),
+      sourceOrder: items.length,
+    });
     index = nextIndex;
   }
 
   if (items.length < REFERENCE_LIST_MIN_ITEMS) return undefined;
+  const orderedItems = reorderReferenceItemsByMarkerWhenInterleaved(items);
 
   return {
     htmlLines: [
       "<ol>",
-      ...items.map((item) => `<li>${escapeHtml(item)}</li>`),
+      ...orderedItems.map((item) => `<li>${escapeHtml(item.text)}</li>`),
       "</ol>",
     ],
     nextIndex: index,
   };
+}
+
+function parseReferenceListMarker(text: string): number | undefined {
+  const match = /^\[(\d{1,4})\]/.exec(text);
+  if (!match) return undefined;
+  const marker = Number.parseInt(match[1] ?? "", 10);
+  return Number.isFinite(marker) ? marker : undefined;
+}
+
+function reorderReferenceItemsByMarkerWhenInterleaved(items: ReferenceListItem[]): ReferenceListItem[] {
+  if (items.some((item) => item.marker === undefined)) return items;
+  const markers = items.map((item) => item.marker ?? 0);
+  if (!hasNumericReferenceOrderInversion(markers)) return items;
+  if (!hasLikelySequentialReferenceRange(markers)) return items;
+
+  return [...items].sort(
+    (left, right) => (left.marker ?? 0) - (right.marker ?? 0) || left.sourceOrder - right.sourceOrder,
+  );
+}
+
+function hasNumericReferenceOrderInversion(markers: number[]): boolean {
+  for (let index = 1; index < markers.length; index += 1) {
+    if (markers[index] < markers[index - 1]) return true;
+  }
+  return false;
+}
+
+function hasLikelySequentialReferenceRange(markers: number[]): boolean {
+  if (markers.length === 0) return false;
+  const uniqueMarkers = Array.from(new Set(markers));
+  const minMarker = Math.min(...uniqueMarkers);
+  const maxMarker = Math.max(...uniqueMarkers);
+  const rangeSize = maxMarker - minMarker + 1;
+  const missingMarkerCount = rangeSize - uniqueMarkers.length;
+  return missingMarkerCount <= Math.max(3, Math.floor(uniqueMarkers.length * 0.35));
 }
 
 function parseInlineAcknowledgementsHeading(

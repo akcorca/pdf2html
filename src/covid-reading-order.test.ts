@@ -118,4 +118,16 @@ describe("covid numbered heading order", () => {
       covidHtml.indexOf(rightColumnParagraphStart),
     );
   });
+
+  it("keeps numbered references in ascending order across two-column transitions", () => {
+    const reference24 = "<li>[24]";
+    const reference30 = "<li>[30]";
+    const reference31 = "<li>[31]";
+
+    expect(covidHtml).toContain(reference24);
+    expect(covidHtml).toContain(reference30);
+    expect(covidHtml).toContain(reference31);
+    expect(covidHtml.indexOf(reference24)).toBeLessThan(covidHtml.indexOf(reference31));
+    expect(covidHtml.indexOf(reference30)).toBeLessThan(covidHtml.indexOf(reference31));
+  });
 });
