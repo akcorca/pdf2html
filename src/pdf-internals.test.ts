@@ -171,6 +171,52 @@ describe("pdfToHtmlInternals", () => {
     expect(filtered.map((l) => l.text)).not.toContain("COMMUNICATION");
   });
 
+  it("removes only the nearest first-page caption continuation line", () => {
+    const caption = "Figure 1: right-column caption starts with hyphen-";
+    const nearestContinuation = "continues on this nearby line.";
+    const fartherContinuation = "continues on a farther line.";
+    const bodyParagraph = "Main body paragraph line that should stay.";
+    const filtered = pdfToHtmlInternals.filterPageArtifacts([
+      line({
+        pageIndex: 0,
+        x: 96,
+        y: 504,
+        fontSize: 10,
+        text: "Left column body context line for proximity checks.",
+      }),
+      line({
+        pageIndex: 0,
+        x: 340,
+        y: 500,
+        fontSize: 10,
+        estimatedWidth: 210,
+        text: caption,
+      }),
+      line({
+        pageIndex: 0,
+        x: 342,
+        y: 489,
+        fontSize: 10,
+        estimatedWidth: 180,
+        text: nearestContinuation,
+      }),
+      line({
+        pageIndex: 0,
+        x: 341,
+        y: 479,
+        fontSize: 10,
+        estimatedWidth: 180,
+        text: fartherContinuation,
+      }),
+      line({ pageIndex: 0, x: 90, y: 440, fontSize: 10, text: bodyParagraph }),
+    ]);
+    const texts = filtered.map((line) => line.text);
+    expect(texts).not.toContain(caption);
+    expect(texts).not.toContain(nearestContinuation);
+    expect(texts).toContain(fartherContinuation);
+    expect(texts).toContain(bodyParagraph);
+  });
+
   it("keeps sparse edge numbers when they do not form a page-number sequence", () => {
     const filtered = pdfToHtmlInternals.filterPageArtifacts([
       line({ pageIndex: 0, y: 760, text: "Header once" }),

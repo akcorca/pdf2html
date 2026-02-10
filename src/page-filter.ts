@@ -769,7 +769,6 @@ function isLikelyFirstPageInlineFigureCaptionTerminatedLine(text: string): boole
   );
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: continuation matching is evaluated in one spatial pass.
 function findLikelyFirstPageInlineFigureCaptionContinuationLine(
   captionLine: TextLine,
   pageLines: TextLine[],
@@ -785,41 +784,65 @@ function findLikelyFirstPageInlineFigureCaptionContinuationLine(
   let nearestContinuation: TextLine | undefined;
   let nearestYDelta = Number.POSITIVE_INFINITY;
   for (const candidate of pageLines) {
-    if (candidate === captionLine) continue;
-    if (candidate.pageIndex !== captionLine.pageIndex) continue;
-    if (candidate.pageWidth <= 0) continue;
-    const yDelta = captionLine.y - candidate.y;
-    if (yDelta <= 0 || yDelta > maxYDelta) continue;
-    if (candidate.x / candidate.pageWidth < FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_RIGHT_X_RATIO) continue;
-    if (
-      Math.abs(candidate.x - captionLine.x) >
-      candidate.pageWidth * FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_X_DELTA_RATIO
-    ) {
-      continue;
-    }
-    if (candidate.fontSize > bodyFontSize * FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_FONT_RATIO) continue;
-    if (
-      Math.abs(candidate.fontSize - captionLine.fontSize) >
-      FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_FONT_DELTA
-    ) {
-      continue;
-    }
-    const normalized = normalizeSpacing(candidate.text);
-    if (!FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_START_PATTERN.test(normalized)) continue;
-    if (!isLikelyFirstPageInlineFigureCaptionTerminatedLine(normalized)) continue;
-    if (
-      countSubstantiveChars(normalized) <
-      FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MIN_SUBSTANTIVE_CHARS
-    ) {
-      continue;
-    }
-    if (countWords(normalized) > FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WORDS) continue;
-    if (yDelta < nearestYDelta) {
-      nearestYDelta = yDelta;
-      nearestContinuation = candidate;
-    }
+    const yDelta = getFirstPageInlineFigureCaptionContinuationYDelta(
+      candidate,
+      captionLine,
+      bodyFontSize,
+      maxYDelta,
+    );
+    if (yDelta === undefined || yDelta >= nearestYDelta) continue;
+    nearestYDelta = yDelta;
+    nearestContinuation = candidate;
   }
   return nearestContinuation;
+}
+
+function getFirstPageInlineFigureCaptionContinuationYDelta(
+  candidate: TextLine,
+  captionLine: TextLine,
+  bodyFontSize: number,
+  maxYDelta: number,
+): number | undefined {
+  if (candidate === captionLine) return undefined;
+  if (candidate.pageIndex !== captionLine.pageIndex) return undefined;
+  if (candidate.pageWidth <= 0) return undefined;
+
+  const yDelta = captionLine.y - candidate.y;
+  if (yDelta <= 0 || yDelta > maxYDelta) return undefined;
+  if (candidate.x / candidate.pageWidth < FIRST_PAGE_INLINE_FIGURE_CAPTION_MIN_RIGHT_X_RATIO) {
+    return undefined;
+  }
+  if (
+    Math.abs(candidate.x - captionLine.x) >
+    candidate.pageWidth * FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_X_DELTA_RATIO
+  ) {
+    return undefined;
+  }
+  if (candidate.fontSize > bodyFontSize * FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_FONT_RATIO) {
+    return undefined;
+  }
+  if (
+    Math.abs(candidate.fontSize - captionLine.fontSize) >
+    FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MAX_FONT_DELTA
+  ) {
+    return undefined;
+  }
+
+  const normalized = normalizeSpacing(candidate.text);
+  if (!isLikelyFirstPageInlineFigureCaptionContinuationText(normalized)) return undefined;
+  return yDelta;
+}
+
+function isLikelyFirstPageInlineFigureCaptionContinuationText(text: string): boolean {
+  if (!FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_START_PATTERN.test(text)) return false;
+  if (!isLikelyFirstPageInlineFigureCaptionTerminatedLine(text)) return false;
+  if (
+    countSubstantiveChars(text) <
+    FIRST_PAGE_INLINE_FIGURE_CAPTION_CONTINUATION_MIN_SUBSTANTIVE_CHARS
+  ) {
+    return false;
+  }
+  return countWords(text) <= FIRST_PAGE_INLINE_FIGURE_CAPTION_MAX_WORDS;
 }
 
 function collectQualifiedPageCandidates(
