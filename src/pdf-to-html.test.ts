@@ -552,6 +552,14 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("sequence modeling and transduc-tion models");
   });
 
+  it("removes soft-wrap hyphen artifacts in attention.pdf body paragraphs", () => {
+    expect(html).toContain("model performs surprisingly well");
+    expect(html).not.toContain("model performs sur-prisingly well");
+
+    expect(html).toContain("learned linear transformation and softmax function");
+    expect(html).not.toContain("learned linear transfor-mation and softmax function");
+  });
+
   it("bridges detached math-fragment lines inside attention.pdf prose paragraphs", () => {
     expect(html).toContain(
       "We compute the dot products of the query with all keys, divide each by d k , and apply a softmax function to obtain the weights on the values.",

@@ -56,7 +56,9 @@ const HYPHEN_WRAP_MAX_LEFT_OFFSET_RATIO = 0.08;
 const HYPHEN_WRAP_MAX_CENTER_OFFSET_RATIO = 0.12;
 const HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO = 0.45;
 const HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO = 0.45;
-const HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN = /^(?:tion(?:al(?:ly)?|s)?|sion(?:al(?:ly)?|s)?)/u;
+// Common soft-wrap continuations split before derivational endings.
+const HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN =
+  /^(?:tion(?:al(?:ly)?|s)?|sion(?:al(?:ly)?|s)?|mation|nition|plicat(?:ion|ions|ive)|[a-z]{1,4}ingly)/u;
 const HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH = 3;
 const SAME_ROW_SENTENCE_SPLIT_END_PATTERN = /[.!?]["')\]]?$/;
 const SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN = /^[A-Z0-9(“‘"']/u;
