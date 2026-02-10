@@ -77,6 +77,7 @@ const REFERENCE_ENTRY_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.08;
 const REFERENCE_ENTRY_CONTINUATION_MAX_CENTER_OFFSET_RATIO = 0.12;
 const BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN =
   /^\[\d+(?:\s*,\s*\d+)*\]\s*[,;:]\s+[A-Za-z(“‘"']/u;
+const BODY_PARAGRAPH_LOCAL_REGION_TRIGGER_RATIO = 0.75;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_WIDTH_RATIO = 0.55;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_WORD_COUNT = 4;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_X_BACKSHIFT_RATIO = 0.08;
@@ -368,7 +369,7 @@ function consumeAuthorBlock(
   lines: TextLine[],
   startIndex: number,
   titleLine: TextLine,
-  pageTypicalWidths: Map<number, number>,
+  pageTypicalWidths: Map<string, number>,
   bodyFontSize: number,
 ): { html: string; nextIndex: number } | undefined {
   const authorBlockLines: TextLine[] = [];
@@ -395,7 +396,10 @@ function consumeAuthorBlock(
     if (detectNamedSectionHeadingLevel(normalized)) {
       break;
     }
-    const typicalWidth = pageTypicalWidths.get(line.pageIndex) ?? line.pageWidth;
+    // Author blocks appear in the title area (often full-width), so always use
+    // page-wide typical width to avoid false paragraph-lead detection from
+    // column-specific widths.
+    const typicalWidth = pageTypicalWidths.get(typicalWidthKey(line.pageIndex)) ?? line.pageWidth;
     if (
       isBodyParagraphLead(lines, nextIndex, line, normalized, titleLine, bodyFontSize, false, typicalWidth)
     ) {
@@ -689,7 +693,7 @@ function consumeParagraph(
   titleLine: TextLine | undefined,
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
-  pageTypicalWidths: Map<number, number>,
+  pageTypicalWidths: Map<string, number>,
 ): ConsumedParagraph | undefined {
   return (
     consumeReferenceEntryParagraph(
@@ -1860,24 +1864,75 @@ function isLikelyCodeText(text: string): boolean {
   return CODE_STYLE_TEXT_PATTERN.test(normalized);
 }
 
-function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): Map<number, number> {
+function typicalWidthKey(pageIndex: number, column?: "left" | "right"): string {
+  return column ? `${pageIndex}:${column}` : `${pageIndex}`;
+}
+
+const COLUMN_WIDTH_SIGNIFICANT_REDUCTION_RATIO = 0.90;
+
+function getTypicalWidth(
+  pageTypicalWidths: Map<string, number>,
+  line: TextLine,
+): number | undefined {
+  const pageWidth = pageTypicalWidths.get(typicalWidthKey(line.pageIndex));
+  // Use column-specific typical width only when it is significantly lower
+  // than the page-wide width (indicating a genuine narrower column).
+  // When both are similar, page-wide is more stable for merge decisions.
+  if (line.column) {
+    const colWidth = pageTypicalWidths.get(typicalWidthKey(line.pageIndex, line.column));
+    if (colWidth !== undefined && pageWidth !== undefined) {
+      if (colWidth < pageWidth * COLUMN_WIDTH_SIGNIFICANT_REDUCTION_RATIO) {
+        return colWidth;
+      }
+    } else if (colWidth !== undefined) {
+      return colWidth;
+    }
+  }
+  return pageWidth;
+}
+
+const MIN_COLUMN_BODY_LINES_FOR_COLUMN_WIDTH = 5;
+
+function widthPercentile(widths: number[]): number {
+  widths.sort((a, b) => a - b);
+  return widths[Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)];
+}
+
+function appendToMapBucket<K>(map: Map<K, number[]>, key: K, value: number): void {
+  const existing = map.get(key);
+  if (existing) existing.push(value);
+  else map.set(key, [value]);
+}
+
+function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): Map<string, number> {
   const pageWidths = new Map<number, number[]>();
+  const colWidths = new Map<string, number[]>();
   for (const line of lines) {
     if (Math.abs(line.fontSize - bodyFontSize) > 1.0) continue;
     if (normalizeSpacing(line.text).length < 20) continue;
-    const existing = pageWidths.get(line.pageIndex);
-    if (existing) {
-      existing.push(line.estimatedWidth);
-    } else {
-      pageWidths.set(line.pageIndex, [line.estimatedWidth]);
+    appendToMapBucket(pageWidths, line.pageIndex, line.estimatedWidth);
+    if (line.column) {
+      appendToMapBucket(colWidths, typicalWidthKey(line.pageIndex, line.column), line.estimatedWidth);
     }
   }
-  const result = new Map<number, number>();
+  const result = new Map<string, number>();
   for (const [pageIndex, widths] of pageWidths) {
     if (widths.length < 5) continue;
-    widths.sort((a, b) => a - b);
-    const percentileIndex = Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE);
-    result.set(pageIndex, widths[percentileIndex]);
+    result.set(typicalWidthKey(pageIndex), widthPercentile(widths));
+  }
+  // Store column-specific typical widths only when BOTH columns on the same
+  // page have enough body-text lines.  This prevents false column detection
+  // (e.g. figures on single-column pages) from producing misleading widths.
+  for (const [pageIndex] of pageWidths) {
+    const leftWidths = colWidths.get(typicalWidthKey(pageIndex, "left"));
+    const rightWidths = colWidths.get(typicalWidthKey(pageIndex, "right"));
+    if (
+      leftWidths && leftWidths.length >= MIN_COLUMN_BODY_LINES_FOR_COLUMN_WIDTH &&
+      rightWidths && rightWidths.length >= MIN_COLUMN_BODY_LINES_FOR_COLUMN_WIDTH
+    ) {
+      result.set(typicalWidthKey(pageIndex, "left"), widthPercentile(leftWidths));
+      result.set(typicalWidthKey(pageIndex, "right"), widthPercentile(rightWidths));
+    }
   }
   return result;
 }
@@ -1901,16 +1956,44 @@ function computeLocalFontSizeTypicalWidth(
   return widths[Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)];
 }
 
+const LOCAL_COLUMN_REGION_MIN_LINES = 5;
+const LOCAL_COLUMN_REGION_MAX_X_DELTA = 12;
+
+/**
+ * Compute a typical width from same-column lines sharing a similar left margin.
+ * This handles cases where a column has sub-regions with different text widths
+ * (e.g. text next to a figure or abstract box is narrower than full-column text).
+ */
+function computeLocalColumnRegionTypicalWidth(
+  lines: TextLine[],
+  referenceLine: TextLine,
+  bodyFontSize: number,
+): number | undefined {
+  if (!referenceLine.column) return undefined;
+  const widths: number[] = [];
+  for (const line of lines) {
+    if (line.pageIndex !== referenceLine.pageIndex) continue;
+    if (line.column !== referenceLine.column) continue;
+    if (Math.abs(line.fontSize - bodyFontSize) > 1.0) continue;
+    if (normalizeSpacing(line.text).length < 20) continue;
+    if (Math.abs(line.x - referenceLine.x) > LOCAL_COLUMN_REGION_MAX_X_DELTA) continue;
+    widths.push(line.estimatedWidth);
+  }
+  if (widths.length < LOCAL_COLUMN_REGION_MIN_LINES) return undefined;
+  widths.sort((a, b) => a - b);
+  return widths[Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)];
+}
+
 function consumeBodyParagraph(
   lines: TextLine[],
   startIndex: number,
   titleLine: TextLine | undefined,
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
-  pageTypicalWidths: Map<number, number>,
+  pageTypicalWidths: Map<string, number>,
 ): { text: string; nextIndex: number } | undefined {
   const startLine = lines[startIndex];
-  let typicalWidth = pageTypicalWidths.get(startLine.pageIndex);
+  let typicalWidth = getTypicalWidth(pageTypicalWidths, startLine);
   if (typicalWidth === undefined) return undefined;
   // When the start line's font size differs from body font, compute a local
   // typical width from same-font-size lines on the same page so that
@@ -1918,6 +2001,19 @@ function consumeBodyParagraph(
   if (Math.abs(startLine.fontSize - bodyFontSize) > 1.0) {
     const localTypical = computeLocalFontSizeTypicalWidth(lines, startLine);
     if (localTypical !== undefined) typicalWidth = localTypical;
+  }
+  // For genuine multi-column pages where the line is clearly in a narrower
+  // sub-region (e.g. text next to a figure or abstract box), try a local
+  // region width (same column, same x-alignment).  Only activate when the
+  // line is well below the threshold (< 70% of typical) to avoid false
+  // positives on lines that are just marginally short.
+  if (
+    startLine.column &&
+    pageTypicalWidths.has(typicalWidthKey(startLine.pageIndex, startLine.column)) &&
+    startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_LOCAL_REGION_TRIGGER_RATIO
+  ) {
+    const localColTypical = computeLocalColumnRegionTypicalWidth(lines, startLine, bodyFontSize);
+    if (localColTypical !== undefined) typicalWidth = localColTypical;
   }
 
   const startNormalized = parseParagraphMergeCandidateText(startLine, {

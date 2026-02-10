@@ -667,10 +667,10 @@ describe("convertPdfToHtml", () => {
 
   it("keeps left-column abstract text before right-column abstract text in tft.pdf", () => {
     const leftColumnText = "The stabilization and control of the electrical properties in solution-processed";
-    const rightColumnLine = "<p>various semiconductors, sputter-deposited</p>";
+    const rightColumnText = "various semiconductors, sputter-deposited";
     expect(tftHtml).toContain(leftColumnText);
-    expect(tftHtml).toContain(rightColumnLine);
-    expect(tftHtml.indexOf(leftColumnText)).toBeLessThan(tftHtml.indexOf(rightColumnLine));
+    expect(tftHtml).toContain(rightColumnText);
+    expect(tftHtml.indexOf(leftColumnText)).toBeLessThan(tftHtml.indexOf(rightColumnText));
   });
 
   it("merges attention abstract into body paragraphs instead of single-line p tags", () => {
@@ -723,10 +723,21 @@ describe("convertPdfToHtml", () => {
   it("keeps the full left-column abstract block before the right-column summary in tft.pdf", () => {
     const leftColumnTailText =
       "low-cost, high-performance oxide semiconductor-based circuits. [4]</p>";
-    const rightColumnLine = "<p>various semiconductors, sputter-deposited</p>";
     expect(tftHtml).toContain(leftColumnTailText);
-    expect(tftHtml).toContain(rightColumnLine);
-    expect(tftHtml.indexOf(leftColumnTailText)).toBeLessThan(tftHtml.indexOf(rightColumnLine));
+    expect(tftHtml).toContain("various semiconductors, sputter-deposited");
+    expect(tftHtml.indexOf(leftColumnTailText)).toBeLessThan(tftHtml.indexOf("various semiconductors, sputter-deposited"));
+  });
+
+  it("merges right-column body text into paragraphs in tft.pdf", () => {
+    // Right-column body text on page 1 should be merged into flowing paragraphs,
+    // not kept as one-line-per-<p> tags.
+    expect(tftHtml).not.toContain("<p>various semiconductors, sputter-deposited</p>");
+    expect(tftHtml).not.toContain("<p>amorphous indium–gallium–zinc oxide</p>");
+    expect(tftHtml).not.toContain("<p>displays and high current-driven organic</p>");
+    // The merged paragraph should contain contiguous text from the right column
+    expect(tftHtml).toContain(
+      "various semiconductors, sputter-deposited amorphous indium–gallium–zinc oxide",
+    );
   });
 
   it("renders reference entries as an ordered list in attention.pdf", () => {
