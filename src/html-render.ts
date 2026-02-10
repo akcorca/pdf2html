@@ -62,8 +62,8 @@ const SAME_ROW_SENTENCE_SPLIT_END_PATTERN = /[.!?]["')\]]?$/;
 const SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN = /^[A-Z0-9(“‘"']/u;
 const SAME_ROW_SENTENCE_SPLIT_MAX_VERTICAL_DELTA_FONT_RATIO = 0.2;
 const SAME_ROW_SENTENCE_SPLIT_MAX_FONT_DELTA = 0.7;
-const SAME_ROW_SENTENCE_SPLIT_MIN_X_DELTA_RATIO = 0.01;
-const SAME_ROW_SENTENCE_SPLIT_MAX_X_DELTA_RATIO = 0.14;
+const SAME_ROW_SENTENCE_SPLIT_MAX_GAP_FONT_RATIO = 4.0;
+const SAME_ROW_SENTENCE_SPLIT_MAX_OVERLAP_FONT_RATIO = 6.0;
 const SAME_ROW_SENTENCE_SPLIT_MAX_START_WIDTH_RATIO = 0.45;
 const STANDALONE_CAPTION_LABEL_PATTERN =
   /^(?:Figure|Fig\.?|Table|Algorithm|Eq(?:uation)?\.?)\s+\d+[A-Za-z]?[.:]?$/iu;
@@ -1592,11 +1592,17 @@ function isSameRowSentenceSplitContinuationLine(
     return false;
   }
 
-  const minXDelta = line.pageWidth * SAME_ROW_SENTENCE_SPLIT_MIN_X_DELTA_RATIO;
-  const maxXDelta = line.pageWidth * SAME_ROW_SENTENCE_SPLIT_MAX_X_DELTA_RATIO;
-  const xDeltaFromStart = line.x - startLine.x;
-  if (xDeltaFromStart < minXDelta || xDeltaFromStart > maxXDelta) return false;
-  if (line.x < previousLine.x - minXDelta) return false;
+  // Check that the continuation starts near where the previous line ends.
+  // Use the gap between the end of the previous line and the start of the
+  // continuation, which is robust to multi-column layouts where page-width
+  // relative x-delta checks are too restrictive.
+  const previousLineEnd = previousLine.x + previousLine.estimatedWidth;
+  const gapFromPreviousEnd = line.x - previousLineEnd;
+  const maxGap = Math.max(startLine.fontSize, line.fontSize) * SAME_ROW_SENTENCE_SPLIT_MAX_GAP_FONT_RATIO;
+  const maxOverlap = Math.max(startLine.fontSize, line.fontSize) * SAME_ROW_SENTENCE_SPLIT_MAX_OVERLAP_FONT_RATIO;
+  if (gapFromPreviousEnd > maxGap || gapFromPreviousEnd < -maxOverlap) return false;
+  // The continuation must be to the right of the previous line's start.
+  if (line.x <= previousLine.x) return false;
   return true;
 }
 

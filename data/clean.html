@@ -87,8 +87,7 @@ squeeze ()
 <h2>3 CLEANAGENT WORKFLOW</h2>
 <p>In this section, we first introduce the basic structure of LLM-based agents. Then, we describe the CleanAgent workflow constructed by four agents. The automatic data standardization process can be completed by the cooperation of the four agents in</p>
 <p>CleanAgent .</p>
-<p>Basic Structure of LLM-based Agents.</p>
-<p>According to the previous</p>
+<p>Basic Structure of LLM-based Agents. According to the previous</p>
 <p>surveys on LLM-based Agent [ 6 ], an LLM-based agent includes four main components: (1) a backbone LLM used to generate replies for input prompts, (2) a memory used to store historical conversation messages, (3) a system message defining the role of the agent, and (4) a set of external tools which can be called by the LLM-based agent to complete specific tasks, such as web searching, code execution, etc.</p>
 <p>Detailed Workflow. The detailed workflow of CleanAgent is</p>
 <p>shown in Figure 2. The CleanAgent is composed of four agents, including a Chat Manager , a Column-type Annotator , a Python Pro-grammer , and a Code Executor . They can communicate with each other and automatically complete the data standardization process by cooperation. Each agent has its own memory to store the his-torical conversational messages between it and other agents. Note that the memory of the Chat Manager is uniquely comprehensive, encompassing the entire historical conversational messages from all agents within the CleanAgent system. This extensive memory enables every agent in the CleanAgent to generate responses that are informed by the complete historical messages.</p>

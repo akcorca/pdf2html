@@ -857,4 +857,16 @@ describe("convertPdfToHtml", () => {
     expect(tableBlock).not.toContain("message of successful execution, CleanAgent will report that");
     expect(tableBlock).not.toContain("users can click the “Show Cleaned Table” button to check whether");
   });
+
+  it("merges same-row sentence fragments into body paragraphs in respect.pdf", () => {
+    // On page 1, "factors: the politeness of the prompt. In human" is a single
+    // visual line split into two text items by the PDF extractor. The second
+    // fragment "In human" must not appear as a standalone <p>.
+    expect(respectHtml).not.toContain("<p>In human</p>");
+    expect(respectHtml).not.toContain("<p>We observed</p>");
+    expect(respectHtml).not.toContain("<p>However, polite-</p>");
+    // These fragments should be merged into the surrounding paragraph text
+    expect(respectHtml).toContain("prompt. In human");
+    expect(respectHtml).toContain("tasks. We observed");
+  });
 });
