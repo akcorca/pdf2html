@@ -869,4 +869,14 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).toContain("prompt. In human");
     expect(respectHtml).toContain("tasks. We observed");
   });
+
+  it("drops detached superscript numeric markers from respect.pdf body paragraphs", () => {
+    expect(respectHtml).toContain("In addition, we also hypothesize that the best level of politeness");
+    expect(respectHtml).not.toContain("In addition, we also 1 hypothesize");
+    expect(respectHtml).not.toContain("LLMs, and 4 prompts");
+    expect(respectHtml).not.toContain("for each 2 language");
+    expect(respectHtml).not.toContain("Llama2- 3 70B");
+    expect(respectHtml).not.toContain("for 4 Chinese");
+    expect(respectHtml).toContain("Llama-2-70b-chat (hereafter Llama2- 70B) for English");
+  });
 });

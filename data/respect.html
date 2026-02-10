@@ -21,7 +21,7 @@ RIKEN AIP NII LLMC
 <p>In natural language processing, large language models (LLMs), such as OpenAI’s ChatGPT and Meta’s LLaMA (Touvron et al., 2023), have at-tracted widespread attention. These models have shown significant performance in many tasks, such as logical reasoning, classification, and question answering, playing a crucial role in many practi-cal applications. The input to an LLM, a prompt, is a vital starting point for the model to process in-formation and generate appropriate responses. However, despite the continuous improvement of the capabilities of LLMs, their behavior and gen-erations still need to be improved in many factors. This study explores one of the possible influencing factors: the politeness of the prompt. In human social interactions, politeness, which expresses re-spect to others, is basic etiquette, which is reflected</p>
 <p>in our language and behavior. However, polite-</p>
 <p>ness and respect may have different definitions and manifestations in different cultures and languages. For example, the expression and degree of respect in English, Chinese, and Japanese may differ sig-nificantly. This difference may make the perfor-mance of LLMs vary with language on the same politeness level.</p>
-<p>We hypothesize that impolite prompts may lead to a deterioration in model performance, including generations containing mistakes, stronger biases, and omission of information. In addition, we also 1 hypothesize that the best level of politeness for per-formance is different across languages, which is strongly related to their cultural background. To verify these hypotheses, we design eight prompts with politeness levels ranging from high to low for English, Chinese, and Japanese, respectively. Our experiments are conducted on three tasks: summa-rization, language understanding benchmarks, and stereotypical bias detection.</p>
+<p>We hypothesize that impolite prompts may lead to a deterioration in model performance, including generations containing mistakes, stronger biases, and omission of information. In addition, we also hypothesize that the best level of politeness for per-formance is different across languages, which is strongly related to their cultural background. To verify these hypotheses, we design eight prompts with politeness levels ranging from high to low for English, Chinese, and Japanese, respectively. Our experiments are conducted on three tasks: summa-rization, language understanding benchmarks, and stereotypical bias detection.</p>
 <p>Our contributions are two-fold as follows:</p>
 <p>LLMs reflect human desire</p>
 <p>We observed that</p>
@@ -45,9 +45,10 @@ RIKEN AIP NII LLMC
 <p>We conduct experiments on three highly concern-ing tasks to evaluate the performance of LLMs ac-cording to prompt politeness.</p>
 <h3>4.1 Languages, LLMs, and Prompt</h3>
 <p>Politeness</p>
-<p>We use the following languages, LLMs, and 4 prompts for our experiments.</p>
+<p>We use the following languages, LLMs, and</p>
+<p>prompts for our experiments.</p>
 <p>Languages Considering that different languages and cultures have different understandings and def-initions of politeness and respect, we evaluate En-glish, Chinese, and Japanese in our experiments.</p>
-<p>LLMs We select GPT-3.5-Turbo (hereafter GPT-3.5) and GPT-4 (OpenAI, 2023) for each language, which are versatile in all three languages. Further-more, we also pick a model specialized for each 2 language: Llama-2-70b-chat (hereafter Llama2- 3 70B) for English, ChatGLM3-6B (hereafter Chat-GLM3) (Du et al., 2022; Zeng et al., 2022) for 4 Chinese, and Swallow-70b-instruct-hf</p>
+<p>LLMs We select GPT-3.5-Turbo (hereafter GPT-3.5) and GPT-4 (OpenAI, 2023) for each language, which are versatile in all three languages. Further-more, we also pick a model specialized for each language: Llama-2-70b-chat (hereafter Llama2- 70B) for English, ChatGLM3-6B (hereafter Chat-GLM3) (Du et al., 2022; Zeng et al., 2022) for Chinese, and Swallow-70b-instruct-hf</p>
 <p>(hereafter</p>
 <p>Swallow-70B) for Japanese. We use the default</p>
 <p>settings of each LLM in all experiments.</p>

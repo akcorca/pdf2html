@@ -120,6 +120,15 @@ const DETACHED_LOWERCASE_MATH_SUBSCRIPT_PATTERN = /^[a-z]{3,6}(?:\s+[a-z]{3,6}){
 const DETACHED_LOWERCASE_MATH_SUBSCRIPT_MAX_WIDTH_RATIO = 0.1;
 const DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN = /=\s*(?:[A-Za-z]\b|[-−]?\d)/u;
 const DETACHED_MATH_SUBSCRIPT_TRAILING_VARIABLE_PATTERN = /\b[A-Za-z]\s*[.)]?$/u;
+const DETACHED_NUMERIC_FOOTNOTE_MARKER_PATTERN = /^[1-9]$/u;
+const DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_WIDTH_RATIO = 0.04;
+const DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_FONT_RATIO = 0.82;
+const DETACHED_NUMERIC_FOOTNOTE_MARKER_MIN_BASELINE_Y_DELTA_FONT_RATIO = 0.2;
+const DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_NEIGHBOR_GAP_FONT_RATIO = 5.5;
+const DETACHED_NUMERIC_FOOTNOTE_MARKER_NEIGHBOR_WORD_PATTERN = /[A-Za-z]{3,}/;
+const CHEMICAL_TAIL_TOKEN_PATTERN = /([A-Za-z][A-Za-z0-9]*)\s*[-–]?$/;
+const CHEMICAL_SYMBOL_TOKEN_PATTERN = /^(?:[A-Z]{1,3}|[A-Z][a-z]{0,2}[A-Z])$/;
+const CHEMICAL_TRAILING_SYMBOL_AND_PATTERN = /\b[A-Z]\s*[;,:]\s*and\s*$/;
 const NUMBERED_CODE_BLOCK_LINE_PATTERN = /^(\d{1,3})\s+(.+)$/;
 const NUMBERED_CODE_BLOCK_MAX_LOOKAHEAD = 48;
 const NUMBERED_CODE_BLOCK_MIN_LINES = 4;
@@ -253,6 +262,18 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     }
     if (
       shouldSkipDetachedLowercaseMathSubscriptLine(
+        lines,
+        index,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
+      index += 1;
+      continue;
+    }
+    if (
+      shouldSkipDetachedNumericFootnoteMarkerLine(
         lines,
         index,
         titleLine,
@@ -937,7 +958,7 @@ function detectHeadingCandidate(
     return { kind: "numbered", level: numberedHeadingLevel };
   }
 
-  const namedHeading = detectNamedSectionHeadingLevel(normalized);
+  const namedHeading: NamedHeading | undefined = detectNamedSectionHeadingLevel(normalized);
   if (namedHeading === undefined) return undefined;
   return { kind: "named", level: namedHeading.level, text: namedHeading.text };
 }
@@ -2389,6 +2410,23 @@ function consumeBodyParagraphContinuationParts(
   let nextIndex = continuationStartIndex;
 
   while (nextIndex < lines.length) {
+    const candidate = lines[nextIndex];
+    if (!candidate) break;
+    if (
+      shouldSkipDetachedNumericFootnoteMarkerContinuationLine(
+        lines,
+        nextIndex,
+        previousLine,
+        startLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
+      nextIndex += 1;
+      continue;
+    }
+
     const sameRowOperatorContinuation = consumeSameRowOperatorSplitBodyContinuation(
       lines,
       nextIndex,
@@ -2405,7 +2443,6 @@ function consumeBodyParagraphContinuationParts(
       continue;
     }
 
-    const candidate = lines[nextIndex];
     const inlineMathBridge = findBodyParagraphContinuationAfterInlineMathArtifacts(
       lines,
       nextIndex,
@@ -2757,6 +2794,126 @@ function shouldSkipDetachedLowercaseMathSubscriptLine(
   const nextText =
     nextLine && nextLine.pageIndex === line.pageIndex ? normalizeSpacing(nextLine.text) : "";
   return hasDetachedMathSubscriptContext(previousText, nextText);
+}
+
+function shouldSkipDetachedNumericFootnoteMarkerLine(
+  lines: TextLine[],
+  index: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const line = lines[index];
+  if (!line) return false;
+
+  const normalized = parseParagraphMergeCandidateText(line, {
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  });
+  if (normalized === undefined) return false;
+  if (!DETACHED_NUMERIC_FOOTNOTE_MARKER_PATTERN.test(normalized)) return false;
+  if (
+    line.estimatedWidth >
+    line.pageWidth * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_WIDTH_RATIO
+  ) {
+    return false;
+  }
+  if (line.fontSize > bodyFontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_FONT_RATIO) return false;
+
+  const previousLine = lines[index - 1];
+  const nextLine = lines[index + 1];
+  if (!previousLine || !nextLine) return false;
+  if (previousLine.pageIndex !== line.pageIndex || nextLine.pageIndex !== line.pageIndex) return false;
+  if (
+    !DETACHED_NUMERIC_FOOTNOTE_MARKER_NEIGHBOR_WORD_PATTERN.test(normalizeSpacing(previousLine.text))
+  ) {
+    return false;
+  }
+  if (!DETACHED_NUMERIC_FOOTNOTE_MARKER_NEIGHBOR_WORD_PATTERN.test(normalizeSpacing(nextLine.text))) {
+    return false;
+  }
+
+  const minBaselineYDelta =
+    line.fontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MIN_BASELINE_Y_DELTA_FONT_RATIO;
+  if (line.y - nextLine.y < minBaselineYDelta) return false;
+
+  const markerLeft = line.x;
+  const markerRight = line.x + line.estimatedWidth;
+  const previousRight = previousLine.x + previousLine.estimatedWidth;
+  const maxGap = line.fontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_NEIGHBOR_GAP_FONT_RATIO;
+  const closeToPrevious = markerLeft - previousRight <= maxGap;
+  const closeToNext = nextLine.x - markerRight <= maxGap;
+  return closeToPrevious || closeToNext;
+}
+
+function shouldSkipDetachedNumericFootnoteMarkerContinuationLine(
+  lines: TextLine[],
+  markerIndex: number,
+  previousLine: TextLine,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const markerLine = lines[markerIndex];
+  if (!markerLine || markerLine.pageIndex !== previousLine.pageIndex) return false;
+
+  const normalizedMarker = normalizeSpacing(markerLine.text);
+  if (!DETACHED_NUMERIC_FOOTNOTE_MARKER_PATTERN.test(normalizedMarker)) return false;
+  if (
+    markerLine.estimatedWidth >
+    markerLine.pageWidth * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_WIDTH_RATIO
+  ) {
+    return false;
+  }
+  if (markerLine.fontSize > bodyFontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_FONT_RATIO) {
+    return false;
+  }
+
+  const previousText = normalizeSpacing(previousLine.text);
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+  if (hasChemicalFormulaTail(previousText)) return false;
+
+  const nextLine = lines[markerIndex + 1];
+  if (!nextLine || nextLine.pageIndex !== markerLine.pageIndex) return false;
+  const nextText = parseParagraphMergeCandidateText(nextLine, {
+    samePageAs: previousLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    startPattern: BODY_PARAGRAPH_CONTINUATION_START_PATTERN,
+  });
+  if (nextText === undefined) return false;
+  if (
+    !isBodyParagraphContinuationLine(
+      nextLine,
+      previousLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
+    return false;
+  }
+
+  const markerLeft = markerLine.x;
+  const markerRight = markerLine.x + markerLine.estimatedWidth;
+  const previousRight = previousLine.x + previousLine.estimatedWidth;
+  const maxGap = markerLine.fontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_NEIGHBOR_GAP_FONT_RATIO;
+  const closeToPrevious = markerLeft - previousRight <= maxGap;
+  const closeToNext = nextLine.x - markerRight <= maxGap;
+  return closeToPrevious || closeToNext;
+}
+
+function hasChemicalFormulaTail(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  if (CHEMICAL_TRAILING_SYMBOL_AND_PATTERN.test(normalized)) return true;
+  const tailMatch = CHEMICAL_TAIL_TOKEN_PATTERN.exec(normalized);
+  if (!tailMatch) return false;
+  const tailToken = tailMatch[1] ?? "";
+  return CHEMICAL_SYMBOL_TOKEN_PATTERN.test(tailToken);
 }
 
 function hasDetachedMathSubscriptContext(previousText: string, nextText: string): boolean {

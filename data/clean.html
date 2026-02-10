@@ -108,7 +108,7 @@ squeeze ()
 <p>2</p>
 <p>3</p>
 <p>Figure 3: User interface of CleanAgent.</p>
-<p>Implementation. CleanAgent is implemented 1 in Python 3.10.6. Cocoon is run using its official Colab notebook 2 from the GitHub repo . All methods use the gpt-4o-2024-08-06 model. Experiments are conducted on a MacBook Pro with an M1 chip, 16GB RAM, running macOS Sequoia 15.5.</p>
+<p>Implementation. CleanAgent is implemented in Python 3.10.6. Cocoon is run using its official Colab notebook from the GitHub repo . All methods use the gpt-4o-2024-08-06 model. Experiments are conducted on a MacBook Pro with an M1 chip, 16GB RAM, running macOS Sequoia 15.5.</p>
 <p>Results. Table 1 presents the comparison of different systems in terms of cell-level matching rate and latency.</p>
 <p>CleanAgent achieves the data standardization task. Firstly, the</p>
 <p>a 42.5% cell-level matching rate, approximately 2 × higher than that of GPT-4o and Cocoon. These results demonstrate that Clean-Agent ’s type-specific standardization API enhances the LLM’s ability to generate more precise and concise standardization code. In addition to higher accuracy, CleanAgent also exhibits lower latency compared to Cocoon. This is because Cocoon generates a one-shot SQL query for all columns without the ability to target specific ones, leading to unnecessary overhead.</p>
@@ -199,6 +199,6 @@ squeeze ()
 <p>(10) names → "firstname lastname" - If format is "last-name, firstname", convert it - If already "firstname lastname", keep it unchanged Writes cleaned_data.csv in the same directory The script must be runnable with ‘python script.py‘ in a standard Python environment (pandas &amp; common pip packages installed) Return only the column typing and script. No additional explanations.</p>
 <p>Sample rows of the given table is shown as follows: {df}</p>
 <p>1 <a href="https://colab.research.google.com/github/Cocoon-Data-Transformation/cocoon/blob/main/demo/Cocoon_Stage_Demo.ipynb">https://colab.research.google.com/github/Cocoon-Data-Transformation/cocoon/blob/main/demo/Cocoon_Stage_Demo.ipynb</a></p>
-<p>2 <a href="https://cocoon-data-transformation.github.io/page/clean">https://cocoon-data-transformation.github.io/page/clean</a></p>
+<p><a href="https://cocoon-data-transformation.github.io/page/clean">https://cocoon-data-transformation.github.io/page/clean</a></p>
 </body>
 </html>

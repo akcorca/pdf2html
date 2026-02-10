@@ -66,6 +66,14 @@ const FALLBACK_INTERLEAVED_COLUMN_MIN_SIDE_SWITCHES = 15;
 const MAX_COLUMN_BREAK_BRIDGE_LOOKAHEAD = 2;
 const COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS = 1;
 const DUPLICATED_SENTENCE_PREFIX_PATTERN = /^([A-Z][^.!?]{1,80}[.!?])\s+\1(\s+.+)$/u;
+const SUPERSCRIPT_NUMERIC_MARKER_PATTERN = /^[1-9]$/;
+const SUPERSCRIPT_NUMERIC_MARKER_MAX_FONT_RATIO = 0.84;
+const SUPERSCRIPT_NUMERIC_MARKER_MAX_WIDTH_FONT_RATIO = 0.95;
+const SUPERSCRIPT_NUMERIC_MARKER_MAX_NEIGHBOR_GAP_FONT_RATIO = 8;
+const SUPERSCRIPT_NUMERIC_MARKER_MIN_NEIGHBOR_WORD_LENGTH = 3;
+const SUPERSCRIPT_NUMERIC_MARKER_MATH_CONTEXT_PATTERN = /[=+−*/^()[\]{}]/u;
+const NUMBERED_CODE_LINE_CONTEXT_PATTERN =
+  /[#=]|\b(?:def|class|return|import|from|const|let|var|function)\b/u;
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-column detection + column assignment in one pass.
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
@@ -276,8 +284,10 @@ function collectPageLines(
     }
 
     for (const fragments of groups) {
+      const cleanedFragments = stripSuperscriptNumericMarkers(fragments);
+      if (cleanedFragments.length === 0) continue;
       const text = collapseDuplicatedSentencePrefix(
-        normalizeSpacing(fragments.map((f) => f.text).join(" ")),
+        normalizeSpacing(cleanedFragments.map((f) => f.text).join(" ")),
       );
       if (text.length === 0) continue;
 
@@ -285,10 +295,10 @@ function collectPageLines(
         pageIndex: page.pageIndex,
         pageHeight: page.height,
         pageWidth: page.width,
-        estimatedWidth: estimateLineWidth(fragments),
-        x: estimateLineStartX(fragments),
+        estimatedWidth: estimateLineWidth(cleanedFragments),
+        x: estimateLineStartX(cleanedFragments),
         y: bucket,
-        fontSize: Math.max(...fragments.map((f) => f.fontSize)),
+        fontSize: Math.max(...cleanedFragments.map((f) => f.fontSize)),
         text,
       });
     }
@@ -301,6 +311,111 @@ function collectPageLines(
   }
 
   return { lines, isMultiColumn, columnSplitX, hasRowBasedSplitX: rowBasedSplitX !== undefined, columnGapMidpoints };
+}
+
+function stripSuperscriptNumericMarkers(fragments: ExtractedFragment[]): ExtractedFragment[] {
+  if (fragments.length <= 1) return fragments;
+  const normalizedTexts = fragments.map((fragment) => normalizeSpacing(fragment.text));
+  const nonMarkerFonts = fragments
+    .filter((_, index) => !SUPERSCRIPT_NUMERIC_MARKER_PATTERN.test(normalizedTexts[index] ?? ""))
+    .map((fragment) => fragment.fontSize);
+  const referenceFont = medianOrUndefined(nonMarkerFonts);
+  if (referenceFont === undefined) return fragments;
+
+  const filtered = fragments.filter((fragment, index) =>
+    !isSuperscriptNumericMarkerFragment(
+      fragments,
+      normalizedTexts,
+      index,
+      fragment,
+      referenceFont,
+    ),
+  );
+  return filtered.length > 0 ? filtered : fragments;
+}
+
+function isSuperscriptNumericMarkerFragment(
+  fragments: ExtractedFragment[],
+  normalizedTexts: string[],
+  index: number,
+  fragment: ExtractedFragment,
+  referenceFont: number,
+): boolean {
+  const normalized = normalizedTexts[index] ?? "";
+  if (!SUPERSCRIPT_NUMERIC_MARKER_PATTERN.test(normalized)) return false;
+  if (isLikelyNumberedCodeLineMarker(fragments, normalizedTexts, index)) return false;
+  if (fragment.fontSize > referenceFont * SUPERSCRIPT_NUMERIC_MARKER_MAX_FONT_RATIO) return false;
+  const width = fragment.width ?? 0;
+  if (width > fragment.fontSize * SUPERSCRIPT_NUMERIC_MARKER_MAX_WIDTH_FONT_RATIO) return false;
+  return hasWordLikeNeighborNearMarker(fragments, normalizedTexts, index, fragment);
+}
+
+function isLikelyNumberedCodeLineMarker(
+  fragments: ExtractedFragment[],
+  normalizedTexts: string[],
+  markerIndex: number,
+): boolean {
+  if (markerIndex !== 0) return false;
+  if (fragments.length <= 1) return false;
+  const followingText = normalizeSpacing(
+    normalizedTexts.slice(markerIndex + 1, markerIndex + 5).join(" "),
+  );
+  if (followingText.length === 0) return false;
+  return NUMBERED_CODE_LINE_CONTEXT_PATTERN.test(followingText);
+}
+
+function hasWordLikeNeighborNearMarker(
+  fragments: ExtractedFragment[],
+  normalizedTexts: string[],
+  markerIndex: number,
+  marker: ExtractedFragment,
+): boolean {
+  const previousQualified = isQualifiedWordLikeMarkerNeighbor(
+    fragments,
+    normalizedTexts,
+    markerIndex,
+    marker,
+    -1,
+  );
+  const nextQualified = isQualifiedWordLikeMarkerNeighbor(
+    fragments,
+    normalizedTexts,
+    markerIndex,
+    marker,
+    1,
+  );
+  const hasPrevious = markerIndex > 0;
+  const hasNext = markerIndex + 1 < fragments.length;
+  if (hasPrevious && hasNext) return previousQualified && nextQualified;
+  return previousQualified || nextQualified;
+}
+
+function isQualifiedWordLikeMarkerNeighbor(
+  fragments: ExtractedFragment[],
+  normalizedTexts: string[],
+  markerIndex: number,
+  marker: ExtractedFragment,
+  direction: -1 | 1,
+): boolean {
+  const neighborIndex = markerIndex + direction;
+  const neighbor = fragments[neighborIndex];
+  if (neighbor === undefined) return false;
+  const maxGap = marker.fontSize * SUPERSCRIPT_NUMERIC_MARKER_MAX_NEIGHBOR_GAP_FONT_RATIO;
+  const markerLeft = marker.x;
+  const markerRight = marker.x + (marker.width ?? 0);
+  const neighborLeft = neighbor.x;
+  const neighborRight = neighbor.x + (neighbor.width ?? 0);
+  const gap = direction < 0 ? markerLeft - neighborRight : neighborLeft - markerRight;
+  if (gap > maxGap) return false;
+  return isWordLikeNeighborText(normalizedTexts[neighborIndex] ?? "");
+}
+
+function isWordLikeNeighborText(text: string): boolean {
+  if (SUPERSCRIPT_NUMERIC_MARKER_MATH_CONTEXT_PATTERN.test(text)) return false;
+  const lowercaseRuns = text.match(/[a-z]{3,}/g) ?? [];
+  return lowercaseRuns.some(
+    (word) => word.length >= SUPERSCRIPT_NUMERIC_MARKER_MIN_NEIGHBOR_WORD_LENGTH,
+  );
 }
 
 /**
