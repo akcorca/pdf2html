@@ -25,6 +25,11 @@ interface ConvertPdfToPngDependencies {
   readOutputDir: (outputDirPath: string) => Promise<string[]>;
 }
 
+interface GeneratedPngFileEntry {
+  fileName: string;
+  pageNumber: number;
+}
+
 export function getDefaultOutputPrefix(inputPdfPath: string): string {
   const name = parse(inputPdfPath).name.trim();
   return name.length > 0 ? name : "page";
@@ -42,14 +47,19 @@ export function collectGeneratedPngFiles(
   fileNames: string[],
   outputPrefix: string,
 ): string[] {
-  const parsePageNumber = createGeneratedPngPageNumberParser(outputPrefix);
-  return fileNames
-    .map((fileName) => ({ fileName, pageNumber: parsePageNumber(fileName) }))
-    .filter(
-      (entry): entry is { fileName: string; pageNumber: number } => entry.pageNumber !== undefined,
-    )
-    .sort((left, right) => left.pageNumber - right.pageNumber || left.fileName.localeCompare(right.fileName))
-    .map((entry) => entry.fileName);
+  const expression = new RegExp(`^${escapeRegExp(outputPrefix)}-(\\d+)\\.png$`);
+  const generatedFiles: GeneratedPngFileEntry[] = [];
+
+  for (const fileName of fileNames) {
+    const pageNumber = parseGeneratedPngPageNumber(fileName, expression);
+    if (pageNumber === undefined) continue;
+    generatedFiles.push({ fileName, pageNumber });
+  }
+
+  generatedFiles.sort(
+    (left, right) => left.pageNumber - right.pageNumber || left.fileName.localeCompare(right.fileName),
+  );
+  return generatedFiles.map((entry) => entry.fileName);
 }
 
 export async function convertPdfToPng({
@@ -71,18 +81,15 @@ export async function convertPdfToPng({
   await resolvedDependencies.assertReadableFile(resolvedInputPdfPath);
   await resolvedDependencies.ensureOutputDir(resolvedOutputDirPath);
 
-  try {
-    await resolvedDependencies.runPdftoppm(
-      buildPdftoppmArgs(resolvedInputPdfPath, outputPrefixPath, dpi),
-    );
-  } catch (error: unknown) {
-    throw createConversionError(error);
-  }
-
-  const fileNames = await resolvedDependencies.readOutputDir(
-    resolvedOutputDirPath,
+  await runPdftoppmOrThrow(
+    resolvedDependencies,
+    buildPdftoppmArgs(resolvedInputPdfPath, outputPrefixPath, dpi),
   );
-  const generatedFileNames = collectGeneratedPngFiles(fileNames, outputPrefix);
+
+  const generatedFileNames = collectGeneratedPngFiles(
+    await resolvedDependencies.readOutputDir(resolvedOutputDirPath),
+    outputPrefix,
+  );
 
   if (generatedFileNames.length === 0) {
     throw new Error("No PNG files were generated from the PDF.");
@@ -118,15 +125,24 @@ function createDefaultDependencies(): ConvertPdfToPngDependencies {
   };
 }
 
-function createGeneratedPngPageNumberParser(
-  outputPrefix: string,
-): (fileName: string) => number | undefined {
-  const expression = new RegExp(`^${escapeRegExp(outputPrefix)}-(\\d+)\\.png$`);
-  return (fileName: string) => {
-    const match = expression.exec(fileName);
-    if (!match) return undefined;
-    return Number.parseInt(match[1], 10);
-  };
+async function runPdftoppmOrThrow(
+  dependencies: ConvertPdfToPngDependencies,
+  args: string[],
+): Promise<void> {
+  try {
+    await dependencies.runPdftoppm(args);
+  } catch (error: unknown) {
+    throw createConversionError(error);
+  }
+}
+
+function parseGeneratedPngPageNumber(
+  fileName: string,
+  expression: RegExp,
+): number | undefined {
+  const match = expression.exec(fileName);
+  if (!match) return undefined;
+  return Number.parseInt(match[1], 10);
 }
 
 function escapeRegExp(input: string): string {
