@@ -74,6 +74,12 @@ const SUPERSCRIPT_NUMERIC_MARKER_MIN_NEIGHBOR_WORD_LENGTH = 3;
 const SUPERSCRIPT_NUMERIC_MARKER_MATH_CONTEXT_PATTERN = /[=+−*/^()[\]{}]/u;
 const NUMBERED_CODE_LINE_CONTEXT_PATTERN =
   /[#=]|\b(?:def|class|return|import|from|const|let|var|function)\b/u;
+const SAME_ROW_RIGHT_INLINE_MERGE_NEXT_START_PATTERN = /^[a-z(“‘"']/u;
+const SAME_ROW_RIGHT_INLINE_MERGE_TRAILING_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
+const SAME_ROW_RIGHT_INLINE_MERGE_DISALLOWED_NEXT_PATTERN = /^(?:\[\d{1,4}\]|\d{1,3})$/u;
+const SAME_ROW_RIGHT_INLINE_MERGE_MIN_CURRENT_TEXT_LENGTH = 8;
+const SAME_ROW_RIGHT_INLINE_MERGE_MAX_GAP_FONT_RATIO = 1.5;
+const SAME_ROW_RIGHT_INLINE_MERGE_MAX_OVERLAP_FONT_RATIO = 2.4;
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-column detection + column assignment in one pass.
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
@@ -154,15 +160,13 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
 
 function mergeInlineFormattingSplits(orderedLines: TextLine[], doc: ExtractedDocument): TextLine[] {
   const rowsWithInlineGaps = findRowsWithInlineFormattingGaps(doc);
-  if (rowsWithInlineGaps.size === 0) return orderedLines;
   const result: TextLine[] = [];
   let i = 0;
   while (i < orderedLines.length) {
     const current = orderedLines[i];
-    const key = `${current.pageIndex}:${current.y}`;
-    if (rowsWithInlineGaps.has(key) && current.column === "right" && i + 1 < orderedLines.length) {
+    if (i + 1 < orderedLines.length) {
       const next = orderedLines[i + 1];
-      if (next.pageIndex === current.pageIndex && next.y === current.y && next.column === "right" && next.x > current.x) {
+      if (shouldMergeSameRowRightColumnFragments(current, next, rowsWithInlineGaps)) {
         result.push({
           ...current,
           text: `${current.text} ${next.text}`,
@@ -176,6 +180,41 @@ function mergeInlineFormattingSplits(orderedLines: TextLine[], doc: ExtractedDoc
     i += 1;
   }
   return result;
+}
+
+function shouldMergeSameRowRightColumnFragments(
+  current: TextLine,
+  next: TextLine,
+  rowsWithInlineGaps: Set<string>,
+): boolean {
+  if (current.column !== "right" || next.column !== "right") return false;
+  if (next.pageIndex !== current.pageIndex) return false;
+  if (next.y !== current.y) return false;
+  if (next.x <= current.x) return false;
+
+  const key = `${current.pageIndex}:${current.y}`;
+  if (rowsWithInlineGaps.has(key)) return true;
+
+  return isLikelyRightColumnInlineContinuationPair(current, next);
+}
+
+function isLikelyRightColumnInlineContinuationPair(current: TextLine, next: TextLine): boolean {
+  const currentText = normalizeSpacing(current.text);
+  const nextText = normalizeSpacing(next.text);
+  if (currentText.length < SAME_ROW_RIGHT_INLINE_MERGE_MIN_CURRENT_TEXT_LENGTH) return false;
+  if (nextText.length === 0) return false;
+  if (SAME_ROW_RIGHT_INLINE_MERGE_TRAILING_PUNCTUATION_PATTERN.test(currentText)) return false;
+  if (!SAME_ROW_RIGHT_INLINE_MERGE_NEXT_START_PATTERN.test(nextText)) return false;
+  if (SAME_ROW_RIGHT_INLINE_MERGE_DISALLOWED_NEXT_PATTERN.test(nextText)) return false;
+
+  const currentEndX = current.x + current.estimatedWidth;
+  const xGap = next.x - currentEndX;
+  const fontSize = Math.max(current.fontSize, next.fontSize);
+  const maxGap = fontSize * SAME_ROW_RIGHT_INLINE_MERGE_MAX_GAP_FONT_RATIO;
+  const maxOverlap = fontSize * SAME_ROW_RIGHT_INLINE_MERGE_MAX_OVERLAP_FONT_RATIO;
+  if (xGap > maxGap || xGap < -maxOverlap) return false;
+
+  return true;
 }
 
 function findRowsWithInlineFormattingGaps(doc: ExtractedDocument): Set<string> {

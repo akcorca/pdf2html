@@ -54,4 +54,16 @@ describe("tft-reading-order", () => {
       /oxide semicon-ductor and metal electrodes was achieved via the simple solution processing/u,
     );
   });
+
+  it("merges same-row right-column text fragments before hyphen-wrap continuation", () => {
+    // On page 3 in tft.pdf, two right-column same-row fragments should be
+    // merged first, then wrapped-word continuation should follow naturally.
+    expect(tftHtml).toMatch(/300 nm SiO was used as the dielec-tric which is suitable/u);
+    expect(tftHtml).toMatch(
+      /Supporting Information\) and grazing-incidence X-ray diffraction \(GIXRD\)/u,
+    );
+
+    expect(tftHtml).not.toContain("<p>was used as the dielec-</p>");
+    expect(tftHtml).not.toContain("<p>grazing-</p>");
+  });
 });
