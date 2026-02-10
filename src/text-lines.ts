@@ -240,6 +240,8 @@ function applyReadingOrderReorders(
       ),
     (currentLines) =>
       reorderRightColumnBodyBeforeFirstTopLevelHeading(currentLines, multiColumnPageIndexes),
+    (currentLines) =>
+      reorderBottomOfPageInterleavedLines(currentLines, columnMajorPageIndexes),
   ];
   return reorderSteps.reduce((currentLines, reorderStep) => reorderStep(currentLines), lines);
 }
@@ -416,6 +418,48 @@ function compareByNearRowBodyColumn(left: TextLine, right: TextLine): number {
 function isLikelyColumnMajorBodyLine(line: TextLine): boolean {
   if (!isLikelyNearRowBodyLine(line)) return false;
   return !isLikelyColumnHeadingLine(line.text);
+}
+
+/** On column-major pages, body text near the page bottom (relativeY <= 0.1)
+ *  escapes column-major sorting and falls back to Y-position ordering, which
+ *  interleaves left and right column lines. This post-sort step groups such
+ *  bottom-of-page runs so that all left-column lines precede right-column lines. */
+function reorderBottomOfPageInterleavedLines(
+  lines: TextLine[],
+  columnMajorPageIndexes: Set<number>,
+): TextLine[] {
+  const result = [...lines];
+  let i = 0;
+  while (i < result.length) {
+    const line = result[i];
+    if (!columnMajorPageIndexes.has(line.pageIndex) || !isNearPageBottom(line)) {
+      i++;
+      continue;
+    }
+    // Collect the contiguous run of bottom-of-page lines on the same page
+    let runEnd = i + 1;
+    while (runEnd < result.length &&
+      result[runEnd].pageIndex === line.pageIndex &&
+      isNearPageBottom(result[runEnd])) {
+      runEnd++;
+    }
+    if (runEnd - i <= 1) { i = runEnd; continue; }
+    const run = result.slice(i, runEnd);
+    const leftLines = run.filter((l) => l.column === "left");
+    const rightLines = run.filter((l) => l.column === "right");
+    const otherLines = run.filter((l) => l.column !== "left" && l.column !== "right");
+    // Only reorder if there are both left and right column lines interleaved
+    if (leftLines.length > 0 && rightLines.length > 0) {
+      result.splice(i, runEnd - i, ...leftLines, ...rightLines, ...otherLines);
+    }
+    i = runEnd;
+  }
+  return result;
+}
+
+function isNearPageBottom(line: TextLine): boolean {
+  if (line.pageHeight <= 0) return false;
+  return line.y / line.pageHeight <= MULTI_COLUMN_NEAR_ROW_BOTTOM_Y_RATIO;
 }
 
 function shouldPreferColumnMajorOrdering(

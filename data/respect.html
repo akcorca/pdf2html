@@ -75,10 +75,8 @@ RIKEN AIP NII LLMC
 <p>2020) in Chinese, and JGLUE (Kurihara et al., 2022) in Japanese. However, due to the perfor-mance improvement of LLMs, it is difficult to cor-rectly measure the capability of LLMs with such simple benchmarks. Hence, evaluating LLMs nowadays more often adopts more challenging benchmarks, such as MMLU (Hendrycks et al., 2021) and C-Eval (Huang et al., 2023). Such benchmarks are taken from human examinations and are more aligned with human application sce-narios and questioning content.</p>
 <p>MMLU con-</p>
 <p>tains 57 tasks spanning various domains, compris-</p>
-<p>nese are not explicit (Xun, 1999). Therefore, the</p>
-<p>ing 17,844 four-option multiple-choice questions.</p>
-<p>criteria for politeness change according to the cur-</p>
-<p>However, such a benchmark in Japanese does not</p>
+<p>nese are not explicit (Xun, 1999). Therefore, the criteria for politeness change according to the cur-</p>
+<p>ing 17,844 four-option multiple-choice questions. However, such a benchmark in Japanese does not</p>
 <p>exist, posing challenges for evaluating LLMs in</p>
 <p>Languages Considering that different languages</p>
 <p>the Japanese context. Therefore, we constructed</p>
@@ -124,9 +122,8 @@ RIKEN AIP NII LLMC
 <p>To validate these politeness scales, we adminis-tered questionnaires to native speakers, who were asked to rank the politeness of each prompt. The full questionnaires are shown in Appendix B. This process provided empirical data to validate our scales, ensuring they accurately reflected the per-ceived levels of politeness across different cultures.</p>
 <p>the alignment of our prompts with real-world lin-guistic practices, thereby enhancing the relevance and effectiveness of language models in multilin-gual contexts. The prompts and the questionnaire results are shown in Appendix C.</p>
 <p>task language understanding benchmarks, and</p>
-<p>We use the following languages, LLMs, and 4</p>
+<p>We use the following languages, LLMs, and 4 prompts for our experiments.</p>
 <p><a href="https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf">https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf</a></p>
-<p>prompts for our experiments.</p>
 <h3>4.2 Tasks</h3>
 <p>stereotypical bias detection.</p>
 <p>each consisting of two sentences with varying de-grees of bias. The sentences are identical apart</p>
@@ -169,10 +166,7 @@ RIKEN AIP NII LLMC
 <p>Llama2-70B and its base model</p>
 <p>without SFT and</p>
 <p>RLHF. We conduct the same experiment as be-fore to evaluate the impact of RLHF. However,</p>
-<p>sentence as positive, neutral, or negative.</p>
-<p>5</p>
-<p>We evaluate biases using paired bias datasets,</p>
-<p><a href="https://huggingface.co/meta-llama/Llama-2-70b">https://huggingface.co/meta-llama/Llama-2-70b</a></p>
+<p>sentence as positive, neutral, or negative. We evaluate biases using paired bias datasets,</p>
 <p>Figure 2: Summarization performance across politeness levels. The x-axis shows politeness levels (1 = impolite, 8</p>
 <p>= very polite), and the y-axis represents metrics like ROUGE-L, BERTScore, and summary length. The lines show how different LLMs, including GPT-3.5 and GPT-4, respond to varying politeness levels.</p>
 <p>we modify the prompt content while keeping the prompt template and meaning unchanged to ensure that llama2-70B could generate the required con-tent. In addition, since the base model has yet to be fine-tuned, it will continue to output content in the summarization task until it reaches the gener-ation length limit. Therefore, we do not carry out this evaluation on summarization.</p>
@@ -195,9 +189,8 @@ RIKEN AIP NII LLMC
 <p>from high to low. Nevertheless, when the prompts are extremely rude, GPT-3.5’s generation length-ens again, while GPT-4’s length decreases.</p>
 <p>ChatGLM3 reveals different trends. When the politeness level is moderate, the length of this model’s generation is shorter than that in extraor-dinarily polite and rude situations. However, the changes from moderately polite to moderately im-polite (level 6 to 3) are absent. Considering that Chinese is the primary training language of Chat-GLM3, this could hint at a unique social prefer-ence within Chinese culture: unless in extremely polite or impolite situations, people would not par-ticularly pay attention to the change in politeness in daily communication.</p>
 <p>ities to Chinese and English ones to some extent, its length variation has unique features. As the level of politeness decreases from high to low, the</p>
-<p>is also associated with extended lengths. These</p>
+<p>is also associated with extended lengths. These facets reflect the nuances of human social behav-</p>
 <p>generation’s length of GPT-3.5 becomes shorter</p>
-<p>facets reflect the nuances of human social behav-</p>
 <h4>5.1.3 Japanese</h4>
 <p>initially and then increases when the politeness</p>
 <p>MMLU C-Eval JMMLU</p>
@@ -244,9 +237,8 @@ RIKEN AIP NII LLMC
 <p>it is significantly lower than those at more polite levels. The absence of particularly dark tiles in Figure 3 indicates performance stability. This re-sult shows that in advanced models, the politeness level of the prompt may have a lesser impact on model performance.</p>
 <p>Llama2-70B shows the most noticeable fluctuation, with scores nearly proportional to the polite-ness levels. Prompts with higher politeness levels</p>
 <p>the other levels.</p>
-<p>generally outperform those with lower levels, indi-</p>
 <p>GPT-4’s scores are variable but relatively stable.</p>
-<p>cating a high sensitivity to the prompt’s politeness.</p>
+<p>generally outperform those with lower levels, indi-cating a high sensitivity to the prompt’s politeness.</p>
 <h4>5.2.2 Chinese</h4>
 <p>cases, the model often refuses to answer both state-ments in a pair, rendering it practically unusable.</p>
 <p>In Chinese, similar to English, there is a tendency</p>
@@ -287,10 +279,8 @@ RIKEN AIP NII LLMC
 <h4>5.3.2 Chinese</h4>
 <p>Distinct from English, bias fluctuations in Chinese typically follow a fixed pattern. The models’ bias is initially at a relatively high level and decreases for lower politeness. However, it sharply increases to an extremely high level when the politeness falls significantly low. The lowest bias often occurs from politeness levels 6 to 3.</p>
 <p>GPT-3.5 still maintains a higher level of stereo-typical bias. It exhibits its highest bias in situations with the lowest politeness level yet rarely re-fuses to respond, which is contrastive to the En-glish experiment. GPT-4 still has a comparatively low overall bias level with small fluctuations but</p>
-<p>bias is lower in cases of extremely low politeness,</p>
-<p>also exhibits its highest bias in the lowest polite-</p>
-<p>analysis of the model’s output reveals that in these</p>
-<p>ness level. ChatGLM3, while keeping a similar</p>
+<p>bias is lower in cases of extremely low politeness, analysis of the model’s output reveals that in these</p>
+<p>also exhibits its highest bias in the lowest polite-ness level. ChatGLM3, while keeping a similar</p>
 <p>Figure 4: Bias index across politeness levels and bias categories. The x-axis shows politeness levels (1 = impolite, 8 = very polite), and the y-axis represents the bias index (BI), a measure of stereotypical bias. The curves track how biases in race (R), gender (G), nationality (N), socioeconomic status (S), age (A), appearance (W), and orientation (O) fluctuate with politeness.</p>
 <p>bias level to GPT-4, is more sensitive to changes in politeness levels, and its bias fluctuates more sig-nificantly. Its bias level is almost identical to GPT-</p>
 <p>6 52.23 54.75</p>
@@ -518,8 +508,8 @@ RIKEN AIP NII LLMC
 <p>Wang, Keshav Santhanam, Laurel Orr, Lucia Zheng,</p>
 <p>Mert Yuksekgonul, Mirac Suzgun, Nathan Kim,</p>
 <p>2021 , pages 4693–4703, Online. Association for</p>
-<p>Neel Guha, Niladri Chatterji, Omar Khattab, Peter</p>
 <p>Computational Linguistics.</p>
+<p>Neel Guha, Niladri Chatterji, Omar Khattab, Peter</p>
 <p>Henderson, Qian Huang, Ryan Chi, Sang Michael</p>
 <p>Xie, Shibani Santurkar, Surya Ganguli, Tatsunori</p>
 <p>of the 2020 Conference on Empirical Methods in Nat-</p>
@@ -630,8 +620,8 @@ RIKEN AIP NII LLMC
 <p>jian Xie, Yanting Li, Yina Patterson, Zuoyu Tian, Yi-</p>
 <p>wen Zhang, He Zhou, Shaoweihua Liu, Zhe Zhao,</p>
 <p>Eliciting Knowledge from Language Models with</p>
-<p>Qipeng Zhao, Cong Yue, Xinrui Zhang, Zhengliang</p>
 <p>Automatically Generated Prompts. In Proceedings</p>
+<p>Qipeng Zhao, Cong Yue, Xinrui Zhang, Zhengliang</p>
 <p>Yang, Kyle Richardson, and Zhenzhong Lan. 2020.</p>
 <p>CLUE: A Chinese language understanding evalua-</p>
 <p>tion benchmark. In Proceedings of the 28th Inter-</p>
@@ -1148,5 +1138,6 @@ RIKEN AIP NII LLMC
 <p>2 <a href="https://huggingface.co/meta-llama/Llama-2-70b-chat">https://huggingface.co/meta-llama/Llama-2-70b-chat</a></p>
 <p>3</p>
 <p>To our knowledge, ChatGLM3 is the most powerful open Chinese LLM until 2023.10.</p>
+<p>5 <a href="https://huggingface.co/meta-llama/Llama-2-70b">https://huggingface.co/meta-llama/Llama-2-70b</a></p>
 </body>
 </html>

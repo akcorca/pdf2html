@@ -308,6 +308,26 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).not.toContain("<p>Data sharing statement</p>");
   });
 
+  it("does not interleave left and right column text at bottom of pages in covid.pdf", () => {
+    // On page 3 (0-indexed 2), the left column ends with "2.1. Data collection"
+    // section content and the right column has "2.3. Statistical analyses" content.
+    // Lines near the page bottom (relativeY < 0.1) must still respect column-major
+    // ordering and not be interleaved by Y-position.
+    // Left column has: "re-hospitalisations due to TE during the study period were excluded."
+    // followed by "Admissions with TE were classified as arterial"
+    // Right column has: "represents the number of people with a direct TE-related death"
+    // These must not appear interleaved.
+    const rehosp = covidHtml.indexOf("re-hospitalisations due to TE during the study period were excluded");
+    const admissions = covidHtml.indexOf("Admissions with TE were classified as arterial");
+    const represents = covidHtml.indexOf("represents the number of people with a direct TE-related death");
+    expect(rehosp).toBeGreaterThan(-1);
+    expect(admissions).toBeGreaterThan(-1);
+    expect(represents).toBeGreaterThan(-1);
+    // Left column lines should be consecutive (not separated by right column content)
+    expect(admissions).toBeGreaterThan(rehosp);
+    expect(admissions).toBeLessThan(represents);
+  });
+
   it("merges wrapped respect paper title lines into a single h1 heading", () => {
     expect(respectHtml).toContain(
       "<h1>Should We Respect LLMs? A Cross-Lingual Study on the Influence of Prompt Politeness on LLM Performance</h1>",
