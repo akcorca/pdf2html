@@ -1,8 +1,9 @@
 // biome-ignore lint/nursery/noExcessiveLinesPerFile: HTML rendering heuristics are intentionally grouped.
-import type { TextLine } from "./pdf-types.ts";
+import type { ExtractedDocument, TextLine } from "./pdf-types.ts";
 import { estimateBodyFontSize, normalizeSpacing, splitWords } from "./text-lines.ts";
 import { containsDocumentMetadata, findTitleLine } from "./title-detect.ts";
 import { detectNamedSectionHeadingLevel, detectNumberedHeadingLevel } from "./heading-detect.ts";
+import { detectTable, renderTableHtml } from "./table-detect.ts";
 
 const INLINE_ACKNOWLEDGEMENTS_HEADING_PATTERN =
   /^(acknowledg(?:e)?ments?)(?:(?:\s*[:\-–]\s*)|\s+)(.+)$/iu;
@@ -150,9 +151,9 @@ interface ConsumedParagraph {
   nextIndex: number;
 }
 
-export function renderHtml(lines: TextLine[]): string {
+export function renderHtml(lines: TextLine[], document?: ExtractedDocument): string {
   const titleLine = findTitleLine(lines);
-  const bodyLines = renderBodyLines(lines, titleLine);
+  const bodyLines = renderBodyLines(lines, titleLine, document);
 
   return [
     "<!DOCTYPE html>",
@@ -176,7 +177,7 @@ export function escapeHtml(value: string): string {
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ordered rendering heuristics are evaluated in one pass.
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: ordered rendering heuristics are evaluated in one pass.
-function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): string[] {
+function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, document?: ExtractedDocument): string[] {
   const bodyLines: string[] = [];
   const bodyFontSize = estimateBodyFontSize(lines);
   const pageTypicalWidths = computePageTypicalBodyWidths(lines, bodyFontSize);
@@ -297,6 +298,13 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
       bodyLines.push(renderedStandaloneLink.html);
       addConsumedIndexes(consumedBodyLineIndexes, renderedStandaloneLink.consumedIndexes, index);
       index = renderedStandaloneLink.nextIndex;
+      continue;
+    }
+
+    const detectedTable = detectTable(lines, index, bodyFontSize, document);
+    if (detectedTable !== undefined) {
+      bodyLines.push(...renderTableHtml(detectedTable));
+      index = detectedTable.nextIndex;
       continue;
     }
 

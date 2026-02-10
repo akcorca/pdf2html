@@ -93,16 +93,19 @@ illia.polosukhin@gmail.com
 <p>f f</p>
 <h3>3.4 Embeddings and Softmax</h3>
 <p>Similarly to other sequence transduction models, we use learned embeddings to convert the input tokens and output tokens to vectors of dimension d model . We also use the usual learned linear transfor-mation and softmax function to convert the decoder output to predicted next-token probabilities. In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation, similar to [ 30 ]. In the embedding layers, we multiply those weights by d .</p>
-<p>Table 1: Maximum path lengths, per-layer complexity and minimum number of sequential operations for different layer types. n is the sequence length, d is the representation dimension, k is the kernel size of convolutions and r the size of the neighborhood in restricted self-attention.</p>
-<p>Layer Type Complexity per Layer Sequential Maximum Path Length</p>
-<p>Operations</p>
-<p>2</p>
-<p>Self-Attention O ( n · d ) O (1) O (1)</p>
-<p>2</p>
-<p>Recurrent O ( n · d ) O ( n ) O ( n )</p>
-<p>2</p>
-<p>Convolutional O ( k · n · d ) O (1) O ( log ( n ))</p>
-<p>Self-Attention (restricted) O ( r · n · d ) O (1) O ( n/r )</p>
+<table>
+<caption>Table 1: Maximum path lengths, per-layer complexity and minimum number of sequential operations for different layer types. n is the sequence length, d is the representation dimension, k is the kernel size of convolutions and r the size of the neighborhood in restricted self-attention.</caption>
+<thead>
+<tr><th>Layer Type</th><th>Complexity per Layer Sequential Maximum Path Length</th><th></th><th></th><th></th></tr>
+</thead>
+<tbody>
+<tr><td></td><td></td><td></td><td>Operations</td><td> 2</td></tr>
+<tr><td>Self-Attention</td><td></td><td>O ( n 2 · d )</td><td>O (1)</td><td>O (1) 2</td></tr>
+<tr><td>Recurrent</td><td></td><td>O ( n · d 2 )</td><td>O ( n )</td><td>O ( n ) 2</td></tr>
+<tr><td>Convolutional</td><td></td><td>O ( k · n · d 2 )</td><td>O (1)</td><td>O ( log k ( n ))</td></tr>
+<tr><td>Self-Attention (restricted) O ( r · n · d )</td><td></td><td></td><td>O (1)</td><td>O ( n/r )</td></tr>
+</tbody>
+</table>
 <h3>3.5 Positional Encoding</h3>
 <p>Since our model contains no recurrence and no convolution, in order for the model to make use of the order of the sequence, we must inject some information about the relative or absolute position of the tokens in the sequence. To this end, we add "positional encodings" to the input embeddings at the bottoms of the encoder and decoder stacks. The positional encodings have the same dimension d as the embeddings, so that the two can be summed. There are many choices of positional encodings, learned and fixed [9].</p>
 <p>In this work, we use sine and cosine functions of different frequencies:</p>
@@ -139,28 +142,23 @@ illia.polosukhin@gmail.com
 <p>This corresponds to increasing the learning rate linearly for the first warmup _ steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup _ steps = 4000 .</p>
 <h3>5.4 Regularization</h3>
 <p>We employ three types of regularization during training:</p>
-<p>Table 2: The Transformer achieves better BLEU scores than previous state-of-the-art models on the English-to-German and English-to-French newstest2014 tests at a fraction of the training cost. BLEU Training Cost (FLOPs)</p>
-<p>Model</p>
-<p>EN-DE EN-FR EN-DE EN-FR</p>
-<p>ByteNet [18] 23.75</p>
-<p>20</p>
-<p>Deep-Att + PosUnk [39] 39.2 1 . 0 · 10</p>
-<p>19 20</p>
-<p>GNMT + RL [38] 24.6 39.92 2 . 3 · 10 1 . 4 · 10</p>
-<p>18 20</p>
-<p>ConvS2S [9] 25.16 40.46 9 . 6 · 10 1 . 5 · 10</p>
-<p>19 20</p>
-<p>MoE [32] 26.03 40.56 2 . 0 · 10 1 . 2 · 10</p>
-<p>20</p>
-<p>Deep-Att + PosUnk Ensemble [39] 40.4 8 . 0 · 10</p>
-<p>20 21</p>
-<p>GNMT + RL Ensemble [38] 26.30 41.16 1 . 8 · 10 1 . 1 · 10</p>
-<p>19 21</p>
-<p>ConvS2S Ensemble [9] 26.36 41.29 7 . 7 · 10 1 . 2 · 10</p>
-<p>18</p>
-<p>Transformer (base model) 27.3 38.1 3 . 3 · 10</p>
-<p>19</p>
-<p>Transformer (big) 28.4 41.8 2 . 3 · 10</p>
+<table>
+<caption>Table 2: The Transformer achieves better BLEU scores than previous state-of-the-art models on the English-to-German and English-to-French newstest2014 tests at a fraction of the training cost.</caption>
+<thead>
+<tr><th></th><th></th><th>BLEU</th><th></th><th>Training Cost (FLOPs)</th><th></th><th></th><th></th></tr>
+</thead>
+<tbody>
+<tr><td>Model</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td>EN-DE</td><td></td><td>EN-FR</td><td>EN-DE</td><td></td><td>EN-FR</td><td></td></tr>
+<tr><td>ByteNet [18]</td><td>23.75</td><td></td><td></td><td></td><td></td><td></td><td> 20</td></tr>
+<tr><td>Deep-Att + PosUnk [39]</td><td></td><td></td><td>39.2</td><td></td><td></td><td>1 . 0 · 10 20</td><td> 19 20</td></tr>
+<tr><td>GNMT + RL [38]</td><td>24.6</td><td></td><td>39.92</td><td>2 . 3 · 10 19</td><td></td><td>1 . 4 · 10 20</td><td> 18 20 19 20</td></tr>
+<tr><td>MoE [32]</td><td>26.03</td><td></td><td>40.56</td><td>2 . 0 · 10 19</td><td></td><td>1 . 2 · 10 20</td><td> 20 20 21</td></tr>
+<tr><td>GNMT + RL Ensemble [38]</td><td>26.30</td><td></td><td>41.16</td><td>1 . 8 · 10 20</td><td></td><td>1 . 1 · 10 21</td><td> 19 21</td></tr>
+<tr><td>ConvS2S Ensemble [9]</td><td>26.36</td><td></td><td>41.29</td><td>7 . 7 · 10 19</td><td></td><td>1 . 2 · 10 21</td><td> 18 19</td></tr>
+<tr><td>Transformer (big)</td><td>28.4</td><td></td><td>41.8</td><td></td><td>2 . 3 · 10 19</td><td></td><td></td></tr>
+</tbody>
+</table>
 <p>Residual Dropout We apply dropout [ 33 ] to the output of each sub-layer, before it is added to the sub-layer input and normalized. In addition, we apply dropout to the sums of the embeddings and the positional encodings in both the encoder and decoder stacks. For the base model, we use a rate of P = 0 . 1 .</p>
 <p>Label Smoothing During training, we employed label smoothing of value ϵ = 0 . 1 [ 36 ]. This hurts perplexity, as the model learns to be more unsure, but improves accuracy and BLEU score.</p>
 <h2>6 Results</h2>
@@ -171,66 +169,64 @@ illia.polosukhin@gmail.com
 <p>Table 2 summarizes our results and compares our translation quality and training costs to other model architectures from the literature. We estimate the number of floating point operations used to train a model by multiplying the training time, the number of GPUs used, and an estimate of the sustained 5 single-precision floating-point capacity of each GPU .</p>
 <h3>6.2 Model Variations</h3>
 <p>To evaluate the importance of different components of the Transformer, we varied our base model in different ways, measuring the change in performance on English-to-German translation on the</p>
-<p>Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.</p>
-<p>train PPL BLEU params</p>
-<p>N d d h d d P ϵ</p>
-<p>model ff k v drop ls 6</p>
-<p>steps (dev) (dev) × 10</p>
-<p>base 6 512 2048 8 64 64 0.1 0.1 100K 4.92 25.8 65</p>
-<p>1 512 512 5.29 24.9</p>
-<p>4 128 128 5.00 25.5</p>
-<p>(A)</p>
-<p>16 32 32 4.91 25.8</p>
-<p>32 16 16 5.01 25.4</p>
-<p>16 5.16 25.1 58</p>
-<p>(B)</p>
-<p>32 5.01 25.4 60</p>
-<p>2 6.11 23.7 36</p>
-<p>4 5.19 25.3 50</p>
-<p>8 4.88 25.5 80</p>
-<p>(C) 256 32 32 5.75 24.5 28</p>
-<p>1024 128 128 4.66 26.0 168</p>
-<p>1024 5.12 25.4 53</p>
-<p>4096 4.75 26.2 90</p>
-<p>0.0 5.77 24.6</p>
-<p>0.2 4.95 25.5</p>
-<p>(D)</p>
-<p>0.0 4.67 25.3</p>
-<p>0.2 5.47 25.7</p>
-<p>(E) positional embedding instead of sinusoids 4.92 25.7</p>
-<p>big 6 1024 4096 16 0.3 300K 4.33 26.4 213</p>
+<table>
+<caption>Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.</caption>
+<thead>
+<tr><th></th><th>N</th><th>d</th><th></th><th>d</th><th></th><th>h</th><th>d</th><th>d</th><th>P</th><th>ϵ</th><th>train PPL</th><th></th><th>BLEU</th><th>params</th></tr>
+</thead>
+<tbody>
+<tr><td></td><td>N</td><td>d model</td><td></td><td>d ff</td><td></td><td>h</td><td>d k</td><td>d v</td><td>P drop</td><td>ϵ ls</td><td>train PPL</td><td></td><td>BLEU</td><td>params 6</td></tr>
+<tr><td></td><td></td><td>model</td><td></td><td></td><td>ff</td><td></td><td>k</td><td>v</td><td>drop</td><td>ls</td><td>steps (dev) (dev)</td><td></td><td></td><td>× 10 6</td></tr>
+<tr><td>base 6</td><td></td><td>512</td><td></td><td>2048</td><td></td><td>8</td><td>64</td><td>64</td><td>0.1</td><td>0.1 100K</td><td></td><td>4.92</td><td>25.8</td><td>65</td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>1</td><td>512 512</td><td></td><td></td><td></td><td></td><td>5.29</td><td>24.9</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>4</td><td>128 128</td><td></td><td></td><td></td><td></td><td>5.00</td><td>25.5</td><td></td></tr>
+<tr><td>(A)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td>32</td><td>32</td><td></td><td></td><td></td><td>4.91</td><td>25.8</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>32</td><td>16</td><td>16</td><td></td><td></td><td></td><td>5.01</td><td>25.4</td><td></td></tr>
+<tr><td>(B)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td></td><td></td><td></td><td></td><td>5.16</td><td>25.1</td><td>58</td></tr>
+<tr><td>(B)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td></td><td></td><td></td><td></td><td>5.16</td><td>25.1</td><td>58</td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>32</td><td></td><td></td><td></td><td></td><td>5.01</td><td>25.4</td><td>60</td></tr>
+<tr><td></td><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>6.11</td><td>23.7</td><td>36</td></tr>
+<tr><td></td><td>4</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>5.19</td><td>25.3</td><td>50</td></tr>
+<tr><td></td><td>8</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.88</td><td>25.5</td><td>80</td></tr>
+<tr><td>(C)</td><td></td><td>256</td><td></td><td></td><td></td><td></td><td>32</td><td>32</td><td></td><td></td><td></td><td>5.75</td><td>24.5</td><td>28</td></tr>
+<tr><td></td><td></td><td>1024</td><td></td><td></td><td></td><td></td><td>128 128</td><td></td><td></td><td></td><td></td><td>4.66</td><td>26.0</td><td>168</td></tr>
+<tr><td></td><td></td><td></td><td></td><td>1024</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>5.12</td><td>25.4</td><td>53</td></tr>
+<tr><td></td><td></td><td></td><td></td><td>4096</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.75</td><td>26.2</td><td>90</td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td></td><td>5.77</td><td>24.6</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.2</td><td></td><td></td><td>4.95</td><td>25.5</td><td></td></tr>
+<tr><td>(D)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td>4.67</td><td>25.3</td><td></td></tr>
+<tr><td>(D)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td>4.67</td><td>25.3</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.2</td><td></td><td>5.47</td><td>25.7</td><td></td></tr>
+<tr><td>(E)</td><td></td><td></td><td>positional embedding instead of sinusoids</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.92</td><td>25.7</td><td></td></tr>
+<tr><td>big</td><td>6</td><td>1024</td><td></td><td>4096 16</td><td></td><td></td><td></td><td></td><td>0.3</td><td></td><td>300K</td><td>4.33</td><td>26.4</td><td>213</td></tr>
+</tbody>
+</table>
 <p>development set, newstest2013. We used beam search as described in the previous section, but no checkpoint averaging. We present these results in Table 3.</p>
 <p>In Table 3 rows (A), we vary the number of attention heads and the attention key and value dimensions, keeping the amount of computation constant, as described in Section 3.2.2. While single-head attention is 0.9 BLEU worse than the best setting, quality also drops off with too many heads. In Table 3 rows (B), we observe that reducing the attention key size d hurts model quality. This suggests that determining compatibility is not easy and that a more sophisticated compatibility function than dot product may be beneficial. We further observe in rows (C) and (D) that, as expected, bigger models are better, and dropout is very helpful in avoiding over-fitting. In row (E) we replace our sinusoidal positional encoding with learned positional embeddings [ 9 ], and observe nearly identical results to the base model.</p>
 <h3>6.3 English Constituency Parsing</h3>
 <p>To evaluate if the Transformer can generalize to other tasks we performed experiments on English constituency parsing. This task presents specific challenges: the output is subject to strong structural constraints and is significantly longer than the input. Furthermore, RNN sequence-to-sequence models have not been able to attain state-of-the-art results in small-data regimes [37]. We trained a 4-layer transformer with d = 1024 on the Wall Street Journal (WSJ) portion of the Penn Treebank [ 25 ], about 40K training sentences. We also trained it in a semi-supervised setting, using the larger high-confidence and BerkleyParser corpora from with approximately 17M sentences [ 37 ]. We used a vocabulary of 16K tokens for the WSJ only setting and a vocabulary of 32K tokens for the semi-supervised setting.</p>
 <p>We performed only a small number of experiments to select the dropout, both attention and residual (section 5.4), learning rates and beam size on the Section 22 development set, all other parameters remained unchanged from the English-to-German base translation model. During inference, we</p>
-<p>Table 4: The Transformer generalizes well to English constituency parsing (Results are on Section 23 of WSJ)</p>
-<p>Parser</p>
-<p>Training WSJ 23 F1</p>
-<p>Vinyals &amp; Kaiser el al. (2014) [37]</p>
-<p>WSJ only, discriminative 88.3</p>
-<p>Petrov et al. (2006) [29]</p>
-<p>WSJ only, discriminative 90.4</p>
-<p>Zhu et al. (2013) [40]</p>
-<p>WSJ only, discriminative 90.4</p>
-<p>Dyer et al. (2016) [8]</p>
-<p>WSJ only, discriminative 91.7</p>
-<p>Transformer (4 layers)</p>
-<p>WSJ only, discriminative 91.3</p>
-<p>Zhu et al. (2013) [40]</p>
-<p>semi-supervised 91.3</p>
-<p>Huang &amp; Harper (2009) [14]</p>
-<p>semi-supervised 91.3</p>
-<p>McClosky et al. (2006) [26]</p>
-<p>semi-supervised 92.1</p>
-<p>Vinyals &amp; Kaiser el al. (2014) [37]</p>
-<p>semi-supervised 92.1</p>
-<p>Transformer (4 layers)</p>
-<p>semi-supervised 92.7</p>
-<p>Luong et al. (2015) [23]</p>
-<p>multi-task 93.0</p>
-<p>Dyer et al. (2016) [8]</p>
-<p>generative 93.3</p>
+<table>
+<caption>Table 4: The Transformer generalizes well to English constituency parsing (Results are on Section 23 of WSJ)</caption>
+<thead>
+<tr><th></th><th></th><th></th><th>Parser</th><th></th><th></th><th>Training</th><th>WSJ 23 F1</th><th></th></tr>
+</thead>
+<tbody>
+<tr><td>Vinyals &amp; Kaiser el al. (2014) [37] WSJ only, discriminative 88.3</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td>Petrov et al. (2006) [29] WSJ only, discriminative 90.4</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td>Zhu et al. (2013) [40]</td><td></td><td>WSJ only, discriminative 90.4</td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td>Dyer et al. (2016) [8]</td><td></td><td>WSJ only, discriminative 91.7</td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td>Transformer (4 layers)</td><td></td><td>WSJ only, discriminative 91.3</td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td>Zhu et al. (2013) [40]</td><td></td><td></td><td>semi-supervised</td><td></td><td></td><td>91.3</td></tr>
+<tr><td></td><td>Huang &amp; Harper (2009) [14]</td><td></td><td></td><td></td><td>semi-supervised</td><td></td><td></td><td>91.3</td></tr>
+<tr><td></td><td>McClosky et al. (2006) [26]</td><td></td><td></td><td></td><td>semi-supervised</td><td></td><td></td><td>92.1</td></tr>
+<tr><td>Vinyals &amp; Kaiser el al. (2014) [37] semi-supervised</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>92.1</td></tr>
+<tr><td></td><td></td><td>Transformer (4 layers)</td><td></td><td></td><td>semi-supervised</td><td></td><td></td><td>92.7</td></tr>
+<tr><td></td><td></td><td>Luong et al. (2015) [23]</td><td></td><td></td><td></td><td>multi-task</td><td></td><td>93.0</td></tr>
+<tr><td></td><td></td><td>Dyer et al. (2016) [8]</td><td></td><td></td><td></td><td>generative</td><td></td><td>93.3</td></tr>
+</tbody>
+</table>
 <p>increased the maximum output length to input length + 300 . We used a beam size of 21 and α = 0 . 3 for both WSJ only and the semi-supervised setting.</p>
 <p>Our results in Table 4 show that despite the lack of task-specific tuning our model performs sur-prisingly well, yielding better results than all previously reported models with the exception of the Recurrent Neural Network Grammar [8].</p>
 <p>In contrast to RNN sequence-to-sequence models [</p>

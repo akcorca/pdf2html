@@ -29,7 +29,7 @@ export async function convertPdfToHtml(
   await assertReadableFile(resolvedInputPdfPath);
   const extracted = await extractDocument(resolvedInputPdfPath);
   const lines = movePageFootnotesToDocumentEnd(filterPageArtifacts(collectTextLines(extracted)));
-  const html = renderHtml(lines);
+  const html = renderHtml(lines, extracted);
   await mkdir(dirname(resolvedOutputHtmlPath), { recursive: true });
   await writeFile(resolvedOutputHtmlPath, html, "utf8");
   return { outputHtmlPath: resolvedOutputHtmlPath };

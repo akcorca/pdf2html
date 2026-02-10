@@ -668,4 +668,26 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).toContain("</ol>");
     expect(covidHtml).toMatch(/<li>.*\[1\]/);
   });
+
+  it("renders Table 1 in attention.pdf as a semantic table element", () => {
+    expect(html).toContain("<table>");
+    expect(html).toContain("</table>");
+    // Table 1 header row
+    expect(html).toMatch(/<th[^>]*>.*Layer Type/);
+    // Table 1 data rows
+    expect(html).toMatch(/<td[^>]*>.*Self-Attention/);
+    expect(html).toMatch(/<td[^>]*>.*Recurrent/);
+    expect(html).toMatch(/<td[^>]*>.*Convolutional/);
+  });
+
+  it("renders Table 2 in attention.pdf as a semantic table element", () => {
+    // Table 2: BLEU scores comparison — "BLEU" and "Training Cost" in header
+    expect(html).toMatch(/<th[^>]*>.*BLEU/);
+    expect(html).toMatch(/<td[^>]*>.*Transformer \(big\)/);
+  });
+
+  it("renders table captions in attention.pdf as caption elements", () => {
+    expect(html).toMatch(/<caption>.*Table 1:/);
+    expect(html).toMatch(/<caption>.*Table 2:/);
+  });
 });
