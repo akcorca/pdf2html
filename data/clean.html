@@ -17,24 +17,24 @@ Simon Fraser University<br>
 <p>process.</p>
 <h2>1 INTRODUCTION</h2>
 <p>Data standardization, which is pivotal in the realm of data science,</p>
-<pre><code>3 street = pd . Series ( addr ). str . extract (r ' (\ d+ [^ ,]+) ' ).
+<pre><code>1 def standardize_address ( addr ):
+2 # Extract street number and street name
+3 street = pd . Series ( addr ). str . extract (r ' (\ d+ [^ ,]+) ' ).
 squeeze ()
 4 # Extract state name
 5 state = " LA "
 6 # Extract zipcode
 7 zipcode = pd . Series ( addr ). str . extract (r ' (\ d {5}) ' ).
+squeeze ()
 8 # Output standardized address
 9 return f"{ street }, { state }, { zipcode }"</code></pre>
 <p>Example 1. We illustrate the data standardization task in Figure 1.</p>
-<p>squeeze ()</p>
 <p>Given the input table 𝑇 , it is obvious that data in the “Admission Date” column and the “Address” column are in different formats, and the data in the cells of the “Admission Date” column includes two different date formats. The goal of data standardization is to unify the data format in each column in 𝑇 , to get the standardized table</p>
 <p>𝑇 satisfying the data scientist’s requirements. In Figure 1, the data</p>
 <p>scientist inputs their requirement to standardize “Admission Date”</p>
 <p>with the “MM/DD/YYYY HH:MM:SS” format. In the resulting 𝑇 , data</p>
 <p>format, i.e., the “MM/DD/YYYY HH:MM:SS” format.</p>
 <p>Previously, data scientists heavily relied on libraries such as Pandas [ 3 ] for data standardization tasks. Even though Pandas is a powerful tool, achieving data standardization often requires writing hundreds or thousands of lines of code. The standardization process for a single column involves identifying the column type, applying intricate methods such as regular expressions to each cell for validation, and converting each cell into desired formats. Moreover, a table may contain multiple columns, each possibly of a different type, requiring bespoke standardization code for each column type.</p>
-<p>1 def standardize_address ( addr ):</p>
-<p>2 # Extract street number and street name</p>
 <p>Example 2. Still considering the data standardization task in Figure 1. For standardizing “Admission Date” and “Address”, data sci-entists need to write the datetime standardization code for “Admission Date” and address standardization code for “Address” using regex. An example standardization code for “Address” is shown as follows .</p>
 <p>If the input table 𝑇 has other column types such as email and IP addresses, data scientists also need to write standardization code tailored for the new types, which is time-consuming.</p>
 <p>Recently, the emerging LLMs have shown the potential to rev-</p>

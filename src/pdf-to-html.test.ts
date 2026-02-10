@@ -163,8 +163,16 @@ describe("convertPdfToHtml", () => {
 
   it("renders numbered code examples in clean.pdf as semantic pre/code blocks", () => {
     expect(cleanHtml).toMatch(
-      /<pre><code>3 street = pd . Series[\s\S]*9 return f\"\{ street \}, \{ state \}, \{ zipcode \}\"<\/code><\/pre>/,
+      /<pre><code>1 def standardize_address \( addr \):[\s\S]*9 return f\"\{ street \}, \{ state \}, \{ zipcode \}\"<\/code><\/pre>/,
     );
+    expect(cleanHtml).not.toContain("<p>1 def standardize_address ( addr ):</p>");
+    expect(cleanHtml).not.toContain("<p>2 # Extract street number and street name</p>");
+  });
+
+  it("keeps wrapped code continuation lines inside numbered code blocks in clean.pdf", () => {
+    expect(cleanHtml).not.toContain("<p>squeeze ()</p>");
+    const squeezeCount = (cleanHtml.match(/squeeze \(\)/g) ?? []).length;
+    expect(squeezeCount).toBeGreaterThanOrEqual(2);
   });
 
   it("merges left-column body paragraphs in clean.pdf Introduction instead of emitting single-line p tags", () => {

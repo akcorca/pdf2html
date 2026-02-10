@@ -143,6 +143,13 @@ interface NumberedCodeLine {
   content: string;
 }
 
+interface NumberedCodeBlockCandidate {
+  index: number;
+  line: TextLine;
+  normalizedText: string;
+  parsedNumberedLine?: NumberedCodeLine;
+}
+
 interface ConsumedTitleLineBlock {
   startIndex: number;
   text: string;
@@ -1663,6 +1670,7 @@ function isValidHttpUrl(value: string): boolean {
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: code-block extraction requires ordered heuristic checks.
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: code-block extraction collects and reorders sparse candidates in one pass.
 function renderNumberedCodeBlock(
   lines: TextLine[],
   startIndex: number,
@@ -1671,7 +1679,8 @@ function renderNumberedCodeBlock(
   hasDottedSubsectionHeadings: boolean,
 ): { html: string; consumedIndexes: number[] } | undefined {
   const startLine = lines[startIndex];
-  const parsedStart = parseNumberedCodeLine(normalizeSpacing(startLine.text));
+  const startNormalized = normalizeSpacing(startLine.text);
+  const parsedStart = parseNumberedCodeLine(startNormalized);
   if (parsedStart === undefined) return undefined;
   if (
     !isNumberedCodeStartLine(
@@ -1685,20 +1694,23 @@ function renderNumberedCodeBlock(
     return undefined;
   }
 
-  const codeParts = [normalizeSpacing(startLine.text)];
-  const consumedIndexes = [startIndex];
-  let previousCodeLine = startLine;
-  let expectedNumber = parsedStart.lineNumber + 1;
+  const codeCandidates: NumberedCodeBlockCandidate[] = [
+    {
+      index: startIndex,
+      line: startLine,
+      normalizedText: startNormalized,
+      parsedNumberedLine: parsedStart,
+    },
+  ];
 
   const maxScanIndex = Math.min(lines.length, startIndex + NUMBERED_CODE_BLOCK_MAX_LOOKAHEAD + 1);
   for (let scanIndex = startIndex + 1; scanIndex < maxScanIndex; scanIndex += 1) {
     const candidate = lines[scanIndex];
     if (candidate.pageIndex !== startLine.pageIndex) break;
     if (
-      !isNumberedCodeContinuationCandidateLine(
+      !isNumberedCodeCandidateLine(
         candidate,
         startLine,
-        previousCodeLine,
         bodyFontSize,
         hasDottedSubsectionHeadings,
       )
@@ -1710,23 +1722,72 @@ function renderNumberedCodeBlock(
     const parsedCandidate = parseNumberedCodeLine(normalized);
     if (parsedCandidate !== undefined) {
       if (!isLikelyCodeText(parsedCandidate.content)) continue;
-      if (parsedCandidate.lineNumber < expectedNumber) continue;
-      if (parsedCandidate.lineNumber > expectedNumber + NUMBERED_CODE_BLOCK_MAX_NUMBER_GAP) {
-        if (codeParts.length >= NUMBERED_CODE_BLOCK_MIN_LINES) break;
-        continue;
-      }
-      expectedNumber = parsedCandidate.lineNumber + 1;
     } else {
       if (candidate.x < startLine.x + NUMBERED_CODE_BLOCK_MIN_INDENT) continue;
       if (!isLikelyCodeContinuationText(normalized)) continue;
     }
 
-    codeParts.push(normalized);
-    consumedIndexes.push(scanIndex);
-    previousCodeLine = candidate;
+    codeCandidates.push({
+      index: scanIndex,
+      line: candidate,
+      normalizedText: normalized,
+      parsedNumberedLine: parsedCandidate,
+    });
   }
 
-  if (codeParts.length < NUMBERED_CODE_BLOCK_MIN_LINES) return undefined;
+  const orderedCandidates = [...codeCandidates].sort((left, right) => {
+    if (left.line.y !== right.line.y) return right.line.y - left.line.y;
+    return left.line.x - right.line.x;
+  });
+
+  const codeParts: string[] = [];
+  const consumedIndexes: number[] = [];
+  let expectedNumber: number | undefined;
+  let numberedLineCount = 0;
+  let previousSelectedLine: TextLine | undefined;
+
+  for (const candidate of orderedCandidates) {
+    if (previousSelectedLine !== undefined) {
+      const maxVerticalGap = getFontScaledVerticalGapLimit(
+        Math.max(previousSelectedLine.fontSize, candidate.line.fontSize),
+        NUMBERED_CODE_BLOCK_MAX_VERTICAL_GAP_RATIO,
+      );
+      if (!hasDescendingVerticalGapWithinLimit(previousSelectedLine, candidate.line, maxVerticalGap)) {
+        if (numberedLineCount >= NUMBERED_CODE_BLOCK_MIN_LINES) break;
+        continue;
+      }
+    }
+
+    if (candidate.parsedNumberedLine !== undefined) {
+      if (
+        expectedNumber !== undefined &&
+        candidate.parsedNumberedLine.lineNumber < expectedNumber
+      ) {
+        continue;
+      }
+      if (
+        expectedNumber !== undefined &&
+        candidate.parsedNumberedLine.lineNumber > expectedNumber + NUMBERED_CODE_BLOCK_MAX_NUMBER_GAP
+      ) {
+        if (numberedLineCount >= NUMBERED_CODE_BLOCK_MIN_LINES) break;
+        continue;
+      }
+      expectedNumber = candidate.parsedNumberedLine.lineNumber + 1;
+      numberedLineCount += 1;
+      codeParts.push(candidate.normalizedText);
+      consumedIndexes.push(candidate.index);
+      previousSelectedLine = candidate.line;
+      continue;
+    }
+
+    if (numberedLineCount === 0) continue;
+    codeParts.push(candidate.normalizedText);
+    consumedIndexes.push(candidate.index);
+    previousSelectedLine = candidate.line;
+  }
+
+  if (numberedLineCount < NUMBERED_CODE_BLOCK_MIN_LINES) return undefined;
+  if (!consumedIndexes.includes(startIndex)) return undefined;
   return {
     html: `<pre><code>${escapeHtml(codeParts.join("\n"))}</code></pre>`,
     consumedIndexes,
@@ -1761,15 +1822,13 @@ function isNumberedCodeStartLine(
   return true;
 }
 
-function isNumberedCodeContinuationCandidateLine(
+function isNumberedCodeCandidateLine(
   line: TextLine,
   startLine: TextLine,
-  previousCodeLine: TextLine,
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
   if (line.pageIndex !== startLine.pageIndex) return false;
-  if (line.y >= previousCodeLine.y) return false;
   if (line.fontSize > bodyFontSize * NUMBERED_CODE_BLOCK_MAX_FONT_RATIO) return false;
   if (Math.abs(line.fontSize - startLine.fontSize) > NUMBERED_CODE_BLOCK_MAX_FONT_DELTA) return false;
   if (!isAlignedWithNumberedCodeColumn(line, startLine)) return false;
@@ -1779,11 +1838,7 @@ function isNumberedCodeContinuationCandidateLine(
   if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
     return false;
   }
-  const maxVerticalGap = getFontScaledVerticalGapLimit(
-    previousCodeLine.fontSize,
-    NUMBERED_CODE_BLOCK_MAX_VERTICAL_GAP_RATIO,
-  );
-  return hasDescendingVerticalGapWithinLimit(previousCodeLine, line, maxVerticalGap);
+  return true;
 }
 
 function isAlignedWithNumberedCodeColumn(line: TextLine, startLine: TextLine): boolean {
