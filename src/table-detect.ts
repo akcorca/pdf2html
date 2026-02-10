@@ -46,52 +46,137 @@ export function detectTable(
   if (!document) return undefined;
 
   const firstLine = lines[startIndex];
-  if (!TABLE_CAPTION_PATTERN.test(firstLine.text)) return undefined;
-
   const captionPage = firstLine.pageIndex;
   const page = document.pages[captionPage];
   if (!page) return undefined;
 
-  // 1. Collect caption lines
+  if (TABLE_CAPTION_PATTERN.test(firstLine.text)) {
+    return detectTableWithLeadingCaption(
+      lines,
+      startIndex,
+      captionPage,
+      firstLine,
+      bodyFontSize,
+      page.fragments,
+    );
+  }
+  return detectTableWithTrailingCaption(
+    lines,
+    startIndex,
+    captionPage,
+    firstLine,
+    bodyFontSize,
+    page.fragments,
+  );
+}
+
+// --- Caption collection ---
+
+function detectTableWithLeadingCaption(
+  lines: TextLine[],
+  startIndex: number,
+  captionPage: number,
+  firstLine: TextLine,
+  bodyFontSize: number,
+  fragments: ExtractedFragment[],
+): DetectedTable | undefined {
   const { captionText, captionLineIndexes, nextBodyIndex } =
-    collectCaptionLines(lines, startIndex, captionPage, firstLine, page.fragments);
-
-  // 2. Collect table body lines
+    collectCaptionLines(lines, startIndex, captionPage, firstLine, fragments);
   const { bodyEntries, nextIndex } =
-    collectTableBodyLines(lines, nextBodyIndex, captionPage, firstLine, page.fragments);
+    collectTableBodyLines(lines, nextBodyIndex, captionPage, firstLine, fragments);
 
+  return finalizeDetectedTable({
+    startIndex,
+    captionText,
+    captionLineIndexes,
+    bodyEntries,
+    nextIndex,
+    bodyFontSize,
+    fragments,
+  });
+}
+
+function detectTableWithTrailingCaption(
+  lines: TextLine[],
+  startIndex: number,
+  captionPage: number,
+  firstLine: TextLine,
+  bodyFontSize: number,
+  fragments: ExtractedFragment[],
+): DetectedTable | undefined {
+  if (isLikelySectionHeading(firstLine.text)) return undefined;
+
+  const firstRowGroups = getFragmentGroupsForRow(fragments, firstLine.y, firstLine.fontSize);
+  if (firstRowGroups.length < 2) return undefined;
+
+  const { bodyEntries, nextIndex: captionStartIndex } =
+    collectTableBodyLines(lines, startIndex, captionPage, firstLine, fragments);
   if (bodyEntries.length < MIN_TABLE_DATA_ROWS) return undefined;
 
-  // Deduplicate entries from multi-column page layouts
-  const deduped = deduplicateByY(bodyEntries, firstLine.fontSize);
+  const captionLine = lines[captionStartIndex];
+  if (!captionLine || captionLine.pageIndex !== captionPage) return undefined;
+  if (!TABLE_CAPTION_PATTERN.test(captionLine.text)) return undefined;
+
+  const lastBodyLine = bodyEntries[bodyEntries.length - 1]?.line;
+  if (!lastBodyLine) return undefined;
+  const captionGap = Math.abs(lastBodyLine.y - captionLine.y) / Math.max(lastBodyLine.fontSize, 1);
+  if (captionGap > TABLE_CAPTION_TO_BODY_MAX_GAP_FONT_RATIO) return undefined;
+
+  const { captionText, captionLineIndexes, nextBodyIndex } =
+    collectCaptionLines(lines, captionStartIndex, captionPage, captionLine, fragments);
+
+  return finalizeDetectedTable({
+    startIndex,
+    captionText,
+    captionLineIndexes,
+    bodyEntries,
+    nextIndex: nextBodyIndex,
+    bodyFontSize,
+    fragments,
+  });
+}
+
+function finalizeDetectedTable(input: {
+  startIndex: number;
+  captionText: string;
+  captionLineIndexes: number[];
+  bodyEntries: Array<{ index: number; line: TextLine }>;
+  nextIndex: number;
+  bodyFontSize: number;
+  fragments: ExtractedFragment[];
+}): DetectedTable | undefined {
+  const { startIndex, captionText, captionLineIndexes, bodyEntries, nextIndex, bodyFontSize, fragments } =
+    input;
+  if (bodyEntries.length < MIN_TABLE_DATA_ROWS) return undefined;
+
+  const dedupeFontSize = bodyEntries[0]?.line.fontSize ?? bodyFontSize;
+  const deduped = deduplicateByY(bodyEntries, dedupeFontSize);
   if (deduped.length < MIN_TABLE_DATA_ROWS) return undefined;
 
-  // 3. Build rows from fragment-level column analysis
-  const allParsedRows = buildTableRows(deduped, bodyEntries, page.fragments, bodyFontSize);
+  const allParsedRows = buildTableRows(deduped, bodyEntries, fragments, bodyFontSize);
   if (allParsedRows.length < MIN_TABLE_DATA_ROWS + 1) return undefined;
 
-  // 4. Split into header and data rows
-  const headerRows = [allParsedRows[0]];
-  const dataRows = allParsedRows.slice(1);
-  if (dataRows.length < 1) return undefined;
+  const [headerRow, ...dataRows] = allParsedRows;
+  if (!headerRow || dataRows.length === 0) return undefined;
 
-  // Normalize column count
-  const maxCols = Math.max(...allParsedRows.map((r) => r.length));
-  for (const row of [...headerRows, ...dataRows]) {
-    while (row.length < maxCols) row.push("");
-  }
+  normalizeColumnCount([headerRow, ...dataRows]);
 
   return {
     captionStartIndex: startIndex,
     captionText: captionText.trim(),
     captionLineIndexes,
-    headerRows,
+    headerRows: [headerRow],
     dataRows,
     nextIndex,
   };
 }
 
-// --- Caption collection ---
+function normalizeColumnCount(rows: string[][]): void {
+  const maxCols = Math.max(...rows.map((row) => row.length));
+  for (const row of rows) {
+    while (row.length < maxCols) row.push("");
+  }
+}
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: caption/body boundary needs layered geometric guards.
 function collectCaptionLines(
@@ -148,23 +233,13 @@ function collectTableBodyLines(
   fragments: ExtractedFragment[],
 ): { bodyEntries: Array<{ index: number; line: TextLine }>; nextIndex: number } {
   const bodyEntries: Array<{ index: number; line: TextLine }> = [];
-  let lastY = startIdx > 0 ? lines[startIdx - 1].y : firstLine.y;
+  const previousLine = startIdx > 0 ? lines[startIdx - 1] : undefined;
+  let lastY = previousLine?.pageIndex === captionPage ? previousLine.y : firstLine.y;
   let nextIdx = startIdx;
 
   while (nextIdx < lines.length) {
     const line = lines[nextIdx];
-    if (line.pageIndex !== captionPage) break;
-
-    const vertGap = Math.abs(lastY - line.y) / firstLine.fontSize;
-    if (vertGap > TABLE_MAX_VERTICAL_GAP_FONT_RATIO) break;
-
-    if (isLikelySectionHeading(line.text)) break;
-    if (TABLE_CAPTION_PATTERN.test(line.text)) break;
-
-    if (line.estimatedWidth > line.pageWidth * 0.65) {
-      const rowFragGroups = getFragmentGroupsForRow(fragments, line.y, line.fontSize);
-      if (rowFragGroups.length < 2) break;
-    }
+    if (shouldStopCollectingTableBodyLine(line, captionPage, lastY, firstLine, fragments)) break;
 
     bodyEntries.push({ index: nextIdx, line });
     lastY = line.y;
@@ -172,6 +247,26 @@ function collectTableBodyLines(
   }
 
   return { bodyEntries, nextIndex: nextIdx };
+}
+
+function shouldStopCollectingTableBodyLine(
+  line: TextLine,
+  captionPage: number,
+  lastY: number,
+  firstLine: TextLine,
+  fragments: ExtractedFragment[],
+): boolean {
+  if (line.pageIndex !== captionPage) return true;
+
+  const vertGap = Math.abs(lastY - line.y) / firstLine.fontSize;
+  if (vertGap > TABLE_MAX_VERTICAL_GAP_FONT_RATIO) return true;
+
+  if (isLikelySectionHeading(line.text)) return true;
+  if (TABLE_CAPTION_PATTERN.test(line.text)) return true;
+
+  if (line.estimatedWidth <= line.pageWidth * 0.65) return false;
+  const rowFragGroups = getFragmentGroupsForRow(fragments, line.y, line.fontSize);
+  return rowFragGroups.length < 2;
 }
 
 // --- Row building from fragment analysis ---
