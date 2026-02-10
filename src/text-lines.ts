@@ -383,7 +383,7 @@ function compareMultiColumnLineOrder(
   }
 
   if (preferColumnMajor) {
-    const columnMajorOrder = compareColumnMajorBodyLineOrder(left, right, columnSplitX);
+    const columnMajorOrder = compareColumnMajorLineOrder(left, right, columnSplitX);
     if (columnMajorOrder !== 0) return columnMajorOrder;
   }
 
@@ -391,16 +391,26 @@ function compareMultiColumnLineOrder(
   return compareByNearRowBodyColumn(left, right);
 }
 
-function compareColumnMajorBodyLineOrder(
+function compareColumnMajorLineOrder(
   left: TextLine,
   right: TextLine,
   columnSplitX: number | undefined,
 ): number {
-  if (!isLikelyColumnMajorBodyLine(left) || !isLikelyColumnMajorBodyLine(right)) return 0;
+  const leftColumn = resolveColumnForColumnMajorOrdering(left, columnSplitX);
+  const rightColumn = resolveColumnForColumnMajorOrdering(right, columnSplitX);
   return compareByMultiColumnSide(
-    classifyColumnByDetectedSplit(left, columnSplitX),
-    classifyColumnByDetectedSplit(right, columnSplitX),
+    leftColumn,
+    rightColumn,
   );
+}
+
+function resolveColumnForColumnMajorOrdering(
+  line: TextLine,
+  columnSplitX: number | undefined,
+): "left" | "right" | "spanning" {
+  const detected = classifyColumnByDetectedSplit(line, columnSplitX);
+  if (detected !== "spanning") return detected;
+  return classifyNearRowBodyColumn(line);
 }
 
 function compareByMultiColumnSide(

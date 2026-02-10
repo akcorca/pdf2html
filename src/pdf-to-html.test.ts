@@ -403,6 +403,18 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("keeps 1 Introduction heading before the first left-column introduction lead in respect.pdf", () => {
+    const introductionHeading = "<h2>1 Introduction</h2>";
+    const leftColumnLead =
+      "In natural language processing, large language models (LLMs), such as OpenAI’s ChatGPT and";
+
+    expect(respectHtml).toContain(introductionHeading);
+    expect(respectHtml).toContain(leftColumnLead);
+    expect(respectHtml.indexOf(introductionHeading)).toBeLessThan(
+      respectHtml.indexOf(leftColumnLead),
+    );
+  });
+
   it("keeps left-column introduction body before right-column continuation in respect.pdf", () => {
     const leftColumnBodyStart = "In natural language processing, large language";
     const rightColumnText = "to a deterioration in model performance, including";
