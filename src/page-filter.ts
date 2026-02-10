@@ -170,6 +170,29 @@ interface LineRegionCriteria {
   maxBodyFontRatio?: number;
 }
 
+function getOrCreateMapValue<K, V>(
+  map: Map<K, V>,
+  key: K,
+  createValue: () => V,
+): V {
+  const existing = map.get(key);
+  if (existing !== undefined) return existing;
+  const created = createValue();
+  map.set(key, created);
+  return created;
+}
+
+function createRepeatedEdgeTextStat(): RepeatedEdgeTextStat {
+  return {
+    totalOccurrences: 0,
+    edgeOccurrences: 0,
+    pageIndexes: new Set<number>(),
+    edgePageIndexes: new Set<number>(),
+    broadEdgePageIndexes: new Set<number>(),
+    minEdgeFontSize: Number.POSITIVE_INFINITY,
+  };
+}
+
 export function filterPageArtifacts(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
   const bodyFontSize = estimateBodyFontSize(lines);
@@ -296,29 +319,10 @@ function collectEdgeTextStats(
   for (const line of lines) {
     const nearRelative = isNearPageEdge(line, pageExtents);
     const nearBroad = nearRelative || isNearPhysicalPageEdge(line);
-    const stat = getOrCreateEdgeTextStat(stats, line.text);
+    const stat = getOrCreateMapValue(stats, line.text, createRepeatedEdgeTextStat);
     addEdgeTextOccurrence(stat, line.pageIndex, nearRelative, nearBroad, line.fontSize);
   }
   return stats;
-}
-
-function getOrCreateEdgeTextStat(
-  stats: Map<string, RepeatedEdgeTextStat>,
-  text: string,
-): RepeatedEdgeTextStat {
-  const existing = stats.get(text);
-  if (existing) return existing;
-
-  const created: RepeatedEdgeTextStat = {
-    totalOccurrences: 0,
-    edgeOccurrences: 0,
-    pageIndexes: new Set<number>(),
-    edgePageIndexes: new Set<number>(),
-    broadEdgePageIndexes: new Set<number>(),
-    minEdgeFontSize: Number.POSITIVE_INFINITY,
-  };
-  stats.set(text, created);
-  return created;
 }
 
 function addEdgeTextOccurrence(
@@ -459,9 +463,9 @@ function collectNumericEdgeLines(
 function findPageNumberOffsets(entries: NumericEdgeLine[], totalPages: number): Set<number> {
   const pageIndexesByOffset = new Map<number, Set<number>>();
   for (const entry of entries) {
-    const existing = pageIndexesByOffset.get(entry.offset);
-    if (existing) existing.add(entry.line.pageIndex);
-    else pageIndexesByOffset.set(entry.offset, new Set([entry.line.pageIndex]));
+    getOrCreateMapValue(pageIndexesByOffset, entry.offset, () => new Set<number>()).add(
+      entry.line.pageIndex,
+    );
   }
   const pageCountDenominator = Math.max(totalPages, 1);
   const selected = new Set<number>();
@@ -535,9 +539,7 @@ function findLikelyAlternatingRunningHeaderLines(
 function groupLinesByExactText(lines: TextLine[]): Map<string, TextLine[]> {
   const grouped = new Map<string, TextLine[]>();
   for (const line of lines) {
-    const existing = grouped.get(line.text);
-    if (existing) existing.push(line);
-    else grouped.set(line.text, [line]);
+    getOrCreateMapValue(grouped, line.text, (): TextLine[] => []).push(line);
   }
   return grouped;
 }
