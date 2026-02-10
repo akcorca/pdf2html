@@ -740,6 +740,18 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("merges figure-adjacent narrow-column body paragraphs in tft.pdf", () => {
+    expect(tftHtml).toContain(
+      "In addition to the passivation of oxide semiconductors, OSC IFLs can be applied to control the electrical properties of AOSs.",
+    );
+    expect(tftHtml).toContain(
+      "Recent reports on the charge-transfer doping and the band alignment between a crys-talline oxide semiconductor and organic materials provide avenues for controlling the electrical properties of AOSs without electrical-performance degradation.",
+    );
+    expect(tftHtml).not.toContain("<p>In addition to the passivation of oxide</p>");
+    expect(tftHtml).not.toContain("<p>semiconductors, OSC IFLs can be applied</p>");
+    expect(tftHtml).not.toContain("<p>Recent reports on the charge-transfer doping</p>");
+  });
+
   it("renders reference entries as an ordered list in attention.pdf", () => {
     // References should be wrapped in <ol> with <li> items, not <p> tags
     expect(html).toContain("<ol>");

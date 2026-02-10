@@ -77,7 +77,11 @@ const REFERENCE_ENTRY_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.08;
 const REFERENCE_ENTRY_CONTINUATION_MAX_CENTER_OFFSET_RATIO = 0.12;
 const BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN =
   /^\[\d+(?:\s*,\s*\d+)*\]\s*[,;:]\s+[A-Za-z(“‘"']/u;
-const BODY_PARAGRAPH_LOCAL_REGION_TRIGGER_RATIO = 0.75;
+const BODY_PARAGRAPH_INDENT_LEAD_START_PATTERN = /^[A-Z(“‘"']/u;
+const BODY_PARAGRAPH_INDENT_LEAD_MIN_WIDTH_RATIO = 0.5;
+const BODY_PARAGRAPH_INDENT_LEAD_MIN_WORD_COUNT = 4;
+const BODY_PARAGRAPH_INDENT_LEAD_MIN_X_OFFSET_RATIO = 0.01;
+const BODY_PARAGRAPH_INDENT_LEAD_MAX_X_OFFSET_RATIO = 0.06;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_WIDTH_RATIO = 0.55;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_WORD_COUNT = 4;
 const BODY_PARAGRAPH_SHORT_LEAD_MIN_X_BACKSHIFT_RATIO = 0.08;
@@ -1958,6 +1962,8 @@ function computeLocalFontSizeTypicalWidth(
 
 const LOCAL_COLUMN_REGION_MIN_LINES = 5;
 const LOCAL_COLUMN_REGION_MAX_X_DELTA = 12;
+const LOCAL_COLUMN_REGION_MAX_Y_DELTA_FONT_RATIO = 18;
+const LOCAL_COLUMN_REGION_MIN_Y_DELTA = 120;
 
 /**
  * Compute a typical width from same-column lines sharing a similar left margin.
@@ -1970,6 +1976,10 @@ function computeLocalColumnRegionTypicalWidth(
   bodyFontSize: number,
 ): number | undefined {
   if (!referenceLine.column) return undefined;
+  const maxYDelta = Math.max(
+    referenceLine.fontSize * LOCAL_COLUMN_REGION_MAX_Y_DELTA_FONT_RATIO,
+    LOCAL_COLUMN_REGION_MIN_Y_DELTA,
+  );
   const widths: number[] = [];
   for (const line of lines) {
     if (line.pageIndex !== referenceLine.pageIndex) continue;
@@ -1977,6 +1987,7 @@ function computeLocalColumnRegionTypicalWidth(
     if (Math.abs(line.fontSize - bodyFontSize) > 1.0) continue;
     if (normalizeSpacing(line.text).length < 20) continue;
     if (Math.abs(line.x - referenceLine.x) > LOCAL_COLUMN_REGION_MAX_X_DELTA) continue;
+    if (Math.abs(line.y - referenceLine.y) > maxYDelta) continue;
     widths.push(line.estimatedWidth);
   }
   if (widths.length < LOCAL_COLUMN_REGION_MIN_LINES) return undefined;
@@ -2002,18 +2013,16 @@ function consumeBodyParagraph(
     const localTypical = computeLocalFontSizeTypicalWidth(lines, startLine);
     if (localTypical !== undefined) typicalWidth = localTypical;
   }
-  // For genuine multi-column pages where the line is clearly in a narrower
-  // sub-region (e.g. text next to a figure or abstract box), try a local
-  // region width (same column, same x-alignment).  Only activate when the
-  // line is well below the threshold (< 70% of typical) to avoid false
-  // positives on lines that are just marginally short.
+  // On multi-column pages, local figure-adjacent regions can be much narrower
+  // than the page-wide column width. Prefer a nearby local width when available.
   if (
     startLine.column &&
-    pageTypicalWidths.has(typicalWidthKey(startLine.pageIndex, startLine.column)) &&
-    startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_LOCAL_REGION_TRIGGER_RATIO
+    pageTypicalWidths.has(typicalWidthKey(startLine.pageIndex, startLine.column))
   ) {
     const localColTypical = computeLocalColumnRegionTypicalWidth(lines, startLine, bodyFontSize);
-    if (localColTypical !== undefined) typicalWidth = localColTypical;
+    if (localColTypical !== undefined && localColTypical < typicalWidth) {
+      typicalWidth = localColTypical;
+    }
   }
 
   const startNormalized = parseParagraphMergeCandidateText(startLine, {
@@ -2080,6 +2089,20 @@ function isBodyParagraphLead(
   ) {
     return true;
   }
+  if (
+    isIndentedBodyParagraphLead(
+      lines,
+      startIndex,
+      startLine,
+      startNormalized,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+      typicalWidth,
+    )
+  ) {
+    return true;
+  }
   return isShortWrappedBodyParagraphLead(
     lines,
     startIndex,
@@ -2089,6 +2112,48 @@ function isBodyParagraphLead(
     bodyFontSize,
     hasDottedSubsectionHeadings,
     typicalWidth,
+  );
+}
+
+function isIndentedBodyParagraphLead(
+  lines: TextLine[],
+  startIndex: number,
+  startLine: TextLine,
+  startNormalized: string,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  typicalWidth: number,
+): boolean {
+  if (startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_INDENT_LEAD_MIN_WIDTH_RATIO) {
+    return false;
+  }
+  if (!BODY_PARAGRAPH_INDENT_LEAD_START_PATTERN.test(startNormalized)) return false;
+  if (splitWords(startNormalized).length < BODY_PARAGRAPH_INDENT_LEAD_MIN_WORD_COUNT) {
+    return false;
+  }
+
+  const previousLine = lines[startIndex - 1];
+  if (!previousLine || previousLine.pageIndex !== startLine.pageIndex) return false;
+  const previousText = normalizeSpacing(previousLine.text);
+  if (!INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+
+  const continuation = lines[startIndex + 1];
+  if (!continuation || continuation.pageIndex !== startLine.pageIndex) return false;
+  if (isCrossColumnPair(startLine, continuation)) return false;
+
+  const minIndent = startLine.pageWidth * BODY_PARAGRAPH_INDENT_LEAD_MIN_X_OFFSET_RATIO;
+  const maxIndent = startLine.pageWidth * BODY_PARAGRAPH_INDENT_LEAD_MAX_X_OFFSET_RATIO;
+  const indentOffset = startLine.x - continuation.x;
+  if (indentOffset < minIndent || indentOffset > maxIndent) return false;
+
+  return isBodyParagraphContinuationLine(
+    continuation,
+    startLine,
+    startLine,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
   );
 }
 
