@@ -27,6 +27,7 @@ import {
 
 const STANDALONE_CITATION_MARKER_PATTERN =
   /^(?:\[\d{1,3}(?:,\s*\d{1,3})*\])(?:\s+\[\d{1,3}(?:,\s*\d{1,3})*\])*$/;
+const INLINE_CITATION_ONLY_PATTERN = /^\[\d{1,3}(?:\s*,\s*\d{1,3})*\][.,;:!?]?$/;
 const STANDALONE_DOI_METADATA_PATTERN = /^(?:doi\s*:\s*)?10\.\d{4,9}\/[-._;()/:a-z0-9]+$/iu;
 const STANDALONE_DOI_METADATA_MAX_PAGE_INDEX = 1;
 const STANDALONE_SYMBOL_ARTIFACT_PATTERN = /^[!)+\u2032]+$/u;
@@ -108,6 +109,18 @@ const PUBLISHER_IMPRINT_FOOTER_LONG_NUMBER_PATTERN = /\b\d{4,8}\b/g;
 const SPECIAL_TOKEN_ARTIFACT_PATTERN = /<\s*(?:pad|eos|bos|unk)\s*>/giu;
 const SPECIAL_TOKEN_ARTIFACT_MAX_FONT_RATIO = 0.96;
 const SPECIAL_TOKEN_ARTIFACT_MAX_WORDS_WITH_SINGLE_TOKEN = 4;
+const DETACHED_MATH_FRAGMENT_ALLOWED_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}\[\],.;:√∞]+$/u;
+const DETACHED_MATH_FRAGMENT_MAX_TEXT_LENGTH = 18;
+const DETACHED_MATH_FRAGMENT_MAX_TOKENS = 6;
+const DETACHED_MATH_FRAGMENT_MAX_ALPHA_TOKEN_LENGTH = 2;
+const DETACHED_MATH_FRAGMENT_MAX_ALPHA_CHARS = 4;
+const DETACHED_MATH_FRAGMENT_MAX_FONT_RATIO = 1.05;
+const DETACHED_MATH_FRAGMENT_MAX_WIDTH_RATIO = 0.52;
+const DETACHED_MATH_FRAGMENT_MIN_PROSE_CHARS = 24;
+const DETACHED_MATH_FRAGMENT_MIN_PROSE_WORDS = 4;
+const DETACHED_MATH_FRAGMENT_MAX_PROSE_FONT_RATIO = 1.2;
+const DETACHED_MATH_FRAGMENT_MAX_CONTEXT_Y_GAP = 96;
+const DETACHED_MATH_FRAGMENT_MAX_CONTEXT_X_DELTA_RATIO = 0.1;
 const ALTERNATING_RUNNING_HEADER_MIN_PAGES = 2;
 const ALTERNATING_RUNNING_HEADER_MIN_PAGE_COVERAGE = 0.3;
 const ALTERNATING_RUNNING_HEADER_MIN_TEXT_LENGTH = 20;
@@ -177,6 +190,7 @@ function collectRemovablePageArtifactLines(
     findLikelyTopMatterAlphabeticAffiliationLines(lines, bodyFontSize),
     findLikelyInlineFigureLabelLines(lines, bodyFontSize),
     findLikelyFirstPageInlineFigureCaptionLines(lines, bodyFontSize),
+    findLikelyDetachedMathFragmentLines(lines, bodyFontSize),
     findLikelyAlternatingRunningHeaderLines(lines, pageExtents, bodyFontSize),
   ]);
 }
@@ -799,6 +813,175 @@ function hasNearbyBodyLineInLeftColumn(
     if (other.x / other.pageWidth > INLINE_FIGURE_LABEL_NEAR_BODY_LEFT_MAX_X_RATIO) return false;
     return countSubstantiveChars(other.text) >= INLINE_FIGURE_LABEL_NEAR_BODY_MIN_SUBSTANTIVE_CHARS;
   });
+}
+
+function findLikelyDetachedMathFragmentLines(
+  lines: TextLine[],
+  bodyFontSize: number,
+): Set<TextLine> {
+  if (lines.length < 3) return new Set<TextLine>();
+  const result = new Set<TextLine>();
+
+  for (const pageLines of groupLinesByPage(lines).values()) {
+    collectDetachedMathFragmentLinesOnPage(pageLines, bodyFontSize, result);
+  }
+
+  return result;
+}
+
+interface DetachedMathFragmentClusterBounds {
+  start: number;
+  end: number;
+}
+
+interface DetachedMathFragmentClusterContext {
+  previous: TextLine;
+  next: TextLine;
+}
+
+function collectDetachedMathFragmentLinesOnPage(
+  pageLines: TextLine[],
+  bodyFontSize: number,
+  result: Set<TextLine>,
+): void {
+  const sorted = sortLinesByPageTopDown(pageLines);
+  let index = 1;
+  while (index < sorted.length - 1) {
+    const current = sorted[index];
+    if (!isLikelyDetachedMathFragmentCandidate(current, bodyFontSize)) {
+      index += 1;
+      continue;
+    }
+
+    const cluster = findDetachedMathFragmentClusterBounds(sorted, index, bodyFontSize);
+    index = cluster.end + 1;
+    const context = resolveDetachedMathFragmentClusterContext(sorted, cluster, bodyFontSize);
+    if (!context) continue;
+    addDetachedMathFragmentClusterLines(sorted, cluster, context, result);
+  }
+}
+
+function sortLinesByPageTopDown(lines: TextLine[]): TextLine[] {
+  return [...lines].sort((left, right) => {
+    if (left.y !== right.y) return right.y - left.y;
+    return left.x - right.x;
+  });
+}
+
+function findDetachedMathFragmentClusterBounds(
+  lines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+): DetachedMathFragmentClusterBounds {
+  let start = startIndex;
+  let end = startIndex;
+  while (start > 0 && isLikelyDetachedMathFragmentCandidate(lines[start - 1], bodyFontSize)) {
+    start -= 1;
+  }
+  while (
+    end + 1 < lines.length &&
+    isLikelyDetachedMathFragmentCandidate(lines[end + 1], bodyFontSize)
+  ) {
+    end += 1;
+  }
+  return { start, end };
+}
+
+function resolveDetachedMathFragmentClusterContext(
+  lines: TextLine[],
+  cluster: DetachedMathFragmentClusterBounds,
+  bodyFontSize: number,
+): DetachedMathFragmentClusterContext | undefined {
+  const previous = lines[cluster.start - 1];
+  const next = lines[cluster.end + 1];
+  if (!previous || !next) return undefined;
+  if (!isLikelyProseContextLine(previous, bodyFontSize)) return undefined;
+  if (!isLikelyProseContextLine(next, bodyFontSize)) return undefined;
+  if (!isLikelyDetachedMathFragmentContext(previous, next)) return undefined;
+  return { previous, next };
+}
+
+function addDetachedMathFragmentClusterLines(
+  lines: TextLine[],
+  cluster: DetachedMathFragmentClusterBounds,
+  context: DetachedMathFragmentClusterContext,
+  result: Set<TextLine>,
+): void {
+  for (let candidateIndex = cluster.start; candidateIndex <= cluster.end; candidateIndex += 1) {
+    const candidate = lines[candidateIndex];
+    if (shouldPreserveDetachedSingleVariableToken(candidate, context.previous, context.next)) {
+      continue;
+    }
+    result.add(candidate);
+  }
+}
+
+function isLikelyDetachedMathFragmentCandidate(line: TextLine, bodyFontSize: number): boolean {
+  if (line.pageWidth <= 0) return false;
+  if (line.fontSize > bodyFontSize * DETACHED_MATH_FRAGMENT_MAX_FONT_RATIO) return false;
+  if (line.estimatedWidth > line.pageWidth * DETACHED_MATH_FRAGMENT_MAX_WIDTH_RATIO) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0 || normalized.length > DETACHED_MATH_FRAGMENT_MAX_TEXT_LENGTH) {
+    return false;
+  }
+  if (INLINE_CITATION_ONLY_PATTERN.test(normalized)) return false;
+  if (!DETACHED_MATH_FRAGMENT_ALLOWED_PATTERN.test(normalized)) return false;
+
+  const alphaChars = normalized.replace(/[^A-Za-z]/g, "").length;
+  if (alphaChars > DETACHED_MATH_FRAGMENT_MAX_ALPHA_CHARS) return false;
+
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0 || tokens.length > DETACHED_MATH_FRAGMENT_MAX_TOKENS) return false;
+  if (isPureNumericFragmentTokens(tokens, normalized)) return false;
+  if (tokens.some((token) => /[A-Za-z]{3,}/u.test(token))) return false;
+  return hasMathLikeDetachedFragmentTokens(tokens);
+}
+
+function hasMathLikeDetachedFragmentTokens(tokens: string[]): boolean {
+  const hasNumericOrMathSymbol = tokens.some(
+    (token) => /\d/.test(token) || /[−\-+*/=(){}\[\],.;:√∞]/u.test(token),
+  );
+  if (hasNumericOrMathSymbol) return true;
+  return tokens.every(
+    (token) =>
+      /^[A-Za-z]+$/u.test(token) &&
+      token.length <= DETACHED_MATH_FRAGMENT_MAX_ALPHA_TOKEN_LENGTH,
+  );
+}
+
+function isPureNumericFragmentTokens(tokens: string[], normalized: string): boolean {
+  if (/[−\-+*/=(){}\[\]√∞]/u.test(normalized)) return false;
+  return tokens.every((token) => /^[-+]?\d+(?:[.,]\d+)?[.,;:]?$/.test(token));
+}
+
+function isLikelyProseContextLine(line: TextLine, bodyFontSize: number): boolean {
+  if (line.fontSize > bodyFontSize * DETACHED_MATH_FRAGMENT_MAX_PROSE_FONT_RATIO) return false;
+  const normalized = normalizeSpacing(line.text);
+  if (countSubstantiveChars(normalized) < DETACHED_MATH_FRAGMENT_MIN_PROSE_CHARS) return false;
+  if (countWords(normalized) < DETACHED_MATH_FRAGMENT_MIN_PROSE_WORDS) return false;
+  return /\b[a-z]{3,}\b/u.test(normalized);
+}
+
+function isLikelyDetachedMathFragmentContext(previous: TextLine, next: TextLine): boolean {
+  if (previous.pageIndex !== next.pageIndex) return false;
+  if (previous.y <= next.y) return false;
+  if (previous.y - next.y > DETACHED_MATH_FRAGMENT_MAX_CONTEXT_Y_GAP) return false;
+  const maxXDelta = previous.pageWidth * DETACHED_MATH_FRAGMENT_MAX_CONTEXT_X_DELTA_RATIO;
+  return Math.abs(previous.x - next.x) <= maxXDelta;
+}
+
+function shouldPreserveDetachedSingleVariableToken(
+  line: TextLine,
+  previous: TextLine,
+  next: TextLine,
+): boolean {
+  const normalized = normalizeSpacing(line.text);
+  if (!/^[A-Za-z]$/u.test(normalized)) return false;
+  const previousText = normalizeSpacing(previous.text);
+  const nextText = normalizeSpacing(next.text);
+  if (!/[A-Za-z]$/.test(previousText)) return false;
+  return /^\(/.test(nextText);
 }
 
 function isLikelyStandaloneSymbolArtifact(line: TextLine, bodyFontSize: number): boolean {

@@ -448,6 +448,14 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("sequence modeling and transduc-tion models");
   });
 
+  it("bridges detached math-fragment lines inside attention.pdf prose paragraphs", () => {
+    expect(html).toContain(
+      "We compute the dot products of the query with all keys, divide each by d k , and apply a softmax function to obtain the weights on the values.",
+    );
+    expect(html).not.toContain("<p>k v</p>");
+    expect(html).not.toContain("<p>√</p>");
+  });
+
   it("does not render detached lowercase math-subscripts as standalone paragraphs in attention.pdf", () => {
     expect(html).not.toContain("<p>model</p>");
     expect(html).not.toContain("<p>drop</p>");
@@ -488,6 +496,10 @@ describe("convertPdfToHtml", () => {
     expect(html).toContain("<ul>");
     expect(html).toContain("<li>In \"encoder-decoder attention\" layers,");
     expect(html).not.toContain("<p>• In \"encoder-decoder attention\" layers,");
+  });
+
+  it("keeps trailing citation fragments inside attention.pdf bullet list items", () => {
+    expect(html).toContain("sequence-to-sequence models such as [38, 2, 9].</li>");
   });
 
   it("renders wrapped repository URLs in attention.pdf as a single hyperlink", () => {
