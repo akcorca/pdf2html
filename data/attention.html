@@ -74,34 +74,17 @@
 <h4>3.2.1 Scaled Dot-Product Attention</h4>
 <p>We call our particular attention "Scaled Dot-Product Attention" (Figure 2). The input consists of queries and keys of dimension d , and values of dimension d . We compute the dot products of the query with all keys, divide each by d k , and apply a softmax function to obtain the weights on the values.</p>
 <p>In practice, we compute the attention function on a set of queries simultaneously, packed together into a matrix Q . The keys and values are also packed together into matrices K and V . We compute the matrix of outputs as:</p>
-<p>T</p>
-<p>QK</p>
-<p>Attention( Q, K, V ) = softmax( √ ) V (1)</p>
-<p>d</p>
-<p>k</p>
+<p>T QK Attention( Q, K, V ) = softmax( √ ) V (1) d k</p>
 <p>The two most commonly used attention functions are additive attention [ 2 ], and dot-product (multi-plicative) attention. Dot-product attention is identical to our algorithm, except for the scaling factor 1 of √ . Additive attention computes the compatibility function using a feed-forward network with a single hidden layer. While the two are similar in theoretical complexity, dot-product attention is much faster and more space-efficient in practice, since it can be implemented using highly optimized matrix multiplication code.</p>
-<p>While for small values of d the two mechanisms perform similarly, additive attention outperforms dot product attention without scaling for larger values of d k [ 3 ]. We suspect that for large values of d , the dot products grow large in magnitude, pushing the softmax function into regions where it has</p>
-<p>k</p>
-<p>4 1</p>
-<p>extremely small gradients . To counteract this effect, we scale the dot products by √ .</p>
-<p>d k</p>
+<p>While for small values of d the two mechanisms perform similarly, additive attention outperforms dot product attention without scaling for larger values of d k [ 3 ]. We suspect that for large values of d , the dot products grow large in magnitude, pushing the softmax function into regions where it has k 4 1 extremely small gradients . To counteract this effect, we scale the dot products by √ .</p>
 <h4>3.2.2 Multi-Head Attention</h4>
 <p>Instead of performing a single attention function with d model -dimensional keys, values and queries, we found it beneficial to linearly project the queries, keys and values h times with different, learned linear projections to d , d and d dimensions, respectively. On each of these projected versions of queries, keys and values we then perform the attention function in parallel, yielding d -dimensional</p>
-<p>v</p>
 <p>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1 . Then their dot product, q · k = q i k i , has mean 0 and variance d .</p>
 <p>i =1 k</p>
 <p>output values. These are concatenated and once again projected, resulting in the final values, as depicted in Figure 2.</p>
 <p>Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions. With a single attention head, averaging inhibits this.</p>
-<p>O</p>
-<p>MultiHead( Q, K, V ) = Concat(head 1 , ..., head h ) W</p>
-<p>where head = Attention( QW , KW , V W )</p>
-<p>i i i i</p>
-<p>Q</p>
-<p>d model × d k K d model × d k V d model × d v</p>
-<p>Where the projections are parameter matrices W ∈ R , W ∈ R , W ∈ R</p>
-<p>i i i</p>
-<p>O hd v × d model</p>
-<p>and W ∈ R .</p>
+<p>O MultiHead( Q, K, V ) = Concat(head 1 , ..., head h ) W where head = Attention( QW , KW , V W ) i i i i</p>
+<p>Q d model × d k K d model × d k V d model × d v Where the projections are parameter matrices W ∈ R , W ∈ R , W ∈ R i i i O hd v × d model and W ∈ R .</p>
 <p>In this work we employ h = 8 parallel attention layers, or heads. For each of these we use d = d = d /h = 64 . Due to the reduced dimension of each head, the total computational cost is similar to that of single-head attention with full dimensionality.</p>
 <h4>3.2.3 Applications of Attention in our Model</h4>
 <p>The Transformer uses multi-head attention in three different ways:</p>
@@ -113,9 +96,7 @@
 <h3>3.3 Position-wise Feed-Forward Networks</h3>
 <p>In addition to attention sub-layers, each of the layers in our encoder and decoder contains a fully connected feed-forward network, which is applied to each position separately and identically. This consists of two linear transformations with a ReLU activation in between.</p>
 <p>FFN( x ) = max(0 , xW + b ) W + b (2)</p>
-<p>1 1 2 2</p>
 <p>While the linear transformations are the same across different positions, they use different parameters from layer to layer. Another way of describing this is as two convolutions with kernel size 1. The dimensionality of input and output is d = 512 , and the inner-layer has dimensionality d = 2048 .</p>
-<p>f f</p>
 <h3>3.4 Embeddings and Softmax</h3>
 <p>Similarly to other sequence transduction models, we use learned embeddings to convert the input tokens and output tokens to vectors of dimension d model . We also use the usual learned linear transfor-mation and softmax function to convert the decoder output to predicted next-token probabilities. In our model, we share the same weight matrix between the two embedding layers and the pre-softmax linear transformation, similar to [ 30 ]. In the embedding layers, we multiply those weights by d .</p>
 <table>
@@ -135,14 +116,10 @@
 <p>Since our model contains no recurrence and no convolution, in order for the model to make use of the order of the sequence, we must inject some information about the relative or absolute position of the tokens in the sequence. To this end, we add "positional encodings" to the input embeddings at the bottoms of the encoder and decoder stacks. The positional encodings have the same dimension d as the embeddings, so that the two can be summed. There are many choices of positional encodings, learned and fixed [9].</p>
 <p>In this work, we use sine and cosine functions of different frequencies:</p>
 <p>2 i/d model</p>
-<p>P E = sin ( pos/ 10000 )</p>
-<p>( pos, 2 i )</p>
-<p>2 i/d</p>
-<p>P E = cos ( pos/ 10000 )</p>
-<p>( pos, 2 i +1)</p>
+<p>P E = sin ( pos/ 10000 ) ( pos, 2 i ) 2 i/d</p>
+<p>P E = cos ( pos/ 10000 ) ( pos, 2 i +1)</p>
 <p>where pos is the position and i is the dimension. That is, each dimension of the positional encoding corresponds to a sinusoid. The wavelengths form a geometric progression from 2 π to 10000 · 2 π . We chose this function because we hypothesized it would allow the model to easily learn to attend by relative positions, since for any fixed offset k , P E can be represented as a linear function of</p>
-<p>pos + k</p>
-<p>P E .</p>
+<p>pos + k P E . pos</p>
 <p>We also experimented with using learned positional embeddings [ 9 ] instead, and found that the two versions produced nearly identical results (see Table 3 row (E)). We chose the sinusoidal version because it may allow the model to extrapolate to sequence lengths longer than the ones encountered during training.</p>
 <h2>4 Why Self-Attention</h2>
 <p>In this section we compare various aspects of self-attention layers to the recurrent and convolutional layers commonly used for mapping one variable-length sequence of symbol representations d ( x , ..., x ) to another sequence of equal length ( z , ..., z ) , with x , z ∈ R , such as a hidden layer in a typical sequence transduction encoder or decoder. Motivating our use of self-attention we consider three desiderata.</p>
@@ -158,12 +135,9 @@
 <h3>5.2 Hardware and Schedule</h3>
 <p>We trained our models on one machine with 8 NVIDIA P100 GPUs. For our base models using the hyperparameters described throughout the paper, each training step took about 0.4 seconds. We trained the base models for a total of 100,000 steps or 12 hours. For our big models,(described on the bottom line of table 3), step time was 1.0 seconds. The big models were trained for 300,000 steps (3.5 days).</p>
 <h3>5.3 Optimizer</h3>
-<p>− 9</p>
 <p>We used the Adam optimizer [ 20 ] with β = 0 . 9 , β = 0 . 98 and ϵ = 10 . We varied the learning</p>
-<p>1 2</p>
 <p>rate over the course of training, according to the formula:</p>
-<p>− 0 . 5 − 0 . 5 − 1 . 5</p>
-<p>lrate = d · min( step _ num , step _ num · warmup _ steps ) (3)</p>
+<p>− 0 . 5 − 0 . 5 − 1 . 5 lrate = d · min( step _ num , step _ num · warmup _ steps ) (3)</p>
 <p>This corresponds to increasing the learning rate linearly for the first warmup _ steps training steps, and decreasing it thereafter proportionally to the inverse square root of the step number. We used warmup _ steps = 4000 .</p>
 <h3>5.4 Regularization</h3>
 <p>We employ three types of regularization during training:</p>
@@ -277,18 +251,18 @@
 <li>[10] Alex Graves. Generating sequences with recurrent neural networks. arXiv preprint arXiv:1308.0850 , 2013.</li>
 <li>[11] Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun. Deep residual learning for im-age recognition. In Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition , pages 770–778, 2016.</li>
 <li>[12] Sepp Hochreiter, Yoshua Bengio, Paolo Frasconi, and Jürgen Schmidhuber. Gradient flow in recurrent nets: the difficulty of learning long-term dependencies, 2001.</li>
-<li>[13] Sepp Hochreiter and Jürgen Schmidhuber. Long short-term memory. 9(8):1735–1780, 1997. Neural computation ,</li>
+<li>[13] Sepp Hochreiter and Jürgen Schmidhuber. Long short-term memory. 9(8):1735–1780, 1997.</li>
 <li>[14] Zhongqiang Huang and Mary Harper. Self-training PCFG grammars with latent annotations across languages. In Proceedings of the 2009 Conference on Empirical Methods in Natural Language Processing , pages 832–841. ACL, August 2009.</li>
 <li>[15] Rafal Jozefowicz, Oriol Vinyals, Mike Schuster, Noam Shazeer, and Yonghui Wu. Exploring the limits of language modeling. arXiv preprint arXiv:1602.02410 , 2016.</li>
-<li>[16] Łukasz Kaiser and Samy Bengio. Can active memory replace attention? In Information Processing Systems, (NIPS) , 2016. Advances in Neural</li>
-<li>[17] Łukasz Kaiser and Ilya Sutskever. Neural GPUs learn algorithms. In on Learning Representations (ICLR) , 2016. International Conference</li>
+<li>[16] Łukasz Kaiser and Samy Bengio. Can active memory replace attention? In Information Processing Systems, (NIPS) , 2016.</li>
+<li>[17] Łukasz Kaiser and Ilya Sutskever. Neural GPUs learn algorithms. In on Learning Representations (ICLR) , 2016.</li>
 <li>[18] Nal Kalchbrenner, Lasse Espeholt, Karen Simonyan, Aaron van den Oord, Alex Graves, and Ko-ray Kavukcuoglu. Neural machine translation in linear time. arXiv preprint arXiv:1610.10099v2 , 2017.</li>
 <li>[19] Yoon Kim, Carl Denton, Luong Hoang, and Alexander M. Rush. Structured attention networks. In International Conference on Learning Representations , 2017.</li>
 <li>[20] Diederik Kingma and Jimmy Ba. Adam: A method for stochastic optimization. In ICLR , 2015.</li>
-<li>[21] Oleksii Kuchaiev and Boris Ginsburg. Factorization tricks for LSTM networks. arXiv:1703.10722 , 2017. arXiv preprint</li>
-<li>[22] Zhouhan Lin, Minwei Feng, Cicero Nogueira dos Santos, Mo Yu, Bing Xiang, Bowen Zhou, and Yoshua Bengio. A structured self-attentive sentence embedding. arXiv:1703.03130 , 2017. arXiv preprint</li>
+<li>[21] Oleksii Kuchaiev and Boris Ginsburg. Factorization tricks for LSTM networks. arXiv:1703.10722 , 2017.</li>
+<li>[22] Zhouhan Lin, Minwei Feng, Cicero Nogueira dos Santos, Mo Yu, Bing Xiang, Bowen Zhou, and Yoshua Bengio. A structured self-attentive sentence embedding. arXiv:1703.03130 , 2017.</li>
 <li>[23] Minh-Thang Luong, Quoc V. Le, Ilya Sutskever, Oriol Vinyals, and Lukasz Kaiser. Multi-task sequence to sequence learning. arXiv preprint arXiv:1511.06114 , 2015.</li>
-<li>[24] Minh-Thang Luong, Hieu Pham, and Christopher D Manning. Effective approaches to attention-based neural machine translation. arXiv preprint arXiv:1508.04025 , 2015.</li>
+<li>[24] Minh-Thang Luong, Hieu Pham, and Christopher D Manning. Effective approaches to attention-based neural machine translation. arXiv preprint arXiv:1508.04025 , 2015. Neural computation , Advances in Neural International Conference arXiv preprint arXiv preprint</li>
 <li>[25] Mitchell P Marcus, Mary Ann Marcinkiewicz, and Beatrice Santorini. Building a large annotated corpus of english: The penn treebank. Computational linguistics , 19(2):313–330, 1993.</li>
 <li>[26] David McClosky, Eugene Charniak, and Mark Johnson. Effective self-training for parsing. In Proceedings of the Human Language Technology Conference of the NAACL, Main Conference , pages 152–159. ACL, June 2006.</li>
 <li>[27] Ankur Parikh, Oscar Täckström, Dipanjan Das, and Jakob Uszkoreit. A decomposable attention model. In Empirical Methods in Natural Language Processing , 2016.</li>
@@ -308,10 +282,7 @@
 </ol>
 <p>Input-Input Layer5</p>
 <p>Attention Visualizations</p>
-<p>.</p>
-<p>It a</p>
-<p>is in of or</p>
-<p>the</p>
+<p>. It a is in of or the</p>
 <p>this that</p>
 <p>new laws</p>
 <p>spirit have 2009</p>
@@ -327,9 +298,7 @@
 <p>the word ‘making’. Different colors represent different heads. Best viewed in color.</p>
 <p>Input-Input Layer5</p>
 <p>, , .</p>
-<p>-</p>
-<p>is</p>
-<p>in</p>
+<p>- is in</p>
 <p>be its be</p>
 <p>we my</p>
 <p>will but just this are</p>
@@ -384,7 +353,6 @@
 <p>∗ Equal contribution. Listing order is random. Jakob proposed replacing RNNs with self-attention and started the effort to evaluate this idea. Ashish, with Illia, designed and implemented the first Transformer models and has been crucially involved in every aspect of this work. Noam proposed scaled dot-product attention, multi-head attention and the parameter-free position representation and became the other person involved in nearly every detail. Niki designed, implemented, tuned and evaluated countless model variants in our original codebase and tensor2tensor. Llion also experimented with novel model variants, was responsible for our initial codebase, and efficient inference and visualizations. Lukasz and Aidan spent countless long days designing various parts of and implementing tensor2tensor, replacing our earlier codebase, greatly improving results and massively accelerating our research.</p>
 <p>† Work performed while at Google Brain.</p>
 <p>‡ Work performed while at Google Research.</p>
-<p>5</p>
 <p>We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.</p>
 </body>
 </html>

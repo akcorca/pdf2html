@@ -543,6 +543,27 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("<p>drop</p>");
   });
 
+  it("merges display math equation fragments into single paragraphs in attention.pdf", () => {
+    // Equation (1): Attention(Q,K,V) = softmax(QK^T / sqrt(d_k))V
+    // The superscript T, numerator QK, denominator d, subscript k should not be standalone <p> tags
+    expect(html).not.toContain("<p>T</p>");
+    expect(html).not.toContain("<p>QK</p>");
+    // Equation subscript/superscript fragments from MultiHead formula
+    expect(html).not.toContain("<p>O</p>");
+    expect(html).not.toContain("<p>i i i i</p>");
+    expect(html).not.toContain("<p>Q</p>");
+    // FFN equation subscripts
+    expect(html).not.toContain("<p>1 1 2 2</p>");
+    expect(html).not.toContain("<p>f f</p>");
+    // Positional encoding subscripts
+    expect(html).not.toContain("<p>( pos, 2 i )</p>");
+    expect(html).not.toContain("<p>( pos, 2 i +1)</p>");
+    // Optimizer formula fragments
+    expect(html).not.toContain("<p>− 9</p>");
+    expect(html).not.toContain("<p>1 2</p>");
+    expect(html).not.toContain("<p>− 0 . 5 − 0 . 5 − 1 . 5</p>");
+  });
+
   it("moves first-page footnotes in attention.pdf to the end of the document", () => {
     const footnoteText = "Equal contribution. Listing order is random.";
     const referencesHeading = "<h2>References</h2>";

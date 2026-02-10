@@ -127,6 +127,12 @@ const STRONG_CODE_START_TEXT_PATTERN =
   /[#=]|\b(?:def|class|import|from|return|const|let|var|function|try|except)\b/u;
 const CODE_STYLE_TEXT_PATTERN =
   /[#=]|\b(?:def|class|return|import|from|try|except|const|let|var|function)\b|^[A-Za-z_][\w.]*\s*\([^)]*\)$/u;
+const DISPLAY_MATH_FRAGMENT_MAX_WIDTH_RATIO = 0.40;
+const DISPLAY_MATH_FRAGMENT_MAX_VERTICAL_GAP_RATIO = 2.5;
+// Matches math operators but not hyphens embedded in words (e.g., "pre-trained").
+// For - and −, require word boundary or surrounding space to distinguish from hyphenation.
+const DISPLAY_MATH_EQUATION_PATTERN = /[=+×·∑∏∫√∈∉⊂⊃≤≥≈≠∼≡]|(?:^|(?<=\s))[\-−]|\\[a-z]/u;
+const DISPLAY_MATH_SUPERSCRIPT_MAX_FONT_RATIO = 0.85;
 
 interface HeadingCandidate {
   kind: "named" | "numbered";
@@ -359,6 +365,21 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     if (bodyParagraph !== undefined) {
       bodyLines.push(`<p>${escapeHtml(bodyParagraph.text)}</p>`);
       index = bodyParagraph.nextIndex;
+      continue;
+    }
+
+    const displayMathBlock = consumeDisplayMathBlock(
+      lines,
+      index,
+      bodyFontSize,
+      titleLine,
+      hasDottedSubsectionHeadings,
+    );
+    if (displayMathBlock !== undefined) {
+      if (displayMathBlock.text.length > 0) {
+        bodyLines.push(`<p>${escapeHtml(displayMathBlock.text)}</p>`);
+      }
+      index = displayMathBlock.nextIndex;
       continue;
     }
 
@@ -689,6 +710,125 @@ function isReferenceEntryContinuationLine(
     return false;
   }
   return true;
+}
+
+function isDisplayMathFragmentLine(
+  line: TextLine,
+  bodyFontSize: number,
+  titleLine: TextLine | undefined,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (line === titleLine) return false;
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return false;
+  // Reject if it's a heading, bullet, URL, or metadata
+  if (containsDocumentMetadata(normalized)) return false;
+  if (parseBulletListItemText(normalized) !== undefined) return false;
+  if (parseStandaloneUrlLine(normalized) !== undefined) return false;
+  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+    return false;
+  }
+  if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
+  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized)) return false;
+  // Must be short relative to page width
+  if (line.estimatedWidth > line.pageWidth * DISPLAY_MATH_FRAGMENT_MAX_WIDTH_RATIO) return false;
+  // Check that content looks math-like rather than natural language.
+  // First reject lines containing natural-language words (4+ consecutive letters)
+  // — these are prose, code, or captions, not math fragments.
+  const tokens = normalized.split(/\s+/).filter((t) => t.length > 0);
+  const hasLongWord = tokens.some((t) => /[A-Za-z]{4,}/.test(t));
+  if (hasLongWord) return false;
+  // If the line contains a math operator (=, +, -, √, ×, etc.), it's likely math
+  if (DISPLAY_MATH_EQUATION_PATTERN.test(normalized)) return true;
+  // Small font sub/superscript — require also narrow width to avoid matching
+  // table data that happens to be slightly smaller than body text
+  if (
+    line.fontSize < bodyFontSize * DISPLAY_MATH_SUPERSCRIPT_MAX_FONT_RATIO &&
+    line.estimatedWidth < line.pageWidth * 0.15
+  ) {
+    return true;
+  }
+  // Very short tokens (≤ 2 chars each) that look like math variables/subscripts
+  if (tokens.length > 0 && tokens.every((t) => t.length <= 2)) return true;
+  return false;
+}
+
+function isDisplayMathEquationLine(
+  line: TextLine,
+  bodyFontSize: number,
+  titleLine: TextLine | undefined,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (line === titleLine) return false;
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return false;
+  if (containsDocumentMetadata(normalized)) return false;
+  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+    return false;
+  }
+  // Display equations often contain = and math notation, may be wider than fragments
+  // but are typically centered and shorter than full body text
+  if (line.estimatedWidth > line.pageWidth * 0.65) return false;
+  return DISPLAY_MATH_EQUATION_PATTERN.test(normalized);
+}
+
+function consumeDisplayMathBlock(
+  lines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+  titleLine: TextLine | undefined,
+  hasDottedSubsectionHeadings: boolean,
+): ConsumedParagraph | undefined {
+  const startLine = lines[startIndex];
+  // Only a display math fragment (short, no long words) can START a block.
+  // Display math equation lines (which may contain function names) can only
+  // continue an existing block — they can't start one to avoid false positives.
+  if (!isDisplayMathFragmentLine(startLine, bodyFontSize, titleLine, hasDottedSubsectionHeadings)) {
+    return undefined;
+  }
+
+  const parts: string[] = [normalizeSpacing(startLine.text)];
+  let nextIndex = startIndex + 1;
+  let previousLine = startLine;
+
+  while (nextIndex < lines.length) {
+    const candidate = lines[nextIndex];
+    // Must be on the same page
+    if (candidate.pageIndex !== startLine.pageIndex) break;
+
+    // Vertical gap check
+    const verticalGap = previousLine.y - candidate.y;
+    const maxGap = Math.max(
+      previousLine.fontSize * DISPLAY_MATH_FRAGMENT_MAX_VERTICAL_GAP_RATIO,
+      bodyFontSize * DISPLAY_MATH_FRAGMENT_MAX_VERTICAL_GAP_RATIO,
+    );
+    if (verticalGap <= 0 || verticalGap > maxGap) break;
+
+    const candidateIsFragment = isDisplayMathFragmentLine(candidate, bodyFontSize, titleLine, hasDottedSubsectionHeadings);
+    const candidateIsEquation = !candidateIsFragment && isDisplayMathEquationLine(candidate, bodyFontSize, titleLine, hasDottedSubsectionHeadings);
+    if (!candidateIsFragment && !candidateIsEquation) break;
+
+    parts.push(normalizeSpacing(candidate.text));
+    previousLine = candidate;
+    nextIndex += 1;
+  }
+
+  // For single-line fragments: skip (don't render) if clearly a detached sub/superscript.
+  // For multi-line blocks: merge into a single paragraph.
+  if (parts.length < 2) {
+    const normalized = normalizeSpacing(startLine.text);
+    const isSmallFont = startLine.fontSize < bodyFontSize * DISPLAY_MATH_SUPERSCRIPT_MAX_FONT_RATIO;
+    const isNarrow = startLine.estimatedWidth < startLine.pageWidth * 0.12;
+    const isShortText = normalized.length <= 12;
+    // A single detached math artifact (subscript/superscript) that is small, narrow,
+    // and short should be dropped — it's a rendering artifact from the PDF.
+    if (isSmallFont && isNarrow && isShortText) {
+      return { text: "", nextIndex };
+    }
+    return undefined;
+  }
+
+  return { text: parts.join(" "), nextIndex };
 }
 
 function consumeParagraph(

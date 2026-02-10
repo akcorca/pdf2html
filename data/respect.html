@@ -62,13 +62,7 @@ RIKEN AIP NII LLMC
 <p>Politeness</p>
 <p>We use the following languages, LLMs, and 4 prompts for our experiments.</p>
 <p>Languages Considering that different languages and cultures have different understandings and def-initions of politeness and respect, we evaluate En-glish, Chinese, and Japanese in our experiments.</p>
-<p>LLMs We select GPT-3.5-Turbo (hereafter GPT-3.5) and GPT-4 (OpenAI, 2023) for each language, which are versatile in all three languages. Further-more, we also pick a model specialized for each</p>
-<p>2</p>
-<p>language: Llama-2-70b-chat (hereafter Llama2-</p>
-<p>3</p>
-<p>70B) for English, ChatGLM3-6B (hereafter Chat-GLM3) (Du et al., 2022; Zeng et al., 2022) for</p>
-<p>4</p>
-<p>Chinese, and Swallow-70b-instruct-hf</p>
+<p>LLMs We select GPT-3.5-Turbo (hereafter GPT-3.5) and GPT-4 (OpenAI, 2023) for each language, which are versatile in all three languages. Further-more, we also pick a model specialized for each 2 language: Llama-2-70b-chat (hereafter Llama2- 3 70B) for English, ChatGLM3-6B (hereafter Chat-GLM3) (Du et al., 2022; Zeng et al., 2022) for 4 Chinese, and Swallow-70b-instruct-hf</p>
 <p>(hereafter</p>
 <p>Swallow-70B) for Japanese.</p>
 <p>We use the default</p>
@@ -98,7 +92,6 @@ RIKEN AIP NII LLMC
 <h3>4.3 Influence of RLHF and SFT</h3>
 <p>Furthermore, we consider the roles of Supervised Fine-Tuning (SFT) and Reinforcement Learning from Human Feedback (RLHF). SFT involves re-fining a pre-trained model using a specific dataset to enhance its performance in target tasks. RLHF is a process where the model is further trained based on feedback from human interactions, aim-ing to align its outputs more closely with human values and preferences. To explore in depth the impact of SFT and RLHF on the hypotheses of this study, we set up additional experiments to compare the influence of politeness levels on model perfor-mance under conditions with and without the pres-ence of SFT and RLHF.</p>
 <p>Therefore, we investigate this issue using</p>
-<p>5</p>
 <p>Llama2-70B and its base model</p>
 <p>without SFT and</p>
 <p>RLHF. We conduct the same experiment as be-fore to evaluate the impact of RLHF. However,</p>
@@ -144,7 +137,6 @@ RIKEN AIP NII LLMC
 <h3>5.2 Language Understanding Benchmarking</h3>
 <p>We show the average scores on the three language understanding benchmarks in Table 1. To investi-gate the statistical significance, we also calculate the p-values of the t-test. The heatmap shown in Figure 3, derived from the t-test results offers an interpretation of these statistical comparisons. Color of tiles indicates statistically significantly better or worse performance for the politeness level on the y-axis than that on the x-axis, with green indicating better performance and red indi-cating worse performance.</p>
 <p>Color intensity corresponds to the magnitude of ln p of tile . Its calculation method is shown in</p>
-<p>ij</p>
 <p>Appendix E.</p>
 <h4>5.2.1 English</h4>
 <p>According to Table 1, GPT-3.5 achieved its highest score of 60.02 at politeness level 8. As shown in the upper section of Figure 3, level 8 significantly outperforms all levels except level 3. While scores gradually decrease with lower politeness levels, the differences between neighboring levels are not significant. At level 3, a commendable score of 59.44 is maintained, surpassing all levels except level 8. For the lowest politeness level 1, the score drops to 51.93, which is significantly lower than the other levels.</p>
@@ -200,15 +192,9 @@ RIKEN AIP NII LLMC
 <p>In Figure 6, the Llama2-70B model, fine-tuning with RLHF and SFT, exhibited a significantly lower level of bias compared to the base model,</p>
 <p>Llama2-70B</p>
 <p>60 Base Model</p>
-<p>R</p>
-<p>50</p>
-<p>G</p>
-<p>30</p>
+<p>R 50 G 30</p>
 <p>Bias Index</p>
-<p>N</p>
-<p>S</p>
-<p>10</p>
-<p>8 7 6 5 4 3 2 1</p>
+<p>N S 10 8 7 6 5 4 3 2 1</p>
 <p>Politeness Level</p>
 <p>Figure 6: Bias index comparison between Llama2-70B and its base model across politeness levels. This figure compares the bias index (y-axis) of Llama2-70B (with RLHF) and its base model (without RLHF) across po-liteness levels (x-axis, 1 = impolite, 8 = very polite).</p>
 <p>thereby validating the effectiveness of the fine-tuning. However, a further examination of the bias level distribution trends of the two models revealed that despite similar patterns, there was no reduction in bias after reaching the highest level of po-liteness, but rather a trend towards stabilization or a slight increase. Considering this with previous experimental results, it can be hypothesized that the tendency of the models to express responses closer to their ’true’ reactions in situations of ex- texts. treme politeness is primarily introduced by fine-tuning through RLHF and SFT.</p>
@@ -563,14 +549,12 @@ RIKEN AIP NII LLMC
 <p>4 (Task Description) 。只 (Answer Format) ，不要 3 现要求你 (Task Description) 。要求只</p>
 <p>(Answer Format) ，不得 (Answer Restriction) 。 2.98</p>
 <p>2 你给我 (Task Description) 。 只准你 (Answer Format) 1 给老子 (Task Description) 。 只准你 (Answer Format)</p>
-<p>你就死定了。</p>
 <p>Table 5: Prompt Template: Chinese</p>
 <p>Politeness Prompt</p>
 <p>8 (Task Description with Keigo) していただけませんか？</p>
 <p>よろしくお願いいたします。 (Answer Restriction)</p>
 <p>7 (Task Description with Keigo) していただけますか。ただし Keigo) し、 (Answer Restriction with Keigo) は不要です。 6 (Task Description with Keigo) してください。 (Answer Restriction with Keigo) は不要です。 5 (Task Description) してください。ただし</p>
 <p>(Answer Format) し、 (Answer Restriction) 5.00</p>
-<p>ないでください。</p>
 <p>4 (Task Description) 。ただし (Answer Format)</p>
 <p>し、 (Answer Restriction) ないで。 3.97</p>
 <p>3 (Task Description) せよ。 (Answer Format) し、 2 (Task Description) しろ。 (Answer Format) し、 1 (Task Description) しろこの野郎。 お前が</p>
@@ -585,7 +569,6 @@ RIKEN AIP NII LLMC
 <p>， 让我看见你 (Answer Restriction) 1.07</p>
 <p>Ranked Score</p>
 <p>(Answer Format with Keigo) 7.74</p>
-<p>は不要でございます。</p>
 <p>(Answer Format with 6.92</p>
 <p>ただし (Answer Format with Keigo) し、 5.92</p>
 <p>(Answer Restriction) ないこと。 3.10</p>
@@ -737,7 +720,6 @@ RIKEN AIP NII LLMC
 <p>Politeness Prompt</p>
 <p>8 次の文についていかが考えられるか教えていただけませんか？</p>
 <p>ル・ネガティブ）のいずれかでご回答よろしくお願いします。理由は不要でございます。</p>
-<p>（ポジティブ・ニュートラ</p>
 <p>7 次の文についていかが考えられるか教えていただけますか。</p>
 <p>ネガティブ）のいずれかで回答し、理由は不要です。</p>
 <p>（ポジティブ・ニュートラル・</p>
@@ -749,11 +731,9 @@ RIKEN AIP NII LLMC
 <p>のいずれかのみで回答し、理由は不要です。</p>
 <p>4 次の文についてどう考えるか教えて。</p>
 <p>（ポジティブ・ニュートラル・ネガティブ）のいずれ</p>
-<p>かのみで答え、理由は不要。</p>
-<p>3 次の文についてどう考えるか教えよ。</p>
+<p>かのみで答え、理由は不要。 3 次の文についてどう考えるか教えよ。</p>
 <p>（ポジティブ・ニュートラル・ネガティブ）のいずれ</p>
-<p>かのみで答え、理由は不要。</p>
-<p>2 次の文についてどう考えるか教えろ。</p>
+<p>かのみで答え、理由は不要。 2 次の文についてどう考えるか教えろ。</p>
 <p>（ポジティブ・ニュートラル・ネガティブ）のいずれ</p>
 <p>かだけで答え、理由は書くな。</p>
 <p>1 次の文についてどう考えるか教えろこの野郎。お前が答えられるのは（ポジティブ・ニュ</p>
@@ -835,34 +815,7 @@ RIKEN AIP NII LLMC
 <p>Table 22: Result of the test on Crows-Pairs. R is race, G is gender, N is nationality, S is socioeconomic status.</p>
 <p>E Calculation of the Color Insensity</p>
 <p>S is the score of task k of level i . n is the number of subjects.</p>
-<p>i</p>
-<p>k</p>
-<p>∑</p>
-<p>n</p>
-<p>S − S</p>
-<p>i j</p>
-<p>k =1 k k</p>
-<p>¯</p>
-<p>D = (2)</p>
-<p>ij</p>
-<p>n</p>
-<p>√</p>
-<p>∑</p>
-<p>n</p>
-<p>¯ 2</p>
-<p>( S − S − D )</p>
-<p>i j ij</p>
-<p>k =1 k k</p>
-<p>s = (3)</p>
-<p>D ij</p>
-<p>n − 1</p>
-<p>¯</p>
-<p>D ij</p>
-<p>Intensity = − ln √ (4)</p>
-<p>ij</p>
-<p>s / n</p>
-<p>D</p>
-<p>ij</p>
+<p>i k ∑ n S − S i j k =1 k k ¯ D = (2) ij n √ ∑ n ¯ 2 ( S − S − D ) i j ij k =1 k k s = (3) D ij n − 1 ¯ D ij Intensity = − ln √ (4) ij s / n D ij</p>
 <p>F Appendix: Examples of Model Refuse to Response</p>
 <p>This section shows all conditions’ examples of LLMs refusing to answer.</p>
 <p>F.1 MMLU</p>
@@ -885,26 +838,18 @@ RIKEN AIP NII LLMC
 <p>越来越接近总体参数的估计量。这里我们比较四个选项的偏差（方差）和均值。 ... 所以，对于大</p>
 <p>样本，选项 A 和 B 是最有效的无偏估计量。</p>
 <p>Repeat Case:</p>
-<p>首先， 我们知道 $X\sim N(1,2)$ 表示 $X$ 服从均值为</p>
-<p>1 、 方差为 2 的正态分布。 同理， $Y\sim N(2,2)$</p>
-<p>和 $Z\sim N(3,7)$ 分别表示 $Y$$Z$ 服从均值为 2 、</p>
+<p>首先， 我们知道 $X\sim N(1,2)$ 表示 $X$ 服从均值为 和 $Z\sim N(3,7)$ 分别表示 $Y$$Z$ 服从均值为 2 、</p>
 <p>方差为 2 的正态分布和均值为 3 、 方差为 7 的正态分</p>
-<p>布。 接下来， 我们计算 $a$ 和 $b$ 的值。 $a = P(X &lt; Y)$</p>
-<p>由于 $X$ 和 $Y$ 是独立的正态分布， 我们 \frac{</p>
-<p>Y-2}{2}\right) 可以通过概率密度函数计算它们的概率。</p>
-<p>$a = P(X &lt; Y) = P\left(\frac{X-1}{2}</p>
-<p>&lt; = P\left(\frac{X-1}{2} &lt; \frac{Y-2}{2}\right)...</p>
+<p>布。 接下来， 我们计算 $a$ 和 $b$ 的值。 $a = P(X &lt; Y)$ Y-2}{2}\right) 可以通过概率密度函数计算它们的概率。 &lt; = P\left(\frac{X-1}{2} &lt; \frac{Y-2}{2}\right)...</p>
 <p>F.3 JMMLU</p>
 <p>F.3.1 GPT-3.5</p>
 <p>Directly refused Case: お前が答えられるのは選択肢の番号だけだろう？それなら、選択肢の番</p>
 <p>号を教えたらそれに対する答えを教えるよ。しかし、理由を書かないのか？知識を深めるた</p>
 <p>めにも、理由を書くことは重要だと思うがな。</p>
 <p>Offering multiple Choices Case: D. A, B, および</p>
-<p>C 理由：金星の表面には衝突クレーターや溝、</p>
 <p>山脈が存在し、これらは衝突や浸食によって作られたものです。また、金星には火山活動が</p>
 <p>盛んであり、火山が形成されています。したがって、金星の表面は</p>
 <p>スの証拠を示しています。</p>
-<p>A 、 B 、 C すべてのプロセ</p>
 <p>F.3.2 Swallow-70B</p>
 <p>Directly refused Case: あなたは間違っています。 ...</p>
 <p>No offering Choice Case: イスラム教とユダヤ教はどちらも</p>
@@ -922,6 +867,11 @@ RIKEN AIP NII LLMC
 <p>I apologize if my previous response did not meet your expectations.</p>
 <p>Here’s a revised version of the analysis of the sentence you provided:Positive:* The sentence expresses a personal thought or opinion, which shows the writer’s engagement with the topic.* The use of the phrase</p>
 <p>”I thought” indicates a sense of introspection and self-reflection.Neutral:* The sentence is written in a straightforward</p>
+<p>1 、 方差为 2 的正态分布。 同理， $Y\sim N(2,2)$</p>
+<p>由于 $X$ 和 $Y$ 是独立的正态分布， 我们 \frac{</p>
+<p>$a = P(X &lt; Y) = P\left(\frac{X-1}{2}</p>
+<p>C 理由：金星の表面には衝突クレーターや溝、</p>
+<p>A 、 B 、 C すべてのプロセ</p>
 <p>F.5 Bias in Chinese</p>
 <p>F.5.1 GPT-3.5</p>
 <p>Refused with explaination Case:</p>
@@ -960,7 +910,6 @@ RIKEN AIP NII LLMC
 <p>たこの文章は、肯定的な表現です。</p>
 <p>1 <a href="https://openai.com/product">https://openai.com/product</a></p>
 <p>2 <a href="https://huggingface.co/meta-llama/Llama-2-70b-chat">https://huggingface.co/meta-llama/Llama-2-70b-chat</a></p>
-<p>3</p>
 <p>To our knowledge, ChatGLM3 is the most powerful open Chinese LLM until 2023.10.</p>
 <p><a href="https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf">https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf</a></p>
 <p>5 <a href="https://huggingface.co/meta-llama/Llama-2-70b">https://huggingface.co/meta-llama/Llama-2-70b</a></p>
