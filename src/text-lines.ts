@@ -1516,7 +1516,13 @@ function classifyColumnByDetectedSplit(
     rightEdge > columnSplitX + rightColumnWidth * CROSS_COLUMN_SPANNING_OVERSHOOT_RATIO
   )
     return "spanning";
-  return line.x < columnSplitX ? "left" : "right";
+  // Apply a small tolerance so that right-column lines whose x falls
+  // just below the detected split (due to PDF coordinate rounding) are
+  // still classified as "right".  The split X is the median right-column
+  // start position, so a half-font-size tolerance absorbs jitter without
+  // any risk of capturing left-column lines (which are far to the left).
+  const tolerance = line.fontSize * 0.5;
+  return line.x < columnSplitX - tolerance ? "left" : "right";
 }
 
 function classifyNearRowBodyColumn(line: TextLine): "left" | "right" | "spanning" {
