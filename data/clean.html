@@ -63,31 +63,17 @@ squeeze ()
 <p>we have 142 standardization functions in</p>
 <p>value of a more declarative approach, illustrating that building</p>
 <p>In this section, we first describe the common steps of data stan-dardization. Then, we introduce the type-specific API design of Dataprep.Clean .</p>
-<p>Common Steps of Data Standardization.</p>
-<p>Inspired by the steps of</p>
-<p>how human users standardize data cells, we identify three common steps of data standardization. We take the</p>
-<p>datetime column type</p>
-<p>as an example to illustrate these steps.</p>
-<p>Assume a data scientist is dealing with an</p>
-<p>datetime column</p>
+<p>Common Steps of Data Standardization. Inspired by the steps of how human users standardize data cells, we identify three common steps of data standardization. We take the datetime column type as an example to illustrate these steps.</p>
+<p>Assume a data scientist is dealing with an datetime column</p>
 <p>including two records "Thu Sep 25 10:36:28 2003" and "1996.07.10 AD at 15:08:56" . The data scientist wants to unify the messy column into a target format "YYYY-MM-DD hh:mm:ss" .</p>
 <p>(1) Split. In the beginning, the data scientist needs to split the datetime string into several single parts, which include one kind of specific information. In our example, the data scientist can get sev-eral tokens {’Thu’,’Sep’,’25’,’10’,’36’,’28’,’2003’} from the first record by using space and colon as separators. Each differ-ent type has its splitting strategy, which may not always be splitting the string into tokens. For example, the data scientist will split the email string into the username part and the domain part.</p>
-<p>(2) Validate. Standardization can only be performed on valid inputs. Thus, the second step should be validation. For example, if the string “little cat” is an instance of the</p>
-<p>datetime column, this</p>
-<p>string is invalid, and the data scientist will transform it to a default</p>
+<p>(2) Validate. Standardization can only be performed on valid inputs. Thus, the second step should be validation. For example, if the string “little cat” is an instance of the datetime column, this string is invalid, and the data scientist will transform it to a default</p>
 <p>of this string after splitting is valid. Usually, the data scientist will recognize and validate each part by their domain knowledge, some corpus or some rules. If every split part is valid, the string is also</p>
 <p>representation of a month, and ’2003’ can be recognized as a valid year.</p>
-<p>(3) Transform. The last step of standardization is to transform each split part and combine them into the target format. In our example, because the target format is</p>
-<p>"YYYY-MM-DD hh:mm:ss" ,</p>
-<p>the month Sep is transformed into number 09 and recombined with other parts to the target "2003-09-25 10:36:28" .</p>
-<p>enable data scientists to complete all the common steps of stan-dardizing one column with a single function call. Simplicity and consistency are considered the principles of API design. The ob-servation of the common steps of data standardization brings the type-specific API design idea. More specifically, we design the API to be in the following form: clean_ type (df, column_name, target_format) where clean_type is the function name, type represents the type of the current column. The first argument df represents the input DataFrame, the second argument</p>
-<p>column_name is the column</p>
-<p>being standardized, and the third argument</p>
-<p>target_format is the</p>
-<p>target standardization format users specified. Our API design is flexible and extensible, which makes it convenient for users to add their standardization functions for new data types. Currently, Dataprep.Clean , each handles one data type. These functions serve to demonstrate the</p>
+<p>(3) Transform. The last step of standardization is to transform each split part and combine them into the target format. In our example, because the target format is "YYYY-MM-DD hh:mm:ss" , the month Sep is transformed into number 09 and recombined with other parts to the target "2003-09-25 10:36:28" .</p>
+<p>enable data scientists to complete all the common steps of stan-dardizing one column with a single function call. Simplicity and consistency are considered the principles of API design. The ob-servation of the common steps of data standardization brings the type-specific API design idea. More specifically, we design the API to be in the following form: clean_ type (df, column_name, target_format) where clean_type is the function name, type represents the type of the current column. The first argument df represents the input DataFrame, the second argument column_name is the column being standardized, and the third argument target_format is the target standardization format users specified. Our API design is flexible and extensible, which makes it convenient for users to add their standardization functions for new data types. Currently, Dataprep.Clean , each handles one data type. These functions serve to demonstrate the</p>
 <p>Table 𝑻 Standardized</p>
-<p>cannot figure out the specific type of one column, the</p>
-<p>Column-</p>
+<p>cannot figure out the specific type of one column, the Column-</p>
 <p>+ User’s Requirements Table 𝑻</p>
 <p>CleanAgent</p>
 <p>1 Historical 5 Historical Message Chat Message</p>
@@ -117,8 +103,7 @@ squeeze ()
 <p>type Annotator outputs “I do not know”. The annotation result is returned to the Chat Manager and stored in the Chat Manager ’s</p>
 <p>Thirdly, the Python Programmer receives historical messages</p>
 <p>sults ( ③ in Figure 2), picks up the corresponding clean functions,</p>
-<p>generated Python code is also returned to the</p>
-<p>Chat Manager and</p>
+<p>generated Python code is also returned to the Chat Manager and</p>
 <p>Code Executor receives historical messages from the Chat Manager including the column-type annotation results and the generated Python code ( ⑤ in Figure 2), then executes the generated Python code. If the generated code executes without errors, the standard-</p>
 <p>Figure 2: The Workflow of CleanAgent.</p>
 <p>declarative data standardization tools for LLMs is not only feasible but essential, motivating the community to develop even more advanced tools.</p>
@@ -140,10 +125,7 @@ squeeze ()
 <p>ized table 𝑇 is returned; otherwise, the error message is returned to the Chat Manager and stored in its memory ( ⑥ in Figure 2). Then, CleanAgent will retry the whole workflow until it can complete the data standardization process successfully.</p>
 <h2>4 EXPERIMENTS</h2>
 <p>we focus on evaluating Cocoon’s ability for data standardization.</p>
-<p>Dataset. In our experiment, we employ the Flights dataset from [ 4 ], as it contains highly irregular datetime formats across four at-tributes: scheduled_dept, actual_dept, scheduled_arrival, and actual_arrival . The datetime values in these columns ex-hibit a wide variety of inconsistent formats, such as</p>
-<p>"2011-12-08</p>
-<p>3:50:00 PM", "2:30pDec 27", "06:45 AM Sun 25-Dec-2011" ,</p>
-<p>etc. This makes the dataset particularly suitable for evaluating the standardization capabilities of different systems.</p>
+<p>Dataset. In our experiment, we employ the Flights dataset from [ 4 ], as it contains highly irregular datetime formats across four at-tributes: scheduled_dept, actual_dept, scheduled_arrival, and actual_arrival . The datetime values in these columns ex-hibit a wide variety of inconsistent formats, such as "2011-12-08 3:50:00 PM", "2:30pDec 27", "06:45 AM Sun 25-Dec-2011" , etc. This makes the dataset particularly suitable for evaluating the standardization capabilities of different systems.</p>
 <p>Baselines. We compare CleanAgent with the following two base-lines: (1) GPT-4o + Prompting. Data standardization code can be di-rectly generated by prompting powerful chat models such as GPT-</p>
 <p>decomposes complex cleaning tasks into manageable components</p>
 <p>leveraging large language models. It supports a variety of data cleaning tasks, including missing value imputation, outlier detection, and functional dependency violation. In this paper, however,</p>
@@ -185,13 +167,7 @@ squeeze ()
 <p>Figure 3 shows the user interface of CleanAgent . As area ① shows, users must first upload a CSV file that needs to be cleaned.</p>
 <p>blob/main/demo/Cocoon_Stage_Demo.ipynb</p>
 <p>file (number of rows and number of columns). If the users can click the “Start Standardization” button to start the data standardization process by want CleanAgent .</p>
-<p>After clicking the “Start Standardization” button, as area ② shows, the User_Proxy generates three detailed steps to complete Column-type Annotator receives messages from the Chat Manager , annotates and out-puts the type of each column, as area ③ shows. Then, the Python Programmer picks up standardization functions from Dataprep.Clean based on the type of each column, and write proper Python code using the standardization functions, as area ④ shows. Thirdly, the Code Executor executes the Python code by the Python Programmer and collects the execution messages, as area ⑤ shows. If the Code Executor gets an error message when executing generated Python code, the error message is sent to the</p>
-<p>Chat Manager and becomes</p>
-<p>part of the prompt of the next try. If the</p>
-<p>Code Executor gets the</p>
-<p>message of successful execution,</p>
-<p>CleanAgent will report that</p>
-<p>the data standardization is completed, as area ⑥ shows. Moreover,</p>
+<p>After clicking the “Start Standardization” button, as area ② shows, the User_Proxy generates three detailed steps to complete Column-type Annotator receives messages from the Chat Manager , annotates and out-puts the type of each column, as area ③ shows. Then, the Python Programmer picks up standardization functions from Dataprep.Clean based on the type of each column, and write proper Python code using the standardization functions, as area ④ shows. Thirdly, the Code Executor executes the Python code by the Python Programmer and collects the execution messages, as area ⑤ shows. If the Code Executor gets an error message when executing generated Python code, the error message is sent to the Chat Manager and becomes part of the prompt of the next try. If the Code Executor gets the message of successful execution, CleanAgent will report that the data standardization is completed, as area ⑥ shows. Moreover,</p>
 <p>Cell-Level</p>
 <p>users can click the “Show Cleaned Table” button to check whether</p>
 <p>System</p>

@@ -23,6 +23,8 @@ export interface ExtractedFragment {
   x: number;
   y: number;
   fontSize: number;
+  /** Actual rendered width from the PDF engine (when available). */
+  width?: number;
 }
 
 export interface TextLine {

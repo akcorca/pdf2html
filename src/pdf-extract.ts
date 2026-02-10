@@ -31,7 +31,7 @@ export async function extractDocument(inputPdfPath: string): Promise<ExtractedDo
       const fontSize = Math.sqrt(
         item.transform[2] * item.transform[2] + item.transform[3] * item.transform[3],
       );
-      fragments.push({ text: normalized, x: tx, y: ty, fontSize });
+      fragments.push({ text: normalized, x: tx, y: ty, fontSize, width: item.width });
     }
 
     pages.push({

@@ -128,7 +128,63 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
       pageColumnSplitXs,
     ),
   );
-  return applyReadingOrderReorders(sorted, multiColumnPageIndexes, columnMajorPageIndexes, pageColumnSplitXs);
+  const reordered = applyReadingOrderReorders(sorted, multiColumnPageIndexes, columnMajorPageIndexes, pageColumnSplitXs);
+  return mergeInlineFormattingSplits(reordered, document);
+}
+
+function mergeInlineFormattingSplits(orderedLines: TextLine[], doc: ExtractedDocument): TextLine[] {
+  const rowsWithInlineGaps = findRowsWithInlineFormattingGaps(doc);
+  if (rowsWithInlineGaps.size === 0) return orderedLines;
+  const result: TextLine[] = [];
+  let i = 0;
+  while (i < orderedLines.length) {
+    const current = orderedLines[i];
+    const key = `${current.pageIndex}:${current.y}`;
+    if (rowsWithInlineGaps.has(key) && current.column === "right" && i + 1 < orderedLines.length) {
+      const next = orderedLines[i + 1];
+      if (next.pageIndex === current.pageIndex && next.y === current.y && next.column === "right" && next.x > current.x) {
+        result.push({
+          ...current,
+          text: `${current.text} ${next.text}`,
+          estimatedWidth: Math.max(current.estimatedWidth, next.x + next.estimatedWidth - current.x),
+        });
+        i += 2;
+        continue;
+      }
+    }
+    result.push(current);
+    i += 1;
+  }
+  return result;
+}
+
+function findRowsWithInlineFormattingGaps(doc: ExtractedDocument): Set<string> {
+  const gaps = new Set<string>();
+  for (const page of doc.pages) {
+    const buckets = bucketFragments(page);
+    for (const [yBucket, fragments] of buckets) {
+      if (hasInlineFormattingGapInRow(fragments, page.width)) {
+        gaps.add(`${page.pageIndex}:${yBucket}`);
+      }
+    }
+  }
+  return gaps;
+}
+
+function hasInlineFormattingGapInRow(fragments: ExtractedFragment[], pageWidth: number): boolean {
+  const sorted = [...fragments].sort((a, b) => a.x - b.x);
+  const breakIndexes = findColumnBreakIndexes(sorted, pageWidth);
+  for (const idx of breakIndexes) {
+    const left = sorted[idx];
+    const right = sorted[idx + 1];
+    if (left.width == null) continue;
+    const visualGap = right.x - (left.x + left.width);
+    const fontSize = Math.max(left.fontSize, right.fontSize);
+    if (visualGap >= fontSize * 0.5) continue;
+    if (left.x <= pageWidth * COLUMN_BREAK_RIGHT_MIN_RATIO) continue;
+    return true;
+  }
+  return false;
 }
 
 function computeDocumentColumnSplitX(

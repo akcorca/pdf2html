@@ -204,6 +204,27 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).toContain("<p>Implementation. CleanAgent is implemented</p>");
   });
 
+  it("does not split inline-formatted text within the same column into separate paragraphs in clean.pdf", () => {
+    // "Common Steps of Data Standardization." (bold heading) followed by "Inspired by the steps of"
+    // on the same line in the right column should not be split into separate paragraphs.
+    expect(cleanHtml).toContain(
+      "Common Steps of Data Standardization. Inspired by the steps of",
+    );
+    expect(cleanHtml).not.toContain("<p>Inspired by the steps of</p>");
+
+    // "datetime column type" (italic) following "We take the" on the same line in the right column
+    expect(cleanHtml).toContain(
+      "We take the datetime column type",
+    );
+    expect(cleanHtml).not.toContain("<p>datetime column type</p>");
+
+    // "datetime column" (italic) following "instance of the" should stay merged
+    expect(cleanHtml).toContain(
+      "instance of the datetime column, this",
+    );
+    expect(cleanHtml).not.toContain("<p>datetime column, this</p>");
+  });
+
   it("removes repeated running headers and standalone page number lines", () => {
     expect(covidHtml).not.toContain("<p>Thrombosis Research 202 (2021) 17–23</p>");
     expect(covidHtml).not.toMatch(/<p>\d{1,3}<\/p>/);

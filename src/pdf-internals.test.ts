@@ -55,7 +55,7 @@ describe("pdfToHtmlInternals", () => {
   });
 
   it("estimates line width from position span and text width", () => {
-    const frag = (text: string, x: number): ExtractedFragment => ({ text, x, y: 10, fontSize: 10 });
+    const frag = (text: string, x: number): ExtractedFragment => ({ text, x, y: 10, fontSize: 10, width: text.length * 10 * 0.52 });
     expect(pdfToHtmlInternals.estimateLineWidth([frag("a", 0), frag("b", 100)])).toBe(100);
     expect(pdfToHtmlInternals.estimateLineWidth([frag("very-long-fragment", 0)])).toBeGreaterThan(80);
   });
@@ -199,6 +199,7 @@ function frag(overrides: Partial<ExtractedFragment>): ExtractedFragment {
     x: 0,
     y: 0,
     fontSize: 10,
+    width: (overrides.text ?? "fragment").length * (overrides.fontSize ?? 10) * 0.52,
     ...overrides,
   };
 }
