@@ -386,7 +386,7 @@ describe("convertPdfToHtml", () => {
   });
 
   it("keeps numbered subsection headings in logical order for respect.pdf", () => {
-    const section41 = "<h3>4.1 Languages, LLMs, and Prompt</h3>";
+    const section41 = "<h3>4.1 Languages, LLMs, and Prompt Politeness</h3>";
     const section42 = "<h3>4.2 Tasks</h3>";
     const section511 = "<h4>5.1.1 English</h4>";
     const section53 = "<h3>5.3 Stereotypical Bias Detection</h3>";
@@ -501,8 +501,9 @@ describe("convertPdfToHtml", () => {
   });
 
   it("renders comma-containing numbered headings as semantic headings in respect.pdf", () => {
-    expect(respectHtml).toContain("<h3>4.1 Languages, LLMs, and Prompt</h3>");
+    expect(respectHtml).toContain("<h3>4.1 Languages, LLMs, and Prompt Politeness</h3>");
     expect(respectHtml).not.toContain("<p>4.1 Languages, LLMs, and Prompt</p>");
+    expect(respectHtml).not.toContain("<p>Politeness</p>");
   });
 
   it("merges wrapped tft paper title lines into a single h1 heading", () => {

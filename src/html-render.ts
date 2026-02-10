@@ -27,7 +27,6 @@ const TITLE_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.03;
 const TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.2;
 const TITLE_CONTINUATION_MIN_WORD_COUNT = 3;
 const MIN_NUMBERED_HEADING_FONT_RATIO = 0.85;
-const MIN_NUMBERED_HEADING_CONTINUATION_FONT_RATIO = 1.05;
 const MAX_NUMBERED_HEADING_CONTINUATION_WORDS = 8;
 const NUMBERED_HEADING_CONTINUATION_MAX_LOOKAHEAD = 16;
 const NUMBERED_HEADING_CONTINUATION_MAX_FONT_DELTA = 0.7;
@@ -307,7 +306,6 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
           lines,
           index,
           currentLine,
-          bodyFontSize,
         );
         addConsumedIndexes(consumedBodyLineIndexes, wrapped.continuationIndexes, index);
         if (wrapped.continuationIndexes.length > 0) {
@@ -1046,7 +1044,6 @@ function consumeWrappedNumberedHeadingContinuation(
   lines: TextLine[],
   headingStartIndex: number,
   headingLine: TextLine,
-  bodyFontSize: number,
 ): { text: string; continuationIndexes: number[] } {
   const parts = [headingLine.text];
   const continuationIndexes: number[] = [];
@@ -1066,7 +1063,7 @@ function consumeWrappedNumberedHeadingContinuation(
       scanIndex += 1;
       continue;
     }
-    if (isNumberedHeadingContinuationLine(candidate, previousPartLine, headingLine, bodyFontSize)) {
+    if (isNumberedHeadingContinuationLine(candidate, previousPartLine, headingLine)) {
       continuationIndexes.push(scanIndex);
       parts.push(candidate.text);
       previousPartLine = candidate;
@@ -1082,7 +1079,6 @@ function isNumberedHeadingContinuationLine(
   line: TextLine,
   previousPartLine: TextLine,
   headingLine: TextLine,
-  bodyFontSize: number,
 ): boolean {
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return false;
@@ -1090,7 +1086,7 @@ function isNumberedHeadingContinuationLine(
   if (!/[A-Za-z]/.test(normalized)) return false;
   if (/[.!?]$/.test(normalized)) return false;
   if (normalized.split(/\s+/).length > MAX_NUMBERED_HEADING_CONTINUATION_WORDS) return false;
-  if (line.fontSize < bodyFontSize * MIN_NUMBERED_HEADING_CONTINUATION_FONT_RATIO) return false;
+  if (line.estimatedWidth > headingLine.estimatedWidth) return false;
   if (Math.abs(line.fontSize - headingLine.fontSize) > NUMBERED_HEADING_CONTINUATION_MAX_FONT_DELTA) {
     return false;
   }
