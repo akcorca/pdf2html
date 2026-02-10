@@ -77,6 +77,7 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
     lines: TextLine[];
     columnSplitX: number | undefined;
     hasRowBasedSplitX: boolean;
+    columnGapMidpoints: number[];
   }> = [];
   for (const page of document.pages) {
     const collectedPage = collectPageLines(page);
@@ -88,6 +89,7 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
         lines: collectedPage.lines,
         columnSplitX: collectedPage.columnSplitX,
         hasRowBasedSplitX: collectedPage.hasRowBasedSplitX,
+        columnGapMidpoints: collectedPage.columnGapMidpoints,
       });
     }
   }
@@ -107,6 +109,16 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
     if (shouldPreferColumnMajorOrdering(cp.lines, effectiveSplitX)) {
       columnMajorPageIndexes.add(cp.pageIndex);
     }
+  }
+
+  // Lower the effective split X for pages where column breaks detected
+  // right-column fragments just below the document-level boundary.
+  for (const cp of collectedPages) {
+    const splitX = pageColumnSplitXs.get(cp.pageIndex);
+    if (splitX === undefined || cp.columnGapMidpoints.length === 0) continue;
+    const nearBoundary = cp.columnGapMidpoints.filter((x) => x < splitX && splitX - x <= 0.3);
+    if (nearBoundary.length === 0) continue;
+    pageColumnSplitXs.set(cp.pageIndex, Math.min(...nearBoundary));
   }
 
   // Assign column classification to each line on multi-column pages
@@ -235,7 +247,7 @@ function applyReadingOrderReorders(
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-column detection + fragment grouping in one pass.
 function collectPageLines(
   page: ExtractedPage,
-): { lines: TextLine[]; isMultiColumn: boolean; columnSplitX: number | undefined; hasRowBasedSplitX: boolean } {
+): { lines: TextLine[]; isMultiColumn: boolean; columnSplitX: number | undefined; hasRowBasedSplitX: boolean; columnGapMidpoints: number[] } {
   const buckets = bucketFragments(page);
   const rowBasedMultiColumn = hasRowBasedMultiColumnEvidence(buckets, page.width);
   const spatialMultiColumn = !rowBasedMultiColumn && hasColumnGapFromSpatialDistribution(buckets, page.width);
@@ -283,7 +295,7 @@ function collectPageLines(
     columnSplitX = estimateColumnSplitXFromLines(lines, page.width);
   }
 
-  return { lines, isMultiColumn, columnSplitX, hasRowBasedSplitX: rowBasedSplitX !== undefined };
+  return { lines, isMultiColumn, columnSplitX, hasRowBasedSplitX: rowBasedSplitX !== undefined, columnGapMidpoints };
 }
 
 /**

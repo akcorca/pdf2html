@@ -207,6 +207,18 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("merges right-column body continuation near columnSplitX boundary in clean.pdf", () => {
+    // The line "volves multi-turn dialogues" at x=317.731 is right-column text
+    // that must not be misclassified as left-column (document splitX = 317.955).
+    expect(cleanHtml).toContain(
+      "method still necessitates detailed prompt crafting and often in-volves multi-turn dialogues",
+    );
+    // It must NOT merge with left-column text across the column boundary.
+    expect(cleanHtml).not.toMatch(
+      /in the cells of the .Admission Date.[^<]*volves multi-turn dialogues/,
+    );
+  });
+
   it("collapses duplicate sentence-prefix artifacts in clean.pdf lines", () => {
     expect(cleanHtml).not.toContain("<p>Implementation. Implementation. CleanAgent is implemented</p>");
     expect(cleanHtml).toContain("<p>Implementation. CleanAgent is implemented</p>");

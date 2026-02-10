@@ -39,9 +39,7 @@ squeeze ()
 <p>If the input table 𝑇 has other column types such as email and IP addresses, data scientists also need to write standardization code tailored for the new types, which is time-consuming.</p>
 <p>Recently, the emerging LLMs have shown the potential to rev-</p>
 <p>in the cells of the “Admission Date” column follows only one date</p>
-<p>volves multi-turn dialogues [ 1 ] for different column types in the</p>
-<p>olutionize this process. By leveraging their natural language un-derstanding and code generation ability, these models could signif-icantly aid data scientists by autonomously generating standard-ization code in response to conversational prompts. However, this method still necessitates detailed prompt crafting and often in-</p>
-<p>table one by one, which limits the efficiency and practicality of adopting LLMs in the standardization process.</p>
+<p>olutionize this process. By leveraging their natural language un-derstanding and code generation ability, these models could signif-icantly aid data scientists by autonomously generating standard-ization code in response to conversational prompts. However, this method still necessitates detailed prompt crafting and often in-volves multi-turn dialogues [ 1 ] for different column types in the table one by one, which limits the efficiency and practicality of adopting LLMs in the standardization process.</p>
 <p>To overcome these limitations, our key idea is to introduce a Python library involving declarative and unified APIs specifically designed for standardizing different column types. This idea lowers the burden of the LLM, as it now only needs to convert natural lan-guage (NL) instructions into succinct, declarative API calls instead of lengthy, procedural code. Such an approach simplifies the LLM’s</p>
 <p>code generation process for data standardization, requiring just a few lines of code.</p>
 <h2>2 TYPE-SPECIFIC STANDARDIZATION API DESIGN</h2>
