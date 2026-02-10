@@ -9,6 +9,9 @@ const INLINE_ACKNOWLEDGEMENTS_HEADING_PATTERN =
 const INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH = 8;
 const INLINE_NAMED_SECTION_HEADING_PATTERN = /^(.+?)(?:\s*[:\-–]\s*)(.+)$/u;
 const INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH = 8;
+const AUTHOR_BLOCK_END_PATTERN = /^(abstract|introduction)/iu;
+const AUTHOR_BLOCK_MAX_LINES = 20;
+const AUTHOR_BLOCK_MAX_FONT_DELTA = 1.0;
 const BULLET_LIST_ITEM_PATTERN = /^([•◦▪●○■□◆◇‣⁃∙·])\s+(.+)$/u;
 const MIN_LIST_CONTINUATION_INDENT = 6;
 const TITLE_CONTINUATION_MAX_FONT_DELTA = 0.6;
@@ -87,6 +90,10 @@ const INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO = 0.55;
 const INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO = 0.55;
 const INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}\[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN = /^[A-Za-z]$/;
+const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_PATTERN = /^[A-Za-z0-9]$/u;
+const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_FONT_RATIO = 0.82;
+const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_WIDTH_RATIO = 0.08;
+const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_VERTICAL_GAP_RATIO = 0.9;
 const INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN = /^[a-z]{1,6}$/u;
 const INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN = /^\d{1,4}$/;
 const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}\[\],.;:√∞]+$/u;
@@ -185,7 +192,13 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   while (index < lines.length) {
     if (consumedTitle && index === consumedTitle.startIndex) {
       bodyLines.push(`<h1>${escapeHtml(consumedTitle.text)}</h1>`);
-      index = consumedTitle.nextIndex;
+      const authorBlock = titleLine ? consumeAuthorBlock(lines, consumedTitle.nextIndex, titleLine, pageTypicalWidths, bodyFontSize) : undefined;
+      if (authorBlock) {
+        bodyLines.push(authorBlock.html);
+        index = authorBlock.nextIndex;
+      } else {
+        index = consumedTitle.nextIndex;
+      }
       continue;
     }
     if (shouldSkipConsumedBodyLineIndex(index, consumedTitle, consumedBodyLineIndexes)) {
@@ -308,6 +321,60 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined): st
   return bodyLines;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: author block boundary detection requires multiple sequential guards.
+function consumeAuthorBlock(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine,
+  pageTypicalWidths: Map<number, number>,
+  bodyFontSize: number,
+): { html: string; nextIndex: number } | undefined {
+  const authorLines: string[] = [];
+  let nextIndex = startIndex;
+  let firstAuthorLine: TextLine | undefined;
+
+  while (nextIndex < lines.length && authorLines.length < AUTHOR_BLOCK_MAX_LINES) {
+    const line = lines[nextIndex];
+    if (line.pageIndex !== titleLine.pageIndex) break;
+
+    if (firstAuthorLine && Math.abs(line.fontSize - firstAuthorLine.fontSize) > AUTHOR_BLOCK_MAX_FONT_DELTA) {
+      break;
+    }
+
+    const normalized = normalizeSpacing(line.text);
+    if (normalized.length === 0) {
+      nextIndex++;
+      continue;
+    }
+
+    if (AUTHOR_BLOCK_END_PATTERN.test(normalized)) {
+      break;
+    }
+    if (detectNamedSectionHeadingLevel(normalized)) {
+      break;
+    }
+    const typicalWidth = pageTypicalWidths.get(line.pageIndex) ?? line.pageWidth;
+    if (
+      isBodyParagraphLead(lines, nextIndex, line, normalized, titleLine, bodyFontSize, false, typicalWidth)
+    ) {
+      break;
+    }
+
+    if (!firstAuthorLine) {
+      firstAuthorLine = line;
+    }
+    authorLines.push(escapeHtml(line.text));
+    nextIndex++;
+  }
+
+  if (authorLines.length === 0) return undefined;
+
+  const html = `<div class="authors">\n${authorLines.join("<br>\n")}\n</div>`;
+
+  return { html, nextIndex };
+}
+
+
 function shouldSkipConsumedBodyLineIndex(
   index: number,
   consumedTitle: Pick<ConsumedTitleLineBlock, "startIndex" | "nextIndex"> | undefined,
@@ -380,6 +447,7 @@ function isReferenceEntryContinuationLine(
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
   if (line.pageIndex !== previousLine.pageIndex) return false;
+  if (isCrossColumnPair(previousLine, line)) return false;
   if (line === titleLine) return false;
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return false;
@@ -711,6 +779,12 @@ function getLineCenter(line: TextLine): number {
   return line.x + line.estimatedWidth / 2;
 }
 
+/** Returns true when two lines belong to different columns on the same multi-column page. */
+function isCrossColumnPair(a: TextLine, b: TextLine): boolean {
+  if (a.column === undefined || b.column === undefined) return false;
+  return a.column !== b.column;
+}
+
 function renderBulletList(
   lines: TextLine[],
   startIndex: number,
@@ -904,6 +978,7 @@ function isHyphenWrapContinuationLine(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
+  if (isCrossColumnPair(previousLine, line)) return false;
   const normalized = parseParagraphMergeCandidateText(line, {
     samePageAs: previousLine,
     titleLine,
@@ -1128,6 +1203,7 @@ function isAcknowledgementsBodyContinuationLine(
   headingLine: TextLine,
 ): boolean {
   if (line.pageIndex !== previousLine.pageIndex) return false;
+  if (isCrossColumnPair(previousLine, line)) return false;
   if (/[.!?]$/.test(previousText)) return false;
   const normalized = parseAcknowledgementsBodyText(line, headingLine);
   if (normalized === undefined) return false;
@@ -1606,6 +1682,7 @@ function isBodyParagraphLead(
   );
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: paragraph continuation collects multiple merge types in one pass.
 function consumeBodyParagraphContinuationParts(
   lines: TextLine[],
   continuationStartIndex: number,
@@ -1647,6 +1724,13 @@ function consumeBodyParagraphContinuationParts(
       hasDottedSubsectionHeadings,
     );
     if (bridgedContinuationIndex !== undefined) {
+      const detachedSingleTokenArtifactText = getDetachedSingleTokenInlineMathArtifactText(
+        lines[nextIndex],
+        previousLine,
+      );
+      if (detachedSingleTokenArtifactText !== undefined) {
+        appendBodyParagraphPart(parts, detachedSingleTokenArtifactText);
+      }
       nextIndex = bridgedContinuationIndex;
       continue;
     }
@@ -1966,18 +2050,20 @@ function hasDetachedMathSubscriptContext(previousText: string, nextText: string)
   return DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN.test(nextText);
 }
 
+function getDetachedSingleTokenInlineMathArtifactText(
+  line: TextLine | undefined,
+  previousLine: TextLine,
+): string | undefined {
+  if (!line || line.pageIndex !== previousLine.pageIndex) return undefined;
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0 || normalized.length > INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH) return undefined;
+  const tokens = normalized.split(/\s+/).filter((token) => token.length > 0);
+  if (isDetachedSingleTokenInlineMathArtifact(tokens, line, previousLine)) return normalized;
+  return undefined;
+}
+
 function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine): boolean {
   if (line.pageIndex !== previousLine.pageIndex) return false;
-
-  const verticalGap = previousLine.y - line.y;
-  const maxVerticalGap = Math.max(
-    previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO,
-    3,
-  );
-  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
-  if (line.estimatedWidth > previousLine.estimatedWidth * INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO) {
-    return false;
-  }
 
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0 || normalized.length > INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH) return false;
@@ -1985,6 +2071,31 @@ function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine):
 
   const tokens = normalized.split(/\s+/).filter((token) => token.length > 0);
   if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT) return false;
+
+  const isDetachedSingleTokenArtifact = isDetachedSingleTokenInlineMathArtifact(
+    tokens,
+    line,
+    previousLine,
+  );
+  const verticalGap = previousLine.y - line.y;
+  const baseMaxVerticalGap = Math.max(
+    previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO,
+    3,
+  );
+  const maxVerticalGap = isDetachedSingleTokenArtifact
+    ? Math.max(
+        baseMaxVerticalGap,
+        previousLine.fontSize * INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_VERTICAL_GAP_RATIO,
+      )
+    : baseMaxVerticalGap;
+  if (verticalGap <= 0 || verticalGap > maxVerticalGap) return false;
+  if (
+    !isDetachedSingleTokenArtifact &&
+    line.estimatedWidth > previousLine.estimatedWidth * INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO
+  ) {
+    return false;
+  }
+  if (isDetachedSingleTokenArtifact) return true;
 
   const hasNumericOrSymbol = tokens.some(
     (token) =>
@@ -2000,6 +2111,22 @@ function isInlineMathArtifactBridgeLine(line: TextLine, previousLine: TextLine):
       INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
       INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token) ||
       INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN.test(token),
+  );
+}
+
+function isDetachedSingleTokenInlineMathArtifact(
+  tokens: string[],
+  line: TextLine,
+  previousLine: TextLine,
+): boolean {
+  if (tokens.length !== 1) return false;
+  const token = tokens[0];
+  if (!token || !INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_PATTERN.test(token)) return false;
+  if (line.fontSize > previousLine.fontSize * INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_FONT_RATIO) {
+    return false;
+  }
+  return (
+    line.estimatedWidth <= line.pageWidth * INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_WIDTH_RATIO
   );
 }
 
@@ -2028,6 +2155,9 @@ function isBodyParagraphContinuationLine(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
+  // Prevent merging lines from different columns on multi-column pages
+  if (isCrossColumnPair(previousLine, line)) return false;
+
   const normalized = parseParagraphMergeCandidateText(line, {
     samePageAs: previousLine,
     titleLine,

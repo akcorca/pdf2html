@@ -7,8 +7,10 @@
 </head>
 <body>
 <h1>CleanAgent: Automating Data Standardization with LLM-based Agents</h1>
-<p>Simon Fraser University</p>
-<p>{dqi, zhengjie, jnwang}@sfu.ca</p>
+<div class="authors">
+Simon Fraser University<br>
+{dqi, zhengjie, jnwang}@sfu.ca
+</div>
 <h2>ABSTRACT</h2>
 <p>Data standardization is a crucial part of the data science life cycle. While tools like Pandas offer robust functionalities, their complex-ity and the manual effort required for customizing code to diverse column types pose significant challenges. Although large language models (LLMs) like ChatGPT have shown promise in automating this process through natural language understanding and code gen-eration, it still demands expert-level programming knowledge and continuous interaction for prompt refinement. To solve these chal-lenges, our key idea is to propose a Python library with declarative, unified APIs for standardizing different column types, simplify-ing the LLM’s code generation with concise API calls. We first propose Dataprep.Clean , a component of the Dataprep Python Library, significantly reduces the coding complexity by enabling the standardization of specific column types with a single line of code. Then, we introduce the CleanAgent framework integrat-ing Dataprep.Clean and LLM-based agents to automate the data standardization process. With CleanAgent , data scientists only need to provide their requirements once, allowing for a hands-free</p>
 <p>aims to transform heterogeneous data formats within a single col-umn into a unified data format. This crucial data preprocessing step is essential for enabling effective data integration, data analysis, and decision-making.</p>
@@ -43,16 +45,7 @@ squeeze ()
 <p>To overcome these limitations, our key idea is to introduce a Python library involving declarative and unified APIs specifically designed for standardizing different column types. This idea lowers the burden of the LLM, as it now only needs to convert natural lan-guage (NL) instructions into succinct, declarative API calls instead of lengthy, procedural code. Such an approach simplifies the LLM’s</p>
 <p>code generation process for data standardization, requiring just a few lines of code.</p>
 <h2>2 TYPE-SPECIFIC STANDARDIZATION API DESIGN</h2>
-<p>The pursuit of simplicity, however, introduces two primary chal-</p>
-<p>In this section, we first describe the common steps of data stan-</p>
-<p>lenges. The first challenge ( C1 ) is the design of the declarative and</p>
-<p>dardization. Then, we introduce the type-specific API design of</p>
-<p>unified APIs for data standardization, ensuring it can effectively re-</p>
-<p>Dataprep.Clean .</p>
-<p>duce the intricacies involved in standardizing specific column types</p>
-<p>Common Steps of Data Standardization.</p>
-<p>Inspired by the steps of</p>
-<p>(ideally one line of code per column type). The second challenge ( C2 ) centers on optimizing the interaction between data scientists and LLMs. Our goal is to minimize human involvement, ideally allowing data scientists to input their standardization requirements in one instance, thereby enabling an autonomous and hands-off data standardization process.</p>
+<p>The pursuit of simplicity, however, introduces two primary chal-lenges. The first challenge ( C1 ) is the design of the declarative and unified APIs for data standardization, ensuring it can effectively re-duce the intricacies involved in standardizing specific column types (ideally one line of code per column type). The second challenge ( C2 ) centers on optimizing the interaction between data scientists and LLMs. Our goal is to minimize human involvement, ideally allowing data scientists to input their standardization requirements in one instance, thereby enabling an autonomous and hands-off data standardization process.</p>
 <p>To solve C1 , we propose the type-specific Clean module in the Dataprep Library, named Dataprep.Clean . By observing and sum-marizing the common steps of data standardization for specific col-umn types, we design unified APIs clean_type(df, column_name, target_format) , where the type represents the desired standard-ization type, such as date, address, and phone, etc. These unified APIs offer enhanced expressiveness compared to raw Pandas code, reducing the complexity of standardizing specific column types and allowing one to standardize a column with only one line of code. To solve C2 , we propose the CleanAgent framework which automates data standardization with Dataprep.Clean and LLM-based Agents [ 5 , 6 ]. Once users have entered their final goals, the LLM-based Agents can free their hands, autonomously generate reasoning steps, and execute particular tasks. Data scientists only need to input the table being standardized and their requirements,</p>
 <p>value like NaN . Intuitively, a valid string indicates that each part</p>
 <p>CleanAgent will complete the data standardization process au-tomatically with three steps: annotating the type of each column, generating concise Python code for standardization, and executing</p>
@@ -69,6 +62,9 @@ squeeze ()
 <p>which automates the data standardization process by combining both the advantages of Dataprep.Clean and LLM-based Agents. (3) We deploy CleanAgent as a web application with a user-friendly interface and demonstrate its utility. We also open-sourced the implementation of CleanAgent on Github.</p>
 <p>we have 142 standardization functions in</p>
 <p>value of a more declarative approach, illustrating that building</p>
+<p>In this section, we first describe the common steps of data stan-dardization. Then, we introduce the type-specific API design of Dataprep.Clean .</p>
+<p>Common Steps of Data Standardization.</p>
+<p>Inspired by the steps of</p>
 <p>how human users standardize data cells, we identify three common steps of data standardization. We take the</p>
 <p>datetime column type</p>
 <p>as an example to illustrate these steps.</p>
@@ -93,22 +89,20 @@ squeeze ()
 <p>cannot figure out the specific type of one column, the</p>
 <p>Column-</p>
 <p>+ User’s Requirements Table 𝑻</p>
-<p>type Annotator outputs “I do not know”. The annotation result is</p>
 <p>CleanAgent</p>
-<p>returned to the Chat Manager and stored in the Chat Manager ’s</p>
 <p>1 Historical 5 Historical Message Chat Message</p>
-<p>memory ( ② in Figure 2).</p>
-<p>Manager</p>
-<p>Thirdly, the Python Programmer receives historical messages</p>
-<p>2 𝑪 : email 6 Success/Error</p>
-<p>𝟏 Code</p>
 <p>Column - type</p>
 <p>𝑪 : phone Execution</p>
+<p>Annotator</p>
+<p>4 df = clean_email (</p>
+<p>memory ( ② in Figure 2).</p>
+<p>Manager</p>
+<p>2 𝑪 : email 6 Success/Error</p>
+<p>𝟏 Code</p>
+<p>standardize input table 𝑻</p>
 <p>from the Chat Manager including the column-type annotation re-</p>
 <p>𝟐</p>
-<p>Annotator</p>
 <p>Executor</p>
-<p>4 df = clean_email (</p>
 <p>3 Historical</p>
 <p>df, “email”)</p>
 <p>Tools</p>
@@ -118,17 +112,18 @@ squeeze ()
 <p>and generates Python code for the data standardization process. The</p>
 <p>df, “ date”)</p>
 <p>Until successfully</p>
-<p>Tools stored in the Chat Manager ’s memory ( ④ in Figure 2). Finally, the</p>
-<p>Python 1 - 6</p>
-<p>standardize input table 𝑻</p>
 <p>4o. (2) Cocoon [8] . Cocoon is a one-shot data cleaning system that</p>
 <p>within a workflow designed to mimic human cleaning processes,</p>
+<p>type Annotator outputs “I do not know”. The annotation result is returned to the Chat Manager and stored in the Chat Manager ’s</p>
+<p>Thirdly, the Python Programmer receives historical messages</p>
 <p>sults ( ③ in Figure 2), picks up the corresponding clean functions,</p>
 <p>generated Python code is also returned to the</p>
 <p>Chat Manager and</p>
 <p>Code Executor receives historical messages from the Chat Manager including the column-type annotation results and the generated Python code ( ⑤ in Figure 2), then executes the generated Python code. If the generated code executes without errors, the standard-</p>
 <p>Figure 2: The Workflow of CleanAgent.</p>
 <p>declarative data standardization tools for LLMs is not only feasible but essential, motivating the community to develop even more advanced tools.</p>
+<p>Tools stored in the Chat Manager ’s memory ( ④ in Figure 2). Finally, the</p>
+<p>Python 1 - 6</p>
 <h2>3 CLEANAGENT WORKFLOW</h2>
 <p>In this section, we first introduce the basic structure of LLM-based agents. Then, we describe the CleanAgent workflow constructed by four agents. The automatic data standardization process can be completed by the cooperation of the four agents in</p>
 <p>CleanAgent .</p>
@@ -171,9 +166,7 @@ squeeze ()
 <p>Implementation. CleanAgent is implemented</p>
 <p>Then CleanAgent shows the basic information of the uploaded</p>
 <p>1</p>
-<p>in Python 3.10.6. Cocoon is run using its official Colab notebook</p>
-<p>2</p>
-<p>from the GitHub repo . All methods use the gpt-4o-2024-08-06 model. Experiments are conducted on a MacBook Pro with an M1 chip, 16GB RAM, running macOS Sequoia 15.5.</p>
+<p>in Python 3.10.6. Cocoon is run using its official Colab notebook 2 from the GitHub repo . All methods use the gpt-4o-2024-08-06 model. Experiments are conducted on a MacBook Pro with an M1 chip, 16GB RAM, running macOS Sequoia 15.5.</p>
 <p>Results. Table 1 presents the comparison of different systems in terms of cell-level matching rate and latency.</p>
 <p>CleanAgent achieves the data standardization task. Firstly, the</p>
 <p>a 42.5% cell-level matching rate, approximately 2 × higher than that of GPT-4o and Cocoon. These results demonstrate that Clean-Agent ’s type-specific standardization API enhances the LLM’s ability to generate more precise and concise standardization code. In addition to higher accuracy, CleanAgent also exhibits lower latency compared to Cocoon. This is because Cocoon generates a one-shot SQL query for all columns without the ability to target specific ones, leading to unnecessary overhead.</p>
@@ -210,26 +203,15 @@ squeeze ()
 <p>the conversations among agents. Other tasks in the data science life cycle, such as data cleaning and data visualization, can also be completed by LLM-based agents [ 7 ]. In the future, it is promising that the data science life cycle can be automatically planned and completed by LLM-based agents’ cooperation.</p>
 <h2>REFERENCES</h2>
 <p>System Message of Column Annotator</p>
-<p>[1] Sibei Chen, Hanbing Liu, Weiting Jin, Xiangyu Sun, Xiaoyao Feng, Ju Fan, Xi-</p>
-<p>aoyong Du, and Nan Tang. 2023. ChatPipe: Orchestrating Data Preparation</p>
-<p>You are an expert column type annotator.</p>
-<p>Program by Optimizing Human-ChatGPT Interactions. CoRR abs/2304.03540</p>
-<p>Please solve the column type annotation task following</p>
+<p>[1] Sibei Chen, Hanbing Liu, Weiting Jin, Xiangyu Sun, Xiaoyao Feng, Ju Fan, Xi-aoyong Du, and Nan Tang. 2023. ChatPipe: Orchestrating Data Preparation Program by Optimizing Human-ChatGPT Interactions. CoRR abs/2304.03540</p>
 <p>(2023). https://doi.org/10.48550/ARXIV.2304.03540 arXiv:2304.03540</p>
-<p>[2] Mohamed Y. Eltabakh, Zan Ahmad Naeem, Mohammad Shahmeer Ahmad, Mourad</p>
-<p>the instruction. Please ALWAYS show the column annota-</p>
-<p>Ouzzani, and Nan Tang. 2024. RetClean: Retrieval-Based Tabular Data Cleaning</p>
-<p>tion result!!! Please ONLY return the column annotation</p>
-<p>Using LLMs and Data Lakes. Proc. VLDB Endow. 17, 12 (2024), 4421–4424. https:</p>
-<p>result adding a sentence "Please using corresponding clean</p>
+<p>[2] Mohamed Y. Eltabakh, Zan Ahmad Naeem, Mohammad Shahmeer Ahmad, Mourad Ouzzani, and Nan Tang. 2024. RetClean: Retrieval-Based Tabular Data Cleaning Using LLMs and Data Lakes. Proc. VLDB Endow. 17, 12 (2024), 4421–4424. https:</p>
 <p>//doi.org/10.14778/3685800.3685890</p>
 <p>[3] Wes McKinney et al . 2024. pandas: powerful Python data analysis toolkit. https: //pandas.pydata.org/ Accessed: 2024-01-25.</p>
 <p>[4] Theodoros Rekatsinas, Xu Chu, Ihab F. Ilyas, and Christopher Ré. 2017. HoloClean: Holistic Data Repairs with Probabilistic Inference. Proc. VLDB Endow. 10, 11 (2017),</p>
 <p>following classes that are seperated with comma: {candi-</p>
 <p>1190–1201. https://doi.org/10.14778/3137628.3137631</p>
-<p>[5] Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Shaokun Zhang, Erkang Zhu, Beibin Li, Li Jiang, Xiaoyun Zhang, and Chi Wang. 2023. AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation Frame-</p>
-<p>out of it.</p>
-<p>arXiv:2308.08155</p>
+<p>[5] Qingyun Wu, Gagan Bansal, Jieyu Zhang, Yiran Wu, Shaokun Zhang, Erkang Zhu, Beibin Li, Li Jiang, Xiaoyun Zhang, and Chi Wang. 2023. AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation Frame-arXiv:2308.08155</p>
 <p>arXiv:2309.07864</p>
 <p>[7] Siqiao Xue, Caigao Jiang, Wenhui Shi, Fangyin Cheng, Keting Chen, Hongjun Yang, Zhiping Zhang, Jianshan He, Hongyang Zhang, Ganglin Wei, et al . 2023. arXiv preprint arXiv:2312.17449 (2023).</p>
 <p>[8] Shuo Zhang, Zezhou Huang, and Eugene Wu. 2024. Data Cleaning Using Large 2410.15547 arXiv:2410.15547</p>
@@ -249,8 +231,10 @@ squeeze ()
 <p>of each column within the five types: {candi-</p>
 <p>(2) Pick up corresponding clean functions and write code to clean the column.</p>
 <p>(3) store the cleaned dataframe as csv file named as "cleaned_data.csv"</p>
-<p>functions and write code to clean the column"!!! Classify the columns of a given table with only one of the</p>
+<p>You are an expert column type annotator.</p>
+<p>Please solve the column type annotation task following the instruction. Please ALWAYS show the column annotation result!!! Please ONLY return the column annotation result adding a sentence "Please using corresponding clean functions and write code to clean the column"!!! Classify the columns of a given table with only one of the</p>
 <p>date_column_types}.</p>
+<p>out of it.</p>
 <p>(2) Look at the cell values in detail.</p>
 <p>the meaning of all cells in the column.</p>
 <p>(4) Answer with the selected class for each columns with the format **columnName: class**. If you can-not confidently classify a column based on the pro-vided data, output "I do not know" for that column. NOTE THAT You MUST provide exactly one classification for EVERY column — no column should be left unclassified. Sample rows of the given table is shown as follows: {df}.</p>

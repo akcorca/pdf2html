@@ -91,4 +91,13 @@ describe("attention abstract same-row merge", () => {
     expect(attentionHtml).not.toContain("sequence modeling and transduc-tion models");
     expect(attentionHtml).not.toContain("the recurrent and convolu-tional layers");
   });
+
+  it("bridges detached single-token math superscripts inside body paragraphs", () => {
+    expect(attentionHtml).toContain(
+      "commonly used for mapping one variable-length sequence of symbol representations d ( x , ..., x ) to another sequence of equal length",
+    );
+    expect(attentionHtml).not.toMatch(
+      /representations<\/p>\s*<p>d<\/p>\s*<p>\( x , \.\.\., x \) to another sequence of equal length/,
+    );
+  });
 });

@@ -178,6 +178,27 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("does not interleave left and right column text in same paragraph for clean.pdf section 2 intro", () => {
+    // Left-column text "The pursuit of simplicity, however, introduces two primary chal-
+    // lenges." and right-column text "In this section, we first describe the common steps
+    // of data stan-dardization." must NOT be merged into the same <p> tag.
+    // They belong to different columns and should appear as separate paragraphs.
+    expect(cleanHtml).not.toMatch(
+      /chal-\s*lenges[^<]*In this section, we first describe/,
+    );
+    expect(cleanHtml).not.toMatch(
+      /In this section[^<]*chal-\s*lenges/,
+    );
+    // The left-column paragraph about challenges should be a coherent paragraph
+    expect(cleanHtml).toContain(
+      "The pursuit of simplicity, however, introduces two primary chal-lenges.",
+    );
+    // The right-column paragraph should be a separate coherent paragraph
+    expect(cleanHtml).toContain(
+      "In this section, we first describe the common steps of data stan-dardization.",
+    );
+  });
+
   it("collapses duplicate sentence-prefix artifacts in clean.pdf lines", () => {
     expect(cleanHtml).not.toContain("<p>Implementation. Implementation. CleanAgent is implemented</p>");
     expect(cleanHtml).toContain("<p>Implementation. CleanAgent is implemented</p>");

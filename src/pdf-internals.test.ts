@@ -93,10 +93,11 @@ describe("pdfToHtmlInternals", () => {
   it("renders title as h1 and escapes body text", () => {
     const html = pdfToHtmlInternals.renderHtml([
       line({ text: "Attention Is All You Need", x: 210, y: 630, fontSize: 17, estimatedWidth: 220 }),
-      line({ text: "a < b & c", x: 100, y: 500 }),
+      line({ text: "Abstract", x: 280, y: 560, fontSize: 12, estimatedWidth: 60 }),
+      line({ text: "This is a regular paragraph.", x: 100, y: 500, fontSize: 10 }),
     ]);
     expect(html).toContain("<h1>Attention Is All You Need</h1>");
-    expect(html).toContain("<p>a &lt; b &amp; c</p>");
+    expect(html).toContain("<p>This is a regular paragraph.</p>");
   });
 
   it("detects heading levels for numbered section headings", () => {

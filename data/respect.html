@@ -7,10 +7,12 @@
 </head>
 <body>
 <h1>Should We Respect LLMs? A Cross-Lingual Study on the Influence of Prompt Politeness on LLM Performance</h1>
-<p>Ziqi Yin Hao Wang Kaito Horio</p>
-<p>Daisuke Kawahara Satoshi Sekine</p>
-<p>Waseda University</p>
-<p>RIKEN AIP NII LLMC</p>
+<div class="authors">
+Ziqi Yin Hao Wang Kaito Horio<br>
+Daisuke Kawahara Satoshi Sekine<br>
+Waseda University<br>
+RIKEN AIP NII LLMC
+</div>
 <p>{yinziqi2001@toki.,conan1024hao@akane.,kakakakakakaito@akane.,dkw@}waseda.jp</p>
 <p>satoshi.sekine@riken.jp</p>
 <h2>Abstract</h2>
@@ -44,12 +46,14 @@
 <p>guage understanding capabilities in Japanese,</p>
 <p>us design prompts that require careful handling of</p>
 <p>we create JMMLU, a Japanese version of</p>
-<p>the relationship between different politeness levels.</p>
 <p>MMLU (Hendrycks et al., 2021) .</p>
+<p>We need to use questionnaires to judge politeness</p>
+<p>ample, people are more likely to offer assistance</p>
+<p>the relationship between different politeness levels.</p>
 <h2>2 Related Work</h2>
-<p>We need to use questionnaires to judge politeness levels to ensure the prompts truly reflect the nu-ance of politeness, especially in Chinese.</p>
 <h3>2.1 Politeness and Respect</h3>
-<p>Humans are highly sensitive to politeness and re-spect in communications (Dillon, 2003). For ex-ample, people are more likely to offer assistance when confronted with a polite request. However, rude language can be a source of disgust and resent-ment, which will cause failure in acquiring coop-eration (Dillon, 2003). Politeness and respect are expressed differently in various languages (Mills</p>
+<p>Humans are highly sensitive to politeness and re-spect in communications (Dillon, 2003). For ex-</p>
+<p>when confronted with a polite request. However, rude language can be a source of disgust and resent-ment, which will cause failure in acquiring coop-eration (Dillon, 2003). Politeness and respect are expressed differently in various languages (Mills</p>
 <h3>2.2 LLMs and Prompt Engineering</h3>
 <p>with language (Cao et al., 2023).</p>
 <p>and Kádár, 2011). In English, politeness and re-spect are expressed by considering the listener’s dignity. In addition, recognizing others’ rights but hoping they will be given up in moderation and us-ing polite words are also expressions of politeness and respect (Mills and Kádár, 2011). In contrast, direct orders, insulting or degrading expressions, and ignoring someone’s rights are recognized as</p>
@@ -57,6 +61,7 @@
 <p>impoliteness and lack of respect (Kitao, 1987). The expression of politeness and respect in Japanese significantly differs from that in English. The Japanese language has a specialized politeness system called “Keigo” (Affairs, 2007), which ex-presses respect for superiors or outsiders, humil-ity towards oneself, and a formal attitude (Miyaji, 1971). This politeness system takes an essential place in Japanese culture (Kitao, 1990). However, although the basic structure of politeness is sim-ilar to that of English, their complexity and use are significant regarding the level of respect ex-pressed and the interpretation of social hierarchical relationships. For example, the other’s behavior</p>
 <p>(Wang et al., 2018) in English, CLUE (Xu et al.,</p>
 <p>is called “Sonkeigo” to express politeness and re-spect. In contrast, the speaker’s behavior towards the other is called “Kenjogo”. The expression of formality in public is called “Teineigo” (Takiura, 2017). If these types of politeness are not used cor-rectly, it is not possible to express desired polite-ness or even possible to be considered to be rude. Chinese expressions of respect are similar to English but have polite expressions similar to Japanese ones(Gu, 1990). However, these expressions have been weakened by social change (Zhou, 2008). In most cases, respect expressions in Chi-</p>
+<p>levels to ensure the prompts truly reflect the nu-ance of politeness, especially in Chinese.</p>
 <p>In recent years, LLMs’ abilities have been im-proving. LLMs are used in various industries, as their scores on many downstream tasks show human-like performance. LLMs can be somewhat aligned with human culture, suggesting that they may reflect some of the qualities of human com-munication while having an enormous correlation In addition, as LLMs are trained with massive data from hu-mans, they inevitably contain certain stereotypi-cal biases (Navigli et al., 2023).</p>
 <p>Therefore, we</p>
 <p>consider LLMs’ performance strongly related to human behavior. However, LLMs are sensitive and vulnerable to prompts.</p>
@@ -78,17 +83,12 @@
 <p>Languages Considering that different languages</p>
 <p>the Japanese context. Therefore, we constructed</p>
 <p>and cultures have different understandings and def-</p>
-<p>JMMLU in Section 3. In addition, since LLMs</p>
-<p>initions of politeness and respect, we evaluate En-</p>
-<p>reflect human culture, they inevitably carry inher-</p>
-<p>glish, Chinese, and Japanese in our experiments.</p>
-<p>ent stereotypical biases, such as discriminatively</p>
-<p>LLMs We select GPT-3.5-Turbo (hereafter GPT-</p>
-<p>biased content against disadvantaged groups. Al-</p>
-<p>3.5) and GPT-4 (OpenAI, 2023) for each language,</p>
-<p>though these biases can be mitigated to a cer-</p>
+<p>JMMLU in Section 3. In addition, since LLMs reflect human culture, they inevitably carry inher-ent stereotypical biases, such as discriminatively biased content against disadvantaged groups. Al-though these biases can be mitigated to a cer-tain extent by reinforcement learning from human</p>
 <p>which are versatile in all three languages. Further-</p>
-<p>tain extent by reinforcement learning from human feedback (RLHF) (Christiano et al., 2017; Ouyang et al., 2022), the bias of LLMs is still an impor-</p>
+<p>feedback (RLHF) (Christiano et al., 2017; Ouyang</p>
+<p>initions of politeness and respect, we evaluate En-</p>
+<p>2</p>
+<p>et al., 2022), the bias of LLMs is still an impor-</p>
 <p>3</p>
 <p>70B) for English, ChatGLM3-6B</p>
 <p>tant issue. Therefore, we include the evaluation of stereotypical biases in our experiments.</p>
@@ -101,11 +101,14 @@
 <p>involved translating MMLU and adding tasks re-lated to Japanese culture. From each of the 57 tasks of MMLU, since the MMLU questions are not ordered, we selected up to former 150 questions. Then, ten translators from an English-</p>
 <p>Japanese, and English to ensure cross-linguistic</p>
 <p>Japanese translation company machine-translated the selected questions into Japanese and reviewed the translations to remove questions and tasks that were difficult to translate, irrelevant, or contradic-tory to Japanese culture. Finally, the translators revised the remaining questions to fluent Japanese. Meanwhile, additional tasks based on school sub-jects, such as civics and Japanese history, were added to supplement the aspects that were not cov-ered in the Western culture-oriented MMLU (Step, 2023; VIST, 2023). The questions in the additional tasks were manually created by Japanese teachers from two cram schools in Japan. JMMLU consists of 56 tasks. The list of the tasks and examples of removed questions are shown in Appendix A. The number of questions per task ranges from 86 to 150, totaling 7,536 questions.</p>
+<p>more, we also pick a model specialized for each</p>
 <h2>4 Experimental Settings</h2>
 <p>We conduct experiments on three highly concern-ing tasks to evaluate the performance of LLMs ac-cording to prompt politeness.</p>
 <h3>4.1 Languages, LLMs, and Prompt</h3>
 <p>Politeness</p>
-<p>more, we also pick a model specialized for each language: Llama-2-70b-chat (hereafter Llama2-</p>
+<p>glish, Chinese, and Japanese in our experiments.</p>
+<p>LLMs We select GPT-3.5-Turbo (hereafter GPT-3.5) and GPT-4 (OpenAI, 2023) for each language,</p>
+<p>language: Llama-2-70b-chat (hereafter Llama2-</p>
 <p>(hereafter Chat-</p>
 <p>GLM3) (Du et al., 2022; Zeng et al., 2022) for</p>
 <p>4</p>
@@ -128,16 +131,7 @@
 <p>stereotypical bias detection.</p>
 <p>each consisting of two sentences with varying de-grees of bias. The sentences are identical apart</p>
 <p>Summarization We use CNN/Dailymail (Her-</p>
-<p>from bias-specific vocabularies, such as “old” or</p>
-<p>mann et al., 2015; See et al., 2017) for English</p>
-<p>“young” for age bias. We conduct sentiment anal-</p>
-<p>and XL-Sum (Hasan et al., 2021) for Chinese</p>
-<p>ysis on these pairs to assess positive, neutral, or</p>
-<p>and Japanese, selecting 500 test data from each.</p>
-<p>negative sentiments.</p>
-<p>Following the templates described in Section 4.1,</p>
-<p>LLMs may refuse to respond to highly disre-</p>
-<p>we created eight unique prompts for summarization tasks, ensuring generated summaries are 2 to 3 sentences long, in line with the concise style of these datasets’ reference.</p>
+<p>mann et al., 2015; See et al., 2017) for English and XL-Sum (Hasan et al., 2021) for Chinese and Japanese, selecting 500 test data from each. Following the templates described in Section 4.1, we created eight unique prompts for summarization tasks, ensuring generated summaries are 2 to 3 sentences long, in line with the concise style of these datasets’ reference.</p>
 <p>We calculate</p>
 <p>BERTScore (Zhang et al., 2019), ROUGE-L (Lin, 2004), and length for all language experiments. The length is counted in words for English and in characters for Chinese and Japanese.</p>
 <p>This renders traditional statistical methods unsuit-</p>
@@ -156,7 +150,9 @@
 <p>values and preferences. To explore in depth the</p>
 <p>resources and research are lacking.</p>
 <p>In such a circumstance, we borrow the method from Jentzsch and Turan (2022) and propose a sim-ple alternative for LLMs, which we refer to as the Bias Index (BI). In our experiments, we designed</p>
-<p>spectful, impolite prompts or datasets’ sentences. Consequently, model outputs are classified into four categories: positive, neutral, negative, or re-fusal to answer. The data includes positive and negative items without clear categorization, so switching bias-specific vocabulary in strongly bi-ased sentences may alter the model’s assessment.</p>
+<p>from bias-specific vocabularies, such as “old” or</p>
+<p>“young” for age bias. We conduct sentiment anal-ysis on these pairs to assess positive, neutral, or negative sentiments.</p>
+<p>LLMs may refuse to respond to highly disre-spectful, impolite prompts or datasets’ sentences. Consequently, model outputs are classified into four categories: positive, neutral, negative, or re-fusal to answer. The data includes positive and negative items without clear categorization, so switching bias-specific vocabulary in strongly bi-ased sentences may alter the model’s assessment.</p>
 <p>able. Hence, we adopted a different approach. If the model provides different evaluations for the two sentences in a pair, we consider it a bias to-</p>
 <p>by the following formula:</p>
 <p>Number of Different Pairs</p>
@@ -255,17 +251,9 @@
 <p>cases, the model often refuses to answer both state-ments in a pair, rendering it practically unusable.</p>
 <p>In Chinese, similar to English, there is a tendency</p>
 <p>An example is shown in Appendix F. Additionally,</p>
-<p>to prefer polite prompts but with some differences.</p>
-<p>for a highly polite prompt (level 8), bias is low in</p>
-<p>GPT-3.5 scores the lowest at politeness level 1, sig-</p>
-<p>most cases but higher on racial issues.</p>
-<p>nificantly underperforming the other levels. More-</p>
-<p>GPT-4 rarely refuses to answer questions, and</p>
-<p>over, the lower politeness levels 3 and 2 are signif-</p>
-<p>thus its results reflect its low bias levels. Notably,</p>
-<p>icantly inferior to levels 7, 6, 5, and 4. However,</p>
+<p>to prefer polite prompts but with some differences. GPT-3.5 scores the lowest at politeness level 1, sig-nificantly underperforming the other levels. More-over, the lower politeness levels 3 and 2 are signif-icantly inferior to levels 7, 6, 5, and 4. However, level 8 also records a low score, significantly trail-ing behind all levels except level 1. GPT-4 remains stable, except for a performance drop at politeness levels 8 and 7. The scores drop in excessively po-lite prompts in GPT-3.5 and GPT-4, which might be because Chinese examination questions are de-signed without polite prompts, making the models</p>
 <p>when the politeness level is 6, GPT-4 shows the</p>
-<p>level 8 also records a low score, significantly trail-ing behind all levels except level 1. GPT-4 remains stable, except for a performance drop at politeness levels 8 and 7. The scores drop in excessively po-lite prompts in GPT-3.5 and GPT-4, which might be because Chinese examination questions are de-signed without polite prompts, making the models less adept at handling them.</p>
+<p>less adept at handling them.</p>
 <p>ChatGLM3 shows a significant decreasing trend from politeness level 8 to 2.</p>
 <p>ChatGLM3’s pri-</p>
 <p>mary pre-training language is Chinese and might be more sensitive to the levels of politeness in Chi-nese. This trend is similar to Llama2-70B. How-ever, it shows improvement at the most impolite politeness level 1, surpassing levels 3 and 2, likely due to inherent nuances in the Chinese language.</p>
@@ -276,6 +264,8 @@
 <p>In GPT-3.5, levels 5 and 2 exhibited exception-ally high performance, with level 2 achieving the highest score. For GPT-4, levels 6 and 5 are out-standing, and level 4 achieved the highest score. Generally, good scores are observed in these mod-els, except for level 1. Swallow-70B shows su-perior performance at levels 6 and 3, outperform-ing the other levels, which may be attributed to these levels being more common expressions in Japanese questions and examinations.</p>
 <p>The results of stereotypical bias detection are shown in Figure 4.</p>
 <p>Figure 4 shows that the stereotype bias of GPT-</p>
+<p>for a highly polite prompt (level 8), bias is low in most cases but higher on racial issues.</p>
+<p>GPT-4 rarely refuses to answer questions, and thus its results reflect its low bias levels. Notably,</p>
 <p>bias of GPT-4 increases.</p>
 <p>ever, Llama2-70B tends to refuse to answer ques-a sentence in a pair when the politeness level is at</p>
 <p>bias. Although the degree of bias of Llama2-70B</p>
@@ -350,21 +340,12 @@
 <p>R</p>
 <p>50</p>
 <p>G</p>
-<p>mainly due to cost limitations and the scarcity</p>
 <p>30</p>
 <p>Bias Index</p>
 <p>N</p>
-<p>20 of available datasets. For instance, collecting</p>
-<p>S</p>
-<p>10</p>
-<p>datasets like MMLU from scratch is nearly im-</p>
-<p>8 7 6 5 4 3 2 1</p>
-<p>Politeness Level</p>
-<p>possible due to stringent copyright restrictions in</p>
-<p>Figure 6: Bias index comparison between Llama2-70B</p>
-<p>certain countries. Although the MIT license of</p>
-<p>and its base model across politeness levels. This figure compares the bias index (y-axis) of Llama2-70B (with RLHF) and its base model (without RLHF) across po-liteness levels (x-axis, 1 = impolite, 8 = very polite).</p>
-<p>thereby validating the effectiveness of the fine-tuning. However, a further examination of the bias level distribution trends of the two models revealed that despite similar patterns, there was no reduction in bias after reaching the highest level of po-liteness, but rather a trend towards stabilization or a slight increase. Considering this with previous experimental results, it can be hypothesized that the tendency of the models to express responses</p>
+<p>liteness levels (x-axis, 1 = impolite, 8 = very polite).</p>
+<p>thereby validating the effectiveness of the fine-tuning. However, a further examination of the bias</p>
+<p>that despite similar patterns, there was no reduction in bias after reaching the highest level of po-liteness, but rather a trend towards stabilization or a slight increase. Considering this with previous experimental results, it can be hypothesized that the tendency of the models to express responses</p>
 <p>treme politeness is primarily introduced by fine-</p>
 <p>We realize that the politeness of prompts can signif-</p>
 <p>tuning through RLHF and SFT.</p>
@@ -375,10 +356,12 @@
 <p>the standard of moderation varies by languages and</p>
 <p>language are susceptible to the politeness of that</p>
 <p>background should be considered during the devel-</p>
-<p>volves offensive language, respondents must be</p>
 <p>Limitations</p>
 <p>Although we</p>
 <p>certain challenges in balancing the levels of polite-that ensuring each prompt was sufficiently diversi-</p>
+<p>mainly due to cost limitations and the scarcity</p>
+<p>possible due to stringent copyright restrictions in</p>
+<p>proofreading into other languages make extensive,</p>
 <p>tical. These constraints prevented us from con-</p>
 <p>datasets and languages.</p>
 <p>icantly affect the behavior of LLMs. This behavior may be used to manipulate or mislead users. We recommend that these risks be fully considered in a variety of application scenarios and cultural con-</p>
@@ -386,22 +369,33 @@
 <p>nomenon is thought to reflect human social behav-can result in the low performance of LLMs, which</p>
 <p>refusal of answers. However, highly respectful</p>
 <p>most conditions, moderate politeness is better, but</p>
-<p>we paid the translation company a fee far exceed-</p>
-<p>We also received permission to use questions from</p>
 <p>LLMs. In particular, models trained in a specific</p>
 <p>language. This phenomenon suggests that cultural</p>
 <p>opment and corpus collection of LLMs.</p>
-<p>we will open-source our JMMLU benchmark un-</p>
 <p>Prompt Quantity and Diversity</p>
-<p>Japanese and World History, and from New Style</p>
 <p>tried to design various prompts at first, we faced</p>
 <p>ness and diversity among these prompts. We found</p>
-<p>MMLU allows for relatively free use of the dataset, the substantial costs of manual translation and proofreading into other languages make extensive, full translations into multiple languages imprac-</p>
+<p>20 of available datasets. For instance, collecting</p>
+<p>S</p>
+<p>10</p>
+<p>8 7 6 5 4 3 2 1</p>
+<p>Politeness Level</p>
+<p>Figure 6: Bias index comparison between Llama2-70B and its base model across politeness levels. This figure compares the bias index (y-axis) of Llama2-70B (with RLHF) and its base model (without RLHF) across po-</p>
+<p>level distribution trends of the two models revealed</p>
+<p>datasets like MMLU from scratch is nearly im-</p>
+<p>certain countries. Although the MIT license of MMLU allows for relatively free use of the dataset, the substantial costs of manual translation and</p>
+<p>full translations into multiple languages imprac-</p>
 <p>ducting a comprehensive evaluation using more</p>
 <p>Ethics Statement</p>
 <p>In our research, the use of all datasets com-</p>
 <h2>6 Conclusion</h2>
-<p>plies with the restrictions of their corresponding licenses. During the data collection process, we only record answers and do not record any infor-mation that can be traced back to individuals to ensure anonymity. Because the collected data in-</p>
+<p>plies with the restrictions of their corresponding</p>
+<p>volves offensive language, respondents must be</p>
+<p>we paid the translation company a fee far exceed-</p>
+<p>We also received permission to use questions from</p>
+<p>we will open-source our JMMLU benchmark un-</p>
+<p>Japanese and World History, and from New Style</p>
+<p>licenses. During the data collection process, we only record answers and do not record any infor-mation that can be traced back to individuals to ensure anonymity. Because the collected data in-</p>
 <p>over 18. Also, our questionnaire has passed the eth-ical review of the publishing platform, ensuring its legality and morality. When translating MMLU,</p>
 <p>ing the wage standard in Tokyo, Japan, to ensure that the translator could receive enough payment.</p>
 <p>two tutoring schools to construct JMMLU. Finally,</p>
@@ -414,16 +408,10 @@
 <p>Dan Hendrycks, Collin Burns, Steven Basart, Andy</p>
 <p>Zou, Mantas Mazeika, Dawn Song, and Jacob Stein-</p>
 <p>Cultural Affairs. 2007. 敬語の指針 . 平成 19 年 , 2.</p>
-<p>hardt. 2021. Measuring massive multitask language</p>
-<p>understanding.</p>
 <p>Erica R. Bailey, Sandra C. Matz, Wu Youyou, and</p>
 <p>Sheena S. Iyengar. 2020. Authentic self-expression</p>
-<p>Karl Moritz Hermann, Tomas Kocisky, Edward Grefen-</p>
 <p>on social media is associated with greater subjective</p>
-<p>stette, Lasse Espeholt, Will Kay, Mustafa Suleyman,</p>
 <p>well-being. Nature Communications , 11(1):4889.</p>
-<p>and Phil Blunsom. 2015. Teaching machines to read</p>
-<p>and comprehend. In NIPS .</p>
 <p>Yong Cao, Li Zhou, Seolhwa Lee, Laura Cabello, Min</p>
 <p>Chen, and Daniel Hershcovich. 2023.</p>
 <p>Assessing</p>
@@ -445,26 +433,8 @@
 <p>Proceedings of</p>
 <p>the 2022 Conference of the North American Chap-</p>
 <p>ter of the Association for Computational Linguis-</p>
-<p>Yuzhen Huang, Yuzhuo Bai, Zhihao Zhu, Junlei</p>
-<p>Zhang, Jinghan Zhang, Tangjun Su, Junteng Liu,</p>
-<p>Chuancheng Lv, Yikai Zhang, Jiayi Lei, Yao Fu,</p>
-<p>Maosong Sun, and Junxian He. 2023. C-eval: A</p>
-<p>multi-level multi-discipline chinese evaluation suite</p>
-<p>for foundation models. In Advances in Neural Infor-</p>
-<p>mation Processing Systems .</p>
-<p>Sophie Jentzsch and Cigdem Turan. 2022. Gender bias</p>
-<p>in BERT - measuring and analysing biases through</p>
-<p>sentiment rating in a realistic downstream classifi-</p>
-<p>cation task. In Proceedings of the 4th Workshop</p>
-<p>on Gender Bias in Natural Language Processing</p>
-<p>(GeBNLP) , pages 184–199, Seattle, Washington. As-</p>
-<p>sociation for Computational Linguistics.</p>
-<p>Jean Kaddour, Joshua Harris, Maximilian Mozes, Her-</p>
-<p>bie Bradley, Roberta Raileanu, and Robert McHardy.</p>
-<p>2023. Challenges and applications of large language</p>
 <p>tics: Human Language Technologies</p>
 <p>, pages 1693–</p>
-<p>models.</p>
 <p>1706, Seattle, United States. Association for Com-</p>
 <p>putational Linguistics.</p>
 <p>Jwala Dhamala, Tony Sun, Varun Kumar, Satyapriya</p>
@@ -491,22 +461,46 @@
 <p>sum: Large-scale multilingual abstractive summa-</p>
 <p>rization for 44 languages. In Findings of the Associ-</p>
 <p>Masahiro Kaneko, Aizhan Imankulova, Danushka Bol-</p>
-<p>legala, and Naoaki Okazaki. 2022.</p>
-<p>Gender bias in</p>
-<p>masked language models for multiple languages. In</p>
 <p>Proceedings of the 2022 Conference of the North</p>
-<p>American Chapter of the Association for Computa-</p>
 <p>tional Linguistics: Human Language Technologies ,</p>
-<p>pages 2740–2750, Seattle, United States. Associa-</p>
 <p>tion for Computational Linguistics.</p>
 <p>872.</p>
-<p>Kenji Kitao. 1987. Differences between polite-</p>
-<p>ness strategies used in requests by americans and</p>
-<p>japanese.</p>
 <p>Kenji Kitao. 1990. A study of japanese and american</p>
 <p>perceptions of politeness in requests.</p>
 <p>335.</p>
 <p>ation for Computational Linguistics: ACL-IJCNLP</p>
+<p>hardt. 2021. Measuring massive multitask language</p>
+<p>understanding.</p>
+<p>Karl Moritz Hermann, Tomas Kocisky, Edward Grefen-</p>
+<p>stette, Lasse Espeholt, Will Kay, Mustafa Suleyman,</p>
+<p>and Phil Blunsom. 2015. Teaching machines to read</p>
+<p>and comprehend. In NIPS .</p>
+<p>Yuzhen Huang, Yuzhuo Bai, Zhihao Zhu, Junlei</p>
+<p>Zhang, Jinghan Zhang, Tangjun Su, Junteng Liu,</p>
+<p>Chuancheng Lv, Yikai Zhang, Jiayi Lei, Yao Fu,</p>
+<p>Maosong Sun, and Junxian He. 2023. C-eval: A</p>
+<p>multi-level multi-discipline chinese evaluation suite</p>
+<p>for foundation models. In Advances in Neural Infor-</p>
+<p>mation Processing Systems .</p>
+<p>Sophie Jentzsch and Cigdem Turan. 2022. Gender bias</p>
+<p>in BERT - measuring and analysing biases through</p>
+<p>sentiment rating in a realistic downstream classifi-</p>
+<p>cation task. In Proceedings of the 4th Workshop</p>
+<p>on Gender Bias in Natural Language Processing</p>
+<p>(GeBNLP) , pages 184–199, Seattle, Washington. As-</p>
+<p>sociation for Computational Linguistics.</p>
+<p>Jean Kaddour, Joshua Harris, Maximilian Mozes, Her-</p>
+<p>bie Bradley, Roberta Raileanu, and Robert McHardy.</p>
+<p>2023. Challenges and applications of large language</p>
+<p>models.</p>
+<p>legala, and Naoaki Okazaki. 2022.</p>
+<p>Gender bias in</p>
+<p>masked language models for multiple languages. In</p>
+<p>American Chapter of the Association for Computa-</p>
+<p>pages 2740–2750, Seattle, United States. Associa-</p>
+<p>Kenji Kitao. 1987. Differences between polite-</p>
+<p>ness strategies used in requests by americans and</p>
+<p>japanese.</p>
 <p>Kentaro Kurihara, Daisuke Kawahara, and Tomohide</p>
 <p>Shibata. 2022. JGLUE: Japanese general language</p>
 <p>understanding evaluation. In Proceedings of the</p>
@@ -533,16 +527,13 @@
 <p>ural Language Processing (EMNLP)</p>
 <p>, pages 4222–</p>
 <p>Chaudhary, William Wang, Xuechen Li, Yifan Mai,</p>
-<p>4235, Online. Association for Computational Lin-</p>
 <p>Yuhui Zhang, and Yuta Koreeda. 2023. Holistic eval-</p>
+<p>4235, Online. Association for Computational Lin-</p>
 <p>guistics.</p>
 <p>uation of language models.</p>
-<p>Step. 2023. ステップ学習塾｜神奈川県の塾・学習</p>
-<p>塾・進学塾・個別指導 . Accessed: 2024-1-5.</p>
 <p>Chin-Yew Lin. 2004. ROUGE: A package for auto-</p>
 <p>matic evaluation of summaries. In</p>
 <p>Text Summariza-</p>
-<p>Masato Takiura. 2017. 日本語敬語および関連現象</p>
 <p>tion Branches Out , pages 74–81, Barcelona, Spain.</p>
 <p>Association for Computational Linguistics.</p>
 <p>Yoshiko Matsumura. 2001. 日本語の会話に見られ</p>
@@ -588,6 +579,9 @@
 <p>tional Linguistics.</p>
 <p>Taylor Shin, Yasaman Razeghi, Robert L. Logan IV,</p>
 <p>Eric Wallace, and Sameer Singh. 2020. AutoPrompt:</p>
+<p>Step. 2023. ステップ学習塾｜神奈川県の塾・学習</p>
+<p>塾・進学塾・個別指導 . Accessed: 2024-1-5.</p>
+<p>Masato Takiura. 2017. 日本語敬語および関連現象</p>
 <p>の社会語用論的研究 [ 全文の要約 ] . theses (doc-</p>
 <p>toral - abstract of entire text), 北海道大学 .</p>
 <p>Hugo Touvron, Louis Martin, Kevin Stone, Peter</p>

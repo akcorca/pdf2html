@@ -29,7 +29,7 @@ const MAX_MULTI_COLUMN_HEADING_TEXT_LENGTH = 90;
 const MAX_MULTI_COLUMN_HEADING_WORDS = 16;
 const MULTI_COLUMN_NEAR_ROW_MAX_Y_DELTA_FONT_RATIO = 2.1;
 const MULTI_COLUMN_NEAR_ROW_MIN_TEXT_CHARS = 10;
-const MULTI_COLUMN_NEAR_ROW_TOP_Y_RATIO = 0.8;
+const MULTI_COLUMN_NEAR_ROW_TOP_Y_RATIO = 0.88;
 const MULTI_COLUMN_NEAR_ROW_BOTTOM_Y_RATIO = 0.1;
 const MULTI_COLUMN_NEAR_ROW_LEFT_MAX_RATIO = 0.42;
 const MULTI_COLUMN_NEAR_ROW_RIGHT_MIN_RATIO = 0.58;
@@ -67,6 +67,7 @@ const MAX_COLUMN_BREAK_BRIDGE_LOOKAHEAD = 2;
 const COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS = 1;
 const DUPLICATED_SENTENCE_PREFIX_PATTERN = /^([A-Z][^.!?]{1,80}[.!?])\s+\1(\s+.+)$/u;
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-column detection + column assignment in one pass.
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
   const lines: TextLine[] = [];
   const multiColumnPageIndexes = new Set<number>();
@@ -105,6 +106,16 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
     }
     if (shouldPreferColumnMajorOrdering(cp.lines, effectiveSplitX)) {
       columnMajorPageIndexes.add(cp.pageIndex);
+    }
+  }
+
+  // Assign column classification to each line on multi-column pages
+  for (const line of lines) {
+    const splitX = pageColumnSplitXs.get(line.pageIndex);
+    if (splitX === undefined) continue;
+    const col = classifyColumnByDetectedSplit(line, splitX);
+    if (col === "left" || col === "right") {
+      line.column = col;
     }
   }
 

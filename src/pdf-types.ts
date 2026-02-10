@@ -34,6 +34,8 @@ export interface TextLine {
   y: number;
   fontSize: number;
   text: string;
+  /** Which column this line belongs to on a multi-column page. */
+  column?: "left" | "right";
 }
 
 export interface PageVerticalExtent {
