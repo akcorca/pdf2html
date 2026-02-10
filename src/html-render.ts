@@ -13,6 +13,8 @@ const INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH = 8;
 const AUTHOR_BLOCK_END_PATTERN = /^(abstract|introduction)/iu;
 const AUTHOR_BLOCK_MAX_LINES = 20;
 const AUTHOR_BLOCK_MAX_FONT_DELTA = 1.0;
+const AUTHOR_EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/gu;
+const AUTHOR_ROW_MERGE_MAX_Y_DELTA = 2;
 const BULLET_LIST_ITEM_PATTERN = /^([•◦▪●○■□◆◇‣⁃∙·])\s+(.+)$/u;
 const MIN_LIST_CONTINUATION_INDENT = 6;
 const TITLE_CONTINUATION_MAX_FONT_DELTA = 0.6;
@@ -150,6 +152,17 @@ interface ConsumedTitleLineBlock {
 interface ConsumedParagraph {
   text: string;
   nextIndex: number;
+}
+
+interface Author {
+  name: string;
+  affiliations: string[];
+  email?: string;
+}
+
+interface AuthorRow {
+  y: number;
+  cells: Array<{ x: number; text: string }>;
 }
 
 export function renderHtml(lines: TextLine[], document?: ExtractedDocument): string {
@@ -351,11 +364,11 @@ function consumeAuthorBlock(
   pageTypicalWidths: Map<number, number>,
   bodyFontSize: number,
 ): { html: string; nextIndex: number } | undefined {
-  const authorLines: string[] = [];
+  const authorBlockLines: TextLine[] = [];
   let nextIndex = startIndex;
   let firstAuthorLine: TextLine | undefined;
 
-  while (nextIndex < lines.length && authorLines.length < AUTHOR_BLOCK_MAX_LINES) {
+  while (nextIndex < lines.length && authorBlockLines.length < AUTHOR_BLOCK_MAX_LINES) {
     const line = lines[nextIndex];
     if (line.pageIndex !== titleLine.pageIndex) break;
 
@@ -385,15 +398,176 @@ function consumeAuthorBlock(
     if (!firstAuthorLine) {
       firstAuthorLine = line;
     }
-    authorLines.push(escapeHtml(line.text));
+    authorBlockLines.push(line);
     nextIndex++;
   }
 
-  if (authorLines.length === 0) return undefined;
+  if (authorBlockLines.length === 0) return undefined;
 
-  const html = `<div class="authors">\n${authorLines.join("<br>\n")}\n</div>`;
+  const parsedAuthors = parseAuthors(authorBlockLines);
+  if (parsedAuthors.length === 0) {
+    const fallbackLines = authorBlockLines.map((line) => escapeHtml(line.text));
+    const html = `<div class="authors">\n${fallbackLines.join("<br>\n")}\n</div>`;
+    return { html, nextIndex };
+  }
+
+  const html = renderAuthorBlockHtml(parsedAuthors);
 
   return { html, nextIndex };
+}
+
+function parseAuthors(lines: TextLine[]): Author[] {
+  const rows = groupAuthorRows(lines);
+  const authors: Author[] = [];
+  let pendingRows: AuthorRow[] = [];
+
+  for (const row of rows) {
+    const parsedBlock = parseAuthorBlockRows(pendingRows, row);
+    if (parsedBlock === undefined) {
+      if (row.cells.some((cell) => extractEmails(cell.text).length > 0)) {
+        pendingRows = [];
+      } else {
+        pendingRows.push(row);
+      }
+      continue;
+    }
+
+    authors.push(...parsedBlock);
+    pendingRows = [];
+  }
+
+  return authors;
+}
+
+function parseAuthorBlockRows(pendingRows: AuthorRow[], row: AuthorRow): Author[] | undefined {
+  const emailsByCell = row.cells.map((cell) => extractEmails(cell.text));
+  const flattenedEmails = emailsByCell.flat();
+  if (flattenedEmails.length === 0) return undefined;
+
+  const nameRow = pendingRows[0];
+  if (!nameRow) return undefined;
+
+  const entriesPerCell = deriveEntriesPerCell(row, emailsByCell);
+  const names = splitRowIntoEntries(nameRow, entriesPerCell);
+  if (names.length !== flattenedEmails.length) return undefined;
+
+  const blockAuthors = names.map((name, index): Author => ({
+    name,
+    affiliations: [],
+    email: flattenedEmails[index],
+  }));
+  appendAuthorAffiliations(blockAuthors, pendingRows.slice(1), entriesPerCell);
+  return blockAuthors;
+}
+
+function appendAuthorAffiliations(
+  authors: Author[],
+  affiliationRows: AuthorRow[],
+  entriesPerCell: number[],
+): void {
+  for (const row of affiliationRows) {
+    const affiliations = splitRowIntoEntries(row, entriesPerCell);
+    for (let index = 0; index < authors.length && index < affiliations.length; index += 1) {
+      const affiliation = affiliations[index];
+      if (affiliation) authors[index].affiliations.push(affiliation);
+    }
+  }
+}
+
+function groupAuthorRows(lines: TextLine[]): AuthorRow[] {
+  const sorted = [...lines].sort((left, right) => right.y - left.y);
+  const rows: AuthorRow[] = [];
+
+  for (const line of sorted) {
+    const text = normalizeSpacing(line.text);
+    if (text.length === 0) continue;
+
+    const currentRow = rows[rows.length - 1];
+    if (!currentRow || Math.abs(currentRow.y - line.y) > AUTHOR_ROW_MERGE_MAX_Y_DELTA) {
+      rows.push({ y: line.y, cells: [{ x: line.x, text }] });
+      continue;
+    }
+    currentRow.cells.push({ x: line.x, text });
+  }
+
+  for (const row of rows) {
+    row.cells.sort((left, right) => left.x - right.x);
+  }
+
+  return rows;
+}
+
+function deriveEntriesPerCell(row: AuthorRow, emailsByCell: string[][]): number[] {
+  return row.cells.map((cell, index) => {
+    const emailCount = emailsByCell[index]?.length ?? 0;
+    if (emailCount > 0) return emailCount;
+    return normalizeSpacing(cell.text).length > 0 ? 1 : 0;
+  });
+}
+
+function splitRowIntoEntries(row: AuthorRow, entriesPerCell: number[]): string[] {
+  const entries: string[] = [];
+  const maxCellCount = Math.max(row.cells.length, entriesPerCell.length);
+  for (let index = 0; index < maxCellCount; index += 1) {
+    const text = row.cells[index]?.text ?? "";
+    const count = entriesPerCell[index] ?? 1;
+    entries.push(...splitCellIntoEntries(text, count));
+  }
+  return entries.filter((entry) => entry.length > 0);
+}
+
+function splitCellIntoEntries(text: string, expectedCount: number): string[] {
+  const normalized = normalizeSpacing(text);
+  if (normalized.length === 0) return [];
+  if (expectedCount <= 1) return [normalized];
+
+  const emails = extractEmails(normalized);
+  if (emails.length === expectedCount) return emails;
+
+  const tokens = normalized.split(/\s+/).filter((token) => token.length > 0);
+  if (tokens.length <= expectedCount) return [normalized];
+
+  const baseSize = Math.floor(tokens.length / expectedCount);
+  const remainder = tokens.length % expectedCount;
+  const entries: string[] = [];
+  let tokenIndex = 0;
+  for (let index = 0; index < expectedCount; index += 1) {
+    const entrySize = baseSize + (index >= expectedCount - remainder ? 1 : 0);
+    const nextTokenIndex = Math.min(tokens.length, tokenIndex + entrySize);
+    const entry = tokens.slice(tokenIndex, nextTokenIndex).join(" ");
+    if (entry.length > 0) entries.push(entry);
+    tokenIndex = nextTokenIndex;
+  }
+
+  if (tokenIndex < tokens.length && entries.length > 0) {
+    const tail = tokens.slice(tokenIndex).join(" ");
+    entries[entries.length - 1] = normalizeSpacing(`${entries[entries.length - 1]} ${tail}`);
+  }
+
+  return entries.filter((entry) => entry.length > 0);
+}
+
+function extractEmails(text: string): string[] {
+  return text.match(AUTHOR_EMAIL_PATTERN) ?? [];
+}
+
+function renderAuthorBlockHtml(authors: Author[]): string {
+  const authorHtml = authors
+    .map((author) => {
+      const details = [
+        `    <div class="name">${escapeHtml(author.name)}</div>`,
+        ...author.affiliations.map(
+          (affiliation) => `    <div class="affiliation">${escapeHtml(affiliation)}</div>`,
+        ),
+        author.email ? `    <div class="email">${escapeHtml(author.email)}</div>` : "",
+      ]
+        .filter((line) => line.length > 0)
+        .join("\n");
+      return `  <div class="author">\n${details}\n  </div>`;
+    })
+    .join("\n");
+
+  return `<div class="authors">\n${authorHtml}\n</div>`;
 }
 
 
@@ -1284,7 +1458,13 @@ function isAcknowledgementsBodyContinuationLine(
   headingLine: TextLine,
 ): boolean {
   if (line.pageIndex !== previousLine.pageIndex) return false;
-  if (isCrossColumnPair(previousLine, line)) return false;
+  const maxLeftOffset = line.pageWidth * ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO;
+  if (
+    isCrossColumnPair(previousLine, line) &&
+    Math.abs(line.x - headingLine.x) > maxLeftOffset
+  ) {
+    return false;
+  }
   if (/[.!?]$/.test(previousText)) return false;
   const normalized = parseAcknowledgementsBodyText(line, headingLine);
   if (normalized === undefined) return false;
@@ -1297,8 +1477,6 @@ function isAcknowledgementsBodyContinuationLine(
     ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO,
   );
   if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
-
-  const maxLeftOffset = line.pageWidth * ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO;
   return (
     Math.abs(line.x - headingLine.x) <= maxLeftOffset ||
     Math.abs(line.x - previousLine.x) <= maxLeftOffset
