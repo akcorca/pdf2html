@@ -30,4 +30,28 @@ describe("tft-reading-order", () => {
       /<p>various semiconductors, sputter-deposited[\s\S]*?conventional a-Si-based TFTs\.<\/p>/u,
     );
   });
+
+  it("does not interleave figure caption text with body text", () => {
+    // Figure 2 caption should be a contiguous block, not interleaved
+    // with left-column body text like "ductor and metal electrodes was achieved"
+    // or "via the simple solution processing of metal-".
+    // The caption should contain "Figure 2." followed by its description text
+    // without body-text fragments in between.
+    expect(tftHtml).not.toMatch(
+      /Figure 2\.[\s\S]*?ductor and metal electrodes was achieved[\s\S]*?transfer characteristics/u,
+    );
+    expect(tftHtml).not.toMatch(
+      /oxide semicon-[\s\S]*?Figure 2\.[\s\S]*?ductor and metal electrodes/u,
+    );
+
+    // The figure caption should appear as a coherent block
+    expect(tftHtml).toMatch(
+      /Figure 2\.[\s\S]*?Variations of the I[\s\S]*?ambient and vacuum conditions\./u,
+    );
+
+    // Body text should flow without caption fragments interleaved
+    expect(tftHtml).toMatch(
+      /oxide semicon-ductor and metal electrodes was achieved via the simple solution processing/u,
+    );
+  });
 });

@@ -250,6 +250,8 @@ function applyReadingOrderReorders(
     (currentLines) =>
       reorderRightColumnBodyBeforeFirstTopLevelHeading(currentLines, multiColumnPageIndexes),
     (currentLines) =>
+      deinterleaveFigureCaptionBlocks(currentLines, multiColumnPageIndexes),
+    (currentLines) =>
       reorderBottomOfPageInterleavedLines(currentLines, columnMajorPageIndexes),
   ];
   return reorderSteps.reduce((currentLines, reorderStep) => reorderStep(currentLines), lines);
@@ -590,6 +592,116 @@ function reorderBottomOfPageInterleavedLines(
 function isNearPageBottom(line: TextLine): boolean {
   if (line.pageHeight <= 0) return false;
   return line.y / line.pageHeight <= MULTI_COLUMN_NEAR_ROW_BOTTOM_Y_RATIO;
+}
+
+const FIGURE_CAPTION_LABEL_PATTERN = /^(?:Figure|Fig\.?|Table|Scheme)\s+\d+/;
+const CAPTION_INTERLEAVE_MIN_X_GAP = 30;
+const CAPTION_INTERLEAVE_MIN_FONT_DIFF = 0.5;
+
+/**
+ * On multi-column pages, figure/table captions that appear adjacent to body
+ * text (e.g. below a chart spanning part of the page) can be sorted by Y and
+ * interleaved with body text from the other column. This step detects such
+ * interleaved caption blocks and groups them contiguously after the body lines.
+ *
+ * The detection requires both an X-position gap AND a font-size difference
+ * between caption and body lines, preventing false triggers on table captions
+ * that are simply adjacent to body text at a similar font size.
+ */
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: caption block detection with interleave verification in one pass.
+function deinterleaveFigureCaptionBlocks(
+  lines: TextLine[],
+  multiColumnPageIndexes: Set<number>,
+): TextLine[] {
+  const result = [...lines];
+  let i = 0;
+  while (i < result.length) {
+    const line = result[i];
+    if (!multiColumnPageIndexes.has(line.pageIndex) || !FIGURE_CAPTION_LABEL_PATTERN.test(line.text)) {
+      i++;
+      continue;
+    }
+    const captionX = line.x;
+    const captionFontSize = line.fontSize;
+    const pageIndex = line.pageIndex;
+
+    // Look for interleaved body lines: different X AND different font size.
+    // This two-criteria check avoids false positives.
+    let bodyFontSize: number | undefined;
+    for (let j = Math.max(0, i - 4); j < Math.min(result.length, i + 8); j++) {
+      if (j === i) continue;
+      const nearby = result[j];
+      if (nearby.pageIndex !== pageIndex) continue;
+      if (Math.abs(nearby.x - captionX) >= CAPTION_INTERLEAVE_MIN_X_GAP &&
+          Math.abs(nearby.fontSize - captionFontSize) >= CAPTION_INTERLEAVE_MIN_FONT_DIFF) {
+        bodyFontSize = nearby.fontSize;
+        break;
+      }
+    }
+    if (bodyFontSize === undefined) { i++; continue; }
+
+    // Expand the block forward and backward.
+    let blockStart = i;
+    let blockEnd = i + 1;
+
+    const isCaption = (l: TextLine) => isCaptionContinuation(l, captionX, captionFontSize);
+    const isBody = (l: TextLine) => isInterleavedBodyLine(l, captionX, bodyFontSize as number);
+
+    while (blockEnd < result.length && result[blockEnd].pageIndex === pageIndex) {
+      const candidate = result[blockEnd];
+      const prevLine = result[blockEnd - 1];
+      if (Math.abs(prevLine.y - candidate.y) > candidate.fontSize * 4) break;
+      // Stop at another figure/table label — it's a separate caption, not a continuation.
+      if (FIGURE_CAPTION_LABEL_PATTERN.test(candidate.text)) break;
+      if (!isCaption(candidate) && !isBody(candidate)) break;
+      blockEnd++;
+    }
+
+    while (blockStart > 0 && result[blockStart - 1].pageIndex === pageIndex) {
+      const candidate = result[blockStart - 1];
+      const nextLine = result[blockStart];
+      if (Math.abs(nextLine.y - candidate.y) > candidate.fontSize * 4) break;
+      if (FIGURE_CAPTION_LABEL_PATTERN.test(candidate.text)) break;
+      if (!isCaption(candidate) && !isBody(candidate)) break;
+      blockStart--;
+    }
+
+    const block = result.slice(blockStart, blockEnd);
+    const captionLines = block.filter(isCaption);
+    const bodyLines = block.filter((l) => !isCaption(l));
+
+    // Only reorder if lines are truly interleaved (caption and body lines
+    // alternate in the current sort order). If all caption lines already
+    // precede or follow all body lines, there's no interleaving to fix.
+    if (captionLines.length >= 2 && bodyLines.length >= 2 && isInterleaved(block, isCaption)) {
+      result.splice(blockStart, blockEnd - blockStart, ...bodyLines, ...captionLines);
+    }
+
+    i = blockEnd;
+  }
+  return result;
+}
+
+/** Returns true if caption and non-caption lines alternate in the block. */
+function isInterleaved(block: TextLine[], isCaption: (l: TextLine) => boolean): boolean {
+  // Count transitions between caption and non-caption lines.
+  let transitions = 0;
+  for (let j = 1; j < block.length; j++) {
+    if (isCaption(block[j]) !== isCaption(block[j - 1])) transitions++;
+  }
+  // At least 2 transitions means true interleaving (e.g. body→caption→body).
+  return transitions >= 2;
+}
+
+function isCaptionContinuation(line: TextLine, captionX: number, captionFontSize: number): boolean {
+  const xTolerance = line.pageWidth * 0.15;
+  return Math.abs(line.x - captionX) < xTolerance &&
+    Math.abs(line.fontSize - captionFontSize) < CAPTION_INTERLEAVE_MIN_FONT_DIFF;
+}
+
+function isInterleavedBodyLine(line: TextLine, captionX: number, bodyFontSize: number): boolean {
+  return Math.abs(line.x - captionX) >= CAPTION_INTERLEAVE_MIN_X_GAP &&
+    Math.abs(line.fontSize - bodyFontSize) < CAPTION_INTERLEAVE_MIN_FONT_DIFF;
 }
 
 function shouldPreferColumnMajorOrdering(

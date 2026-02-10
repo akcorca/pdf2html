@@ -110,21 +110,29 @@ squeeze ()
 <p>Figure 3: User interface of CleanAgent.</p>
 <p>Implementation. CleanAgent is implemented in Python 3.10.6. Cocoon is run using its official Colab notebook from the GitHub repo . All methods use the gpt-4o-2024-08-06 model. Experiments are conducted on a MacBook Pro with an M1 chip, 16GB RAM, running macOS Sequoia 15.5.</p>
 <p>Results. Table 1 presents the comparison of different systems in terms of cell-level matching rate and latency.</p>
-<p>CleanAgent achieves the data standardization task. Firstly, the</p>
-<p>a 42.5% cell-level matching rate, approximately 2 × higher than that of GPT-4o and Cocoon. These results demonstrate that Clean-Agent ’s type-specific standardization API enhances the LLM’s ability to generate more precise and concise standardization code. In addition to higher accuracy, CleanAgent also exhibits lower latency compared to Cocoon. This is because Cocoon generates a one-shot SQL query for all columns without the ability to target specific ones, leading to unnecessary overhead.</p>
 <table>
 <caption>Table 1: Data standardization performance by comparing different systems.</caption>
 <thead>
-<tr><th></th><th>Cell-Level</th><th></th><th></th></tr>
+<tr><th>terms of cell-level matching rate and latency. CleanAgent achieves</th><th>the data standardization task. Firstly, the Column-type Annotator</th></tr>
 </thead>
 <tbody>
-<tr><td>System</td><td></td><td>Latency (s)</td><td></td></tr>
-<tr><td></td><td>Matching Rate(%)</td><td></td><td></td></tr>
-<tr><td>GPT-4o</td><td>22.0</td><td></td><td>19.76</td></tr>
-<tr><td>Cocoon</td><td>21.5</td><td></td><td>636.62</td></tr>
-<tr><td>CleanAgent</td><td>42.5</td><td></td><td>29.57</td></tr>
+<tr><td>a 42.5% cell-level matching rate, approximately 2 × higher than that receives messages from the Chat Manager , annotates and out-</td><td></td></tr>
+<tr><td>of GPT-4o and Cocoon. These results demonstrate that Clean-</td><td>puts the type of each column, as area ③ shows. Then, the Python</td></tr>
+<tr><td>Agent ’s type-specific standardization API enhances the LLM’s Programmer picks up standardization functions from Dataprep.Clean</td><td></td></tr>
+<tr><td>ability to generate more precise and concise standardization code. based on the type of each column, and write proper Python code</td><td></td></tr>
+<tr><td>In addition to higher accuracy, CleanAgent also exhibits lower using the standardization functions, as area ④ shows. Thirdly, the</td><td></td></tr>
+<tr><td>latency compared to Cocoon. This is because Cocoon generates a Code Executor executes the Python code by the Python Programmer</td><td></td></tr>
+<tr><td>one-shot SQL query for all columns without the ability to target and collects the execution messages, as area ⑤ shows. If the Code</td><td></td></tr>
+<tr><td>specific ones, leading to unnecessary overhead.</td><td></td></tr>
 </tbody>
 </table>
+<p>Cell-Level</p>
+<p>System</p>
+<p>Latency (s)</p>
+<p>Matching Rate(%)</p>
+<p>GPT-4o 22.0 19.76</p>
+<p>Cocoon 21.5 636.62</p>
+<p>CleanAgent 42.5 29.57</p>
 <h2>5 USER INTERFACE OF CLEANAGENT</h2>
 <p>We developed a web-based user interface for</p>
 <p>CleanAgent , allow-</p>
