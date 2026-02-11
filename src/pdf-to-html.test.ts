@@ -400,6 +400,13 @@ describe("convertPdfToHtml", () => {
     expect(respectHtml).toContain("<h4>5.1.3 Japanese</h4>");
   });
 
+  it("renders common back-matter section labels as semantic headings in respect.pdf", () => {
+    expect(respectHtml).toContain("<h2>Limitations</h2>");
+    expect(respectHtml).toContain("<h2>Ethics Statement</h2>");
+    expect(respectHtml).not.toContain("<p>Limitations</p>");
+    expect(respectHtml).not.toContain("<p>Ethics Statement</p>");
+  });
+
   it("keeps numbered subsection headings in logical order for respect.pdf", () => {
     const section41 = "<h3>4.1 Languages, LLMs, and Prompt Politeness</h3>";
     const section42 = "<h3>4.2 Tasks</h3>";
@@ -778,6 +785,20 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("keeps left-column tail and right-column continuation in order in respect.pdf introduction", () => {
+    const leftColumnTail = "is basic etiquette, which is reflected";
+    const rightColumnTop = "in our language and behavior. However, polite-";
+    const rightColumnContinuation =
+      "ness and respect may have different definitions and manifestations in different cultures and languages.";
+    expect(respectHtml).toContain(leftColumnTail);
+    expect(respectHtml).toContain(rightColumnTop);
+    expect(respectHtml).toContain(rightColumnContinuation);
+    expect(respectHtml.indexOf(leftColumnTail)).toBeLessThan(respectHtml.indexOf(rightColumnTop));
+    expect(respectHtml.indexOf(rightColumnTop)).toBeLessThan(
+      respectHtml.indexOf(rightColumnContinuation),
+    );
+  });
+
   it("merges body paragraph lines in tft.pdf left-column abstract into one p tag", () => {
     expect(tftHtml).toContain(
       "<p>The stabilization and control of the electrical properties in solution-processed",
@@ -843,6 +864,14 @@ describe("convertPdfToHtml", () => {
     expect(covidHtml).toMatch(/<li>.*\[1\]/);
   });
 
+  it("unescapes HTML entities in reference blocks for covid.pdf", () => {
+    const expectedHtml = '<span class="subtitle"><em>JACC</em> State-of-the-Art Review</span>';
+    const unexpectedHtml =
+      "&lt; span class = “ subtitle ” &gt;&lt; em &gt; JACC &lt; /em &gt; State-of-the-Art Review &lt; / span &gt;";
+    expect(covidHtml).toContain(expectedHtml);
+    expect(covidHtml).not.toContain(unexpectedHtml);
+  });
+
   it("identifies and cleans the abstract heading in covid.pdf", () => {
     expect(covidHtml).not.toContain("<p>A R T I C L E I N F O A B S T R A C T</p>");
     expect(covidHtml).toContain("<h2>Abstract</h2>");
@@ -895,7 +924,9 @@ describe("convertPdfToHtml", () => {
   });
 
   it("drops detached superscript numeric markers from respect.pdf body paragraphs", () => {
-    expect(respectHtml).toContain("In addition, we also hypothesize that the best level of politeness");
+    expect(respectHtml).toMatch(
+      /In addition, we also(?:\s*<sup id="fnref\d+"><a href="#fn\d+" class="footnote-ref">\d+<\/a><\/sup>)?\s*hypothesize that the best level of politeness/u,
+    );
     expect(respectHtml).not.toContain("In addition, we also 1 hypothesize");
     expect(respectHtml).not.toContain("LLMs, and 4 prompts");
     expect(respectHtml).not.toContain("for each 2 language");

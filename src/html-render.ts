@@ -80,8 +80,8 @@ const BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO = 2.2;
 const BODY_PARAGRAPH_MAX_FONT_DELTA = 0.8;
 const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.2;
 const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.2;
-const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[A-Za-z0-9("''\[]/u;
-const BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"'\[]/u;
+const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[\p{L}\p{N}<("''\[]/u;
+const BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN = /^[\p{Ll}\p{N}<(“‘"'\[]/u;
 const BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO = 0.2;
 const BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO = 0.72;
 const BODY_PARAGRAPH_PAGE_WRAP_MAX_LEFT_OFFSET_RATIO = 0.06;
@@ -254,6 +254,37 @@ export function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
 }
 
+const FOOTNOTE_REFERENCE_HTML_PATTERN =
+  /<sup id="fnref(\d+)"><a href="#fn\1" class="footnote-ref">\1<\/a><\/sup>/g;
+
+function escapeHtmlPreservingFootnoteReferences(value: string): string {
+  if (!value.includes('<sup id="fnref')) {
+    return escapeHtml(value);
+  }
+
+  let escapedValue = "";
+  let previousEndIndex = 0;
+  for (const match of value.matchAll(FOOTNOTE_REFERENCE_HTML_PATTERN)) {
+    const matchIndex = match.index;
+    if (matchIndex === undefined) continue;
+    const matchedValue = match[0];
+    escapedValue += escapeHtml(value.slice(previousEndIndex, matchIndex));
+    escapedValue += matchedValue;
+    previousEndIndex = matchIndex + matchedValue.length;
+  }
+
+  if (previousEndIndex === 0) {
+    return escapeHtml(value);
+  }
+
+  escapedValue += escapeHtml(value.slice(previousEndIndex));
+  return escapedValue;
+}
+
+function renderParagraph(text: string): string {
+  return `<p>${escapeHtmlPreservingFootnoteReferences(text)}</p>`;
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ordered rendering heuristics are evaluated in one pass.
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: ordered rendering heuristics are evaluated in one pass.
 function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, document?: ExtractedDocument): string[] {
@@ -346,7 +377,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
           currentLine,
         );
         if (acknowledgementsParagraph !== undefined) {
-          bodyLines.push(`<p>${escapeHtml(acknowledgementsParagraph.text)}</p>`);
+          bodyLines.push(renderParagraph(acknowledgementsParagraph.text));
           index = acknowledgementsParagraph.nextIndex;
           continue;
         }
@@ -358,7 +389,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     const inlineHeading = parseInlineHeadingParagraph(currentLine.text);
     if (inlineHeading !== undefined) {
       bodyLines.push(`<h${inlineHeading.level}>${escapeHtml(inlineHeading.heading)}</h${inlineHeading.level}>`);
-      bodyLines.push(`<p>${escapeHtml(inlineHeading.body)}</p>`);
+      bodyLines.push(renderParagraph(inlineHeading.body));
       index += 1;
       continue;
     }
@@ -414,7 +445,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
 
     const figureCaption = consumeFigureCaption(lines, index);
     if (figureCaption !== undefined) {
-      bodyLines.push(`<p>${escapeHtml(figureCaption.text)}</p>`);
+      bodyLines.push(renderParagraph(figureCaption.text));
       index = figureCaption.nextIndex;
       continue;
     }
@@ -429,7 +460,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
       consumedBodyLineIndexes,
     );
     if (bodyParagraph !== undefined) {
-      bodyLines.push(`<p>${escapeHtml(bodyParagraph.text)}</p>`);
+      bodyLines.push(renderParagraph(bodyParagraph.text));
       index = bodyParagraph.nextIndex;
       continue;
     }
@@ -443,13 +474,13 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     );
     if (displayMathBlock !== undefined) {
       if (displayMathBlock.text.length > 0) {
-        bodyLines.push(`<p>${escapeHtml(displayMathBlock.text)}</p>`);
+        bodyLines.push(renderParagraph(displayMathBlock.text));
       }
       index = displayMathBlock.nextIndex;
       continue;
     }
 
-    bodyLines.push(`<p>${escapeHtml(currentLine.text)}</p>`);
+    bodyLines.push(renderParagraph(currentLine.text));
     index += 1;
   }
   return bodyLines;
