@@ -145,6 +145,8 @@ const RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN =
   /^(?:and|or|with|without|to|for|from|in|on|at|by|of|as|that|which|whose|where|when|while|if)\b/iu;
 const RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT = 4;
 const RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT = 2;
+const RENDERED_TRAILING_URL_PREFIX_PATTERN =
+  /^(.*?)(https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*[./-])$/iu;
 const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
 const CAPTION_CONTINUATION_MAX_FONT_DELTA = 0.8;
 const CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.05;
@@ -492,6 +494,15 @@ function mergeSplitRenderedParagraphContinuations(
       index += 1;
       continue;
     }
+    const mergedSplitUrlParagraph = mergeSplitRenderedUrlParagraph(
+      firstText,
+      continuationText,
+    );
+    if (mergedSplitUrlParagraph !== undefined) {
+      merged[index] = `<p>${mergedSplitUrlParagraph}</p>`;
+      merged.splice(index + 1, 1);
+      continue;
+    }
     if (!shouldMergeSplitRenderedParagraphPair(firstText, continuationText)) {
       index += 1;
       continue;
@@ -506,6 +517,35 @@ function mergeSplitRenderedParagraphContinuations(
     merged.splice(index + 1, 1);
   }
   return merged;
+}
+
+function mergeSplitRenderedUrlParagraph(
+  firstText: string,
+  continuationText: string,
+): string | undefined {
+  const trailingUrlPrefix = extractTrailingRenderedUrlPrefix(firstText);
+  if (trailingUrlPrefix === undefined) return undefined;
+
+  const continuation = parseUrlContinuationLine(continuationText);
+  if (continuation === undefined) return undefined;
+
+  const mergedUrl = `${trailingUrlPrefix.urlPrefix}${continuation.path}`;
+  if (!isValidHttpUrl(mergedUrl)) return undefined;
+
+  const escapedUrl = escapeHtml(mergedUrl);
+  return `${trailingUrlPrefix.leadingText}<a href="${escapedUrl}">${escapedUrl}</a>${escapeHtml(continuation.trailingPunctuation)}`;
+}
+
+function extractTrailingRenderedUrlPrefix(
+  text: string,
+): { leadingText: string; urlPrefix: string } | undefined {
+  const normalized = normalizeTrailingPunctuationSpacing(text.trimEnd());
+  const match = RENDERED_TRAILING_URL_PREFIX_PATTERN.exec(normalized);
+  if (!match) return undefined;
+
+  const leadingText = match[1] ?? "";
+  const urlPrefix = match[2];
+  return { leadingText, urlPrefix };
 }
 
 function shouldMergeSplitRenderedParagraphPair(

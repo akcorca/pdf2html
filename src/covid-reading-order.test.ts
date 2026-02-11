@@ -189,4 +189,15 @@ describe("covid numbered heading order", () => {
     expect(covidHtml).not.toContain("<p>Declaration of competing interest</p>");
     expect(covidHtml).not.toContain("<p>Appendix A. Supplementary data</p>");
   });
+
+  it("merges appendix URL wraps into one linked paragraph", () => {
+    const mergedAppendixUrlLine =
+      '<p>Supplementary data to this article can be found online at <a href="https://doi.org/10.1016/j.thromres.2021.03.006">https://doi.org/10.1016/j.thromres.2021.03.006</a>.</p>';
+
+    expect(covidHtml).toContain(mergedAppendixUrlLine);
+    expect(covidHtml).not.toContain(
+      "<p>Supplementary data to this article can be found online at https://doi.</p>",
+    );
+    expect(covidHtml).not.toContain("<p>org/10.1016/j.thromres.2021.03.006.</p>");
+  });
 });
