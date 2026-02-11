@@ -83,15 +83,12 @@ function collectFootnoteLines(lines: TextLine[], bodyFontSize: number): Set<Text
     const pageBodyFontSize = estimateBodyFontSize(pageLines);
     let index = 0;
     while (index < pageLines.length - 1) {
-      const endIndex =
-        findPublicationMetadataFootnoteRangeEndIndex(
-          pageLines,
-          index,
-          bodyFontSize,
-          pageBodyFontSize,
-        ) ??
-        findFootnoteRangeEndIndex(pageLines, index, bodyFontSize) ??
-        findUnmarkedFootnoteRangeEndIndex(pageLines, index, bodyFontSize, pageBodyFontSize);
+      const endIndex = findFirstFootnoteRangeEndIndex(
+        pageLines,
+        index,
+        bodyFontSize,
+        pageBodyFontSize,
+      );
       if (endIndex === undefined) {
         index += 1;
         continue;
@@ -105,6 +102,19 @@ function collectFootnoteLines(lines: TextLine[], bodyFontSize: number): Set<Text
   return moved;
 }
 
+function findFirstFootnoteRangeEndIndex(
+  pageLines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+  pageBodyFontSize: number,
+): number | undefined {
+  return (
+    findPublicationMetadataFootnoteRangeEndIndex(pageLines, startIndex, bodyFontSize, pageBodyFontSize) ??
+    findFootnoteRangeEndIndex(pageLines, startIndex, bodyFontSize) ??
+    findUnmarkedFootnoteRangeEndIndex(pageLines, startIndex, bodyFontSize, pageBodyFontSize)
+  );
+}
+
 function findPublicationMetadataFootnoteRangeEndIndex(
   pageLines: TextLine[],
   startIndex: number,
@@ -114,23 +124,9 @@ function findPublicationMetadataFootnoteRangeEndIndex(
   const startLine = pageLines[startIndex];
   if (!isPublicationMetadataStartLine(startLine, bodyFontSize, pageBodyFontSize)) return undefined;
 
-  let endIndex = startIndex + 1;
-  let previousLine = startLine;
-  while (endIndex < pageLines.length) {
-    const line = pageLines[endIndex];
-    if (
-      !isLikelyPublicationMetadataContinuationLine(
-        line,
-        previousLine,
-        bodyFontSize,
-        pageBodyFontSize,
-      )
-    ) {
-      break;
-    }
-    previousLine = line;
-    endIndex += 1;
-  }
+  const endIndex = extendRangeEndIndex(pageLines, startIndex, (line, previousLine) =>
+    isLikelyPublicationMetadataContinuationLine(line, previousLine, bodyFontSize, pageBodyFontSize),
+  );
 
   return endIndex - startIndex >= FOOTNOTE_PUBLICATION_METADATA_MIN_LINES ? endIndex : undefined;
 }
@@ -149,18 +145,7 @@ function findUnmarkedFootnoteRangeEndIndex(
     return undefined;
   }
 
-  const nextLine = pageLines[startIndex + 1];
-  if (!nextLine || !getFootnoteContentText(nextLine, bodyFontSize)) return undefined;
-  let endIndex = startIndex + 2;
-  let previousRangeLine = nextLine;
-  while (endIndex < pageLines.length) {
-    const line = pageLines[endIndex];
-    if (!isLikelyFootnoteContinuationLine(line, previousRangeLine, bodyFontSize)) break;
-    previousRangeLine = line;
-    endIndex += 1;
-  }
-
-  return endIndex;
+  return findFootnoteContinuationRangeEndIndex(pageLines, startIndex + 1, bodyFontSize);
 }
 
 function findFootnoteRangeEndIndex(
@@ -170,17 +155,34 @@ function findFootnoteRangeEndIndex(
 ): number | undefined {
   const markerLine = pageLines[startIndex];
   if (!isFootnoteStartMarkerLine(markerLine, bodyFontSize)) return undefined;
-  const nextLine = pageLines[startIndex + 1];
-  if (!nextLine || !getFootnoteContentText(nextLine, bodyFontSize)) return undefined;
-  let endIndex = startIndex + 2;
-  let previousLine = nextLine;
+  return findFootnoteContinuationRangeEndIndex(pageLines, startIndex + 1, bodyFontSize);
+}
+
+function findFootnoteContinuationRangeEndIndex(
+  pageLines: TextLine[],
+  firstContentIndex: number,
+  bodyFontSize: number,
+): number | undefined {
+  const firstContentLine = pageLines[firstContentIndex];
+  if (!firstContentLine || !getFootnoteContentText(firstContentLine, bodyFontSize)) return undefined;
+  return extendRangeEndIndex(pageLines, firstContentIndex, (line, previousLine) =>
+    isLikelyFootnoteContinuationLine(line, previousLine, bodyFontSize),
+  );
+}
+
+function extendRangeEndIndex(
+  pageLines: TextLine[],
+  startIndex: number,
+  isContinuationLine: (line: TextLine, previousLine: TextLine) => boolean,
+): number {
+  let endIndex = startIndex + 1;
+  let previousLine = pageLines[startIndex];
   while (endIndex < pageLines.length) {
     const line = pageLines[endIndex];
-    if (!isLikelyFootnoteContinuationLine(line, previousLine, bodyFontSize)) break;
+    if (!isContinuationLine(line, previousLine)) break;
     previousLine = line;
     endIndex += 1;
   }
-
   return endIndex;
 }
 
@@ -243,12 +245,7 @@ function isPublicationMetadataStartLine(
   if (line.y > line.pageHeight * FOOTNOTE_PUBLICATION_METADATA_START_MAX_VERTICAL_RATIO) {
     return false;
   }
-  if (line.fontSize > bodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_FONT_RATIO) {
-    return false;
-  }
-  if (line.fontSize > pageBodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_PAGE_FONT_RATIO) {
-    return false;
-  }
+  if (!isWithinPublicationMetadataFontBounds(line, bodyFontSize, pageBodyFontSize)) return false;
 
   const text = normalizeSpacing(line.text);
   return FOOTNOTE_PUBLICATION_METADATA_START_PATTERN.test(text);
@@ -269,16 +266,22 @@ function isLikelyPublicationMetadataContinuationLine(
   if (Math.abs(line.fontSize - previousLine.fontSize) > FOOTNOTE_PUBLICATION_METADATA_MAX_FONT_DELTA) {
     return false;
   }
-  if (line.fontSize > bodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_FONT_RATIO) {
-    return false;
-  }
-  if (line.fontSize > pageBodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_PAGE_FONT_RATIO) {
-    return false;
-  }
+  if (!isWithinPublicationMetadataFontBounds(line, bodyFontSize, pageBodyFontSize)) return false;
 
   const text = normalizeSpacing(line.text);
   if (text.length < FOOTNOTE_MIN_TEXT_LENGTH) return false;
   return isPublicationMetadataLineText(text);
+}
+
+function isWithinPublicationMetadataFontBounds(
+  line: TextLine,
+  bodyFontSize: number,
+  pageBodyFontSize: number,
+): boolean {
+  return (
+    line.fontSize <= bodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_FONT_RATIO &&
+    line.fontSize <= pageBodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_PAGE_FONT_RATIO
+  );
 }
 
 function isPublicationMetadataLineText(text: string): boolean {
