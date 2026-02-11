@@ -158,17 +158,26 @@ function finalizeDetectedTable(input: {
 
   const [headerRow, ...dataRows] = allParsedRows;
   if (!headerRow || dataRows.length === 0) return undefined;
+  const sanitizedHeaderRow = sanitizeHeaderCells(headerRow);
 
-  normalizeColumnCount([headerRow, ...dataRows]);
+  normalizeColumnCount([sanitizedHeaderRow, ...dataRows]);
 
   return {
     captionStartIndex: startIndex,
     captionText: captionText.trim(),
     captionLineIndexes,
-    headerRows: [headerRow],
+    headerRows: [sanitizedHeaderRow],
     dataRows,
     nextIndex,
   };
+}
+
+function sanitizeHeaderCells(row: string[]): string[] {
+  return row.map((cell) => {
+    const trimmed = cell.trim();
+    if (!/[A-Za-z]/u.test(trimmed)) return trimmed;
+    return trimmed.replace(/(?:\s+\d{1,2})+$/u, "");
+  });
 }
 
 function normalizeColumnCount(rows: string[][]): void {
@@ -281,14 +290,13 @@ function buildTableRows(
   const rowFragGroupsList: Array<{ groups: FragmentGroup[]; line: TextLine }> = [];
   for (const { line } of deduped) {
     const rowBounds = line.column !== undefined ? estimateRowBounds(allEntries, line) : undefined;
-    const unboundedGroups = getFragmentGroupsForRow(fragments, line.y, line.fontSize);
-    const shouldApplyRowBounds = rowBounds
-      ? unboundedGroups.some((group) => group.endX < rowBounds.minX || group.startX > rowBounds.maxX)
-      : false;
-    const groups = shouldApplyRowBounds
+    const groups = rowBounds
       ? getFragmentGroupsForRow(fragments, line.y, line.fontSize, rowBounds)
-      : unboundedGroups;
-    rowFragGroupsList.push({ groups, line });
+      : getFragmentGroupsForRow(fragments, line.y, line.fontSize);
+    const resolvedGroups = groups.length > 0
+      ? groups
+      : getFragmentGroupsForRow(fragments, line.y, line.fontSize);
+    rowFragGroupsList.push({ groups: resolvedGroups, line });
   }
 
   // Need enough multi-column rows
@@ -307,7 +315,96 @@ function buildTableRows(
   if (columnXs.length < 2) return [];
 
   // Parse rows into cells, merging superscript lines
-  return parseRowCells(rowFragGroupsList, columnXs, bodyFontSize);
+  return mergeHeaderContinuationRows(
+    parseRowCells(refineFragmentGroups(rowFragGroupsList, columnXs), columnXs, bodyFontSize),
+  );
+}
+
+function refineFragmentGroups(
+  rowFragGroupsList: Array<{ groups: FragmentGroup[]; line: TextLine }>,
+  columnXs: number[],
+): Array<{ groups: FragmentGroup[]; line: TextLine }> {
+  const avgColWidth = calculateAverageColumnWidth(columnXs);
+  return rowFragGroupsList.map((row) => {
+    const refinedGroups = refineRowFragmentGroups(row.groups, columnXs, avgColWidth);
+    return refinedGroups ? { ...row, groups: refinedGroups } : row;
+  });
+}
+
+function refineRowFragmentGroups(
+  groups: FragmentGroup[],
+  columnXs: number[],
+  avgColWidth: number,
+): FragmentGroup[] | undefined {
+  if (groups.length >= columnXs.length || groups.length === 0) return undefined;
+
+  const refinedGroups: FragmentGroup[] = [];
+  let didRefine = false;
+  for (const group of groups) {
+    if (!shouldSplitFragmentGroup(group, avgColWidth)) {
+      refinedGroups.push(group);
+      continue;
+    }
+
+    const splitGroups = splitFragmentGroup(group, columnXs);
+    if (splitGroups.length <= 1) {
+      refinedGroups.push(group);
+      continue;
+    }
+    refinedGroups.push(...splitGroups);
+    didRefine = true;
+  }
+
+  if (!didRefine) return undefined;
+  return refinedGroups.sort((left, right) => left.startX - right.startX);
+}
+
+function shouldSplitFragmentGroup(group: FragmentGroup, avgColWidth: number): boolean {
+  const groupWidth = group.endX - group.startX;
+  if (group.fragments.length <= 1) return false;
+  return groupWidth >= avgColWidth * 1.5;
+}
+
+function calculateAverageColumnWidth(columnXs: number[]): number {
+  if (columnXs.length < 2) return 0;
+  let totalWidth = 0;
+  for (let i = 1; i < columnXs.length; i++) {
+    totalWidth += columnXs[i] - columnXs[i - 1];
+  }
+  return totalWidth / (columnXs.length - 1);
+}
+
+function splitFragmentGroup(group: FragmentGroup, columnXs: number[]): FragmentGroup[] {
+  const newGroups: FragmentGroup[][] = Array.from({ length: columnXs.length }, () => []);
+
+  for (const frag of group.fragments) {
+    let bestCol = 0;
+    let bestDist = Math.abs(frag.x - columnXs[0]);
+    for (let c = 1; c < columnXs.length; c++) {
+      const dist = Math.abs(frag.x - columnXs[c]);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestCol = c;
+      }
+    }
+    newGroups[bestCol].push(frag);
+  }
+
+  const resultGroups: FragmentGroup[] = [];
+  for (const frags of newGroups) {
+    if (frags.length === 0) continue;
+    const sortedFrags = frags.sort((a, b) => a.x - b.x);
+    const startX = sortedFrags[0].x;
+    const endX = estimateFragmentEndX(sortedFrags[sortedFrags.length - 1]);
+    resultGroups.push({
+      startX,
+      endX,
+      text: sortedFrags.map((f) => f.text).join(" ").trim(),
+      fragments: sortedFrags,
+    });
+  }
+
+  return resultGroups.filter((entry) => entry.text.length > 0);
 }
 
 function parseRowCells(
@@ -343,12 +440,62 @@ function parseRowCells(
   return allParsedRows;
 }
 
+function mergeHeaderContinuationRows(rows: string[][]): string[][] {
+  if (rows.length < 2) return rows;
+  const mergedRows = [rows[0]];
+
+  for (let rowIndex = 1; rowIndex < rows.length; rowIndex += 1) {
+    const row = rows[rowIndex];
+    const header = mergedRows[0];
+    if (!header || !isHeaderContinuationRow(header, row)) {
+      mergedRows.push(row);
+      continue;
+    }
+
+    for (let columnIndex = 0; columnIndex < row.length; columnIndex += 1) {
+      const value = row[columnIndex]?.trim() ?? "";
+      if (value.length === 0) continue;
+      const headerValue = header[columnIndex]?.trim() ?? "";
+      header[columnIndex] = headerValue.length > 0 ? `${headerValue} ${value}` : value;
+    }
+  }
+
+  return mergedRows;
+}
+
+function isHeaderContinuationRow(header: string[], row: string[]): boolean {
+  const textColumnIndexes: number[] = [];
+  let nonEmptyCount = 0;
+
+  for (let columnIndex = 0; columnIndex < row.length; columnIndex += 1) {
+    const value = row[columnIndex]?.trim() ?? "";
+    if (value.length === 0) continue;
+    nonEmptyCount += 1;
+    if (isHeaderNumericMarker(value)) continue;
+    textColumnIndexes.push(columnIndex);
+  }
+
+  if (textColumnIndexes.length !== 1) return false;
+  if (nonEmptyCount > 2) return false;
+
+  const textColumnIndex = textColumnIndexes[0];
+  const textValue = row[textColumnIndex]?.trim() ?? "";
+  if (textValue.length > 28) return false;
+  if (!/^[A-Z]/u.test(textValue)) return false;
+  return (header[textColumnIndex]?.trim().length ?? 0) > 0;
+}
+
+function isHeaderNumericMarker(value: string): boolean {
+  return /^\d{1,2}$/.test(value);
+}
+
 // --- Fragment grouping ---
 
 interface FragmentGroup {
   startX: number;
   endX: number;
   text: string;
+  fragments: ExtractedFragment[];
 }
 
 /**
@@ -366,8 +513,7 @@ function getFragmentGroupsForRow(
     (f) => {
       if (Math.abs(f.y - y) > yTolerance) return false;
       if (!bounds) return true;
-      const fragmentEndX = estimateFragmentEndX(f);
-      return fragmentEndX >= bounds.minX && f.x <= bounds.maxX;
+      return isFragmentCenterWithinBounds(f, bounds);
     },
   );
 
@@ -391,6 +537,7 @@ function getFragmentGroupsForRow(
         startX: currentGroup.startX,
         endX: currentGroup.lastEndX,
         text: currentGroup.frags.map((f) => f.text).join(" ").trim(),
+        fragments: currentGroup.frags,
       });
       currentGroup = {
         frags: [frag],
@@ -407,6 +554,7 @@ function getFragmentGroupsForRow(
     startX: currentGroup.startX,
     endX: currentGroup.lastEndX,
     text: currentGroup.frags.map((f) => f.text).join(" ").trim(),
+    fragments: currentGroup.frags,
   });
 
   return groups;
@@ -448,6 +596,16 @@ function getCaptionBounds(firstLine: TextLine): HorizontalBounds {
 
 function estimateFragmentEndX(frag: ExtractedFragment): number {
   return frag.x + frag.text.length * frag.fontSize * 0.5;
+}
+
+function isFragmentCenterWithinBounds(
+  fragment: ExtractedFragment,
+  bounds: HorizontalBounds,
+): boolean {
+  const endX = estimateFragmentEndX(fragment);
+  const centerX = (fragment.x + endX) / 2;
+  const tolerance = Math.max(fragment.fontSize * 0.4, 2);
+  return centerX >= bounds.minX - tolerance && centerX <= bounds.maxX + tolerance;
 }
 
 /**
@@ -496,9 +654,6 @@ function assignFragmentGroupsToCells(
   return cells;
 }
 
-/**
- * Deduplicate table body entries that share the same y-position.
- */
 function deduplicateByY(
   entries: Array<{ index: number; line: TextLine }>,
   fontSize: number,
