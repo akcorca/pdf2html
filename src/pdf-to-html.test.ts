@@ -124,7 +124,7 @@ describe("convertPdfToHtml", () => {
       "<p>While tools like Pandas offer robust functionalities, their complex-</p>",
     );
     expect(cleanHtml).toContain(
-      "While tools like Pandas offer robust functionalities, their complex-ity and the manual effort required for customizing code to diverse",
+      "While tools like Pandas offer robust functionalities, their complexity and the manual effort required for customizing code to diverse",
     );
   });
 
@@ -253,6 +253,21 @@ describe("convertPdfToHtml", () => {
       "instance of the datetime column, this",
     );
     expect(cleanHtml).not.toContain("<p>datetime column, this</p>");
+  });
+
+  it("merges same-row trailing entity fragments into one paragraph in clean.pdf section 5 intro", () => {
+    expect(cleanHtml).toContain(
+      "We developed a web-based user interface for CleanAgent , allowing users to simply upload their tables without performing any",
+    );
+    expect(cleanHtml).not.toContain("<p>We developed a web-based user interface for</p>");
+    expect(cleanHtml).not.toContain("<p>CleanAgent , allow-</p>");
+  });
+
+  it("keeps clean.pdf Example 3 paragraph intact without right-column heading splice", () => {
+    expect(cleanHtml).toMatch(/then returns\s+the standardized table 𝑇 \./);
+    expect(cleanHtml).not.toContain(
+      "<p>′ The Design of Unified APIs. The goal of our API design is to</p>",
+    );
   });
 
   it("removes repeated running headers and standalone page number lines", () => {
@@ -749,7 +764,7 @@ describe("convertPdfToHtml", () => {
   it("merges respect.pdf abstract lines into body paragraphs instead of single-line p tags", () => {
     expect(respectHtml).not.toContain("<p>els in prompts on the performance of large</p>");
     expect(respectHtml).toContain(
-      "We investigate the impact of politeness lev-els in prompts on the performance of large language models (LLMs).",
+      "We investigate the impact of politeness levels in prompts on the performance of large language models (LLMs).",
     );
   });
 

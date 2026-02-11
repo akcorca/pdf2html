@@ -59,6 +59,7 @@ const HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO = 0.45;
 const HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN =
   /^(?:tion(?:al(?:ly)?|s)?|sion(?:al(?:ly)?|s)?|mation|nition|plicat(?:ion|ions|ive)|[a-z]{1,4}ingly)/u;
 const HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH = 3;
+const HYPHEN_WRAP_SOFT_SHORT_CONTINUATION_MAX_LENGTH = 3;
 const SAME_ROW_SENTENCE_SPLIT_END_PATTERN = /[.!?]["')\]]?$/;
 const SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN = /^[A-Z0-9(“‘"']/u;
 const SAME_ROW_SENTENCE_SPLIT_MAX_VERTICAL_DELTA_FONT_RATIO = 0.2;
@@ -77,8 +78,8 @@ const BODY_PARAGRAPH_FULL_WIDTH_RATIO = 0.85;
 const BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE = 0.75;
 const BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO = 2.2;
 const BODY_PARAGRAPH_MAX_FONT_DELTA = 0.8;
-const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.05;
-const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.12;
+const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.2;
+const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.2;
 const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[A-Za-z0-9("''\[]/u;
 const BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"'\[]/u;
 const BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO = 0.2;
@@ -121,12 +122,16 @@ const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_WIDTH_RATIO = 0.08;
 const INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN = /^[a-z]{1,6}$/u;
 const INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN = /^[a-z]{1,3}$/u;
 const INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN = /^\d{1,4}$/;
+const INLINE_MATH_BRIDGE_BRACKETED_NUMERIC_TOKEN_PATTERN = /^\[\d{1,4}\]$/;
 const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}\[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_LEADING_NUMERIC_MARKER_PATTERN = /^\d{1,4}(?:\s+\d{1,4}){1,2}$/;
 const INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN = /[.!?]["')\]]?$/;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_TOKEN_COUNT = 3;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MIN_TOKEN_LENGTH = 3;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO = 0.88;
+const INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_TOKEN_COUNT = 4;
+const INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_TOKEN_LENGTH = 4;
+const INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_FONT_RATIO = 0.82;
 const DETACHED_LOWERCASE_MATH_SUBSCRIPT_PATTERN = /^[a-z]{3,6}(?:\s+[a-z]{3,6}){0,2}$/u;
 const DETACHED_LOWERCASE_MATH_SUBSCRIPT_MAX_WIDTH_RATIO = 0.1;
 const DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN = /=\s*(?:[A-Za-z]\b|[-−]?\d)/u;
@@ -421,6 +426,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
       bodyFontSize,
       hasDottedSubsectionHeadings,
       pageTypicalWidths,
+      consumedBodyLineIndexes,
     );
     if (bodyParagraph !== undefined) {
       bodyLines.push(`<p>${escapeHtml(bodyParagraph.text)}</p>`);
@@ -958,6 +964,7 @@ function consumeParagraph(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
   pageTypicalWidths: Map<string, number>,
+  consumedBodyLineIndexes: Set<number>,
 ): ConsumedParagraph | undefined {
   return (
     consumeReferenceEntryParagraph(
@@ -974,6 +981,7 @@ function consumeParagraph(
       bodyFontSize,
       hasDottedSubsectionHeadings,
       pageTypicalWidths,
+      consumedBodyLineIndexes,
     ) ??
     consumeHyphenWrappedParagraph(
       lines,
@@ -1604,6 +1612,7 @@ function shouldDropHyphenForSoftWrap(leftText: string, rightText: string): boole
   }
   if (leftFragment !== leftFragment.toLowerCase()) return false;
   if (rightFragment !== rightFragment.toLowerCase()) return false;
+  if (rightFragment.length <= HYPHEN_WRAP_SOFT_SHORT_CONTINUATION_MAX_LENGTH) return true;
   return HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN.test(rightFragment);
 }
 
@@ -2311,6 +2320,7 @@ function consumeBodyParagraph(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
   pageTypicalWidths: Map<string, number>,
+  consumedBodyLineIndexes: Set<number>,
 ): { text: string; nextIndex: number } | undefined {
   const startLine = lines[startIndex];
   let typicalWidth = getTypicalWidth(pageTypicalWidths, startLine);
@@ -2367,6 +2377,7 @@ function consumeBodyParagraph(
     hasDottedSubsectionHeadings,
     typicalWidth,
     parts,
+    consumedBodyLineIndexes,
   );
 
   if (parts.length <= 1 && nextIndex === startIndex + 1) return undefined;
@@ -2492,11 +2503,16 @@ function consumeBodyParagraphContinuationParts(
   hasDottedSubsectionHeadings: boolean,
   typicalWidth: number,
   parts: string[],
+  consumedBodyLineIndexes: Set<number>,
 ): number {
   let previousLine = startLine;
   let nextIndex = continuationStartIndex;
 
   while (nextIndex < lines.length) {
+    if (consumedBodyLineIndexes.has(nextIndex)) {
+      nextIndex += 1;
+      continue;
+    }
     const candidate = lines[nextIndex];
     if (!candidate) break;
     if (
@@ -3061,8 +3077,14 @@ function classifyInlineMathArtifactBridgeKind(
     line,
     previousLine,
   );
+  const isSparseDispersedMathArtifact = isSparseDispersedInlineMathArtifact(
+    tokens,
+    line,
+    previousLine,
+  );
   if (
     !isDetachedSingleTokenArtifact &&
+    !isSparseDispersedMathArtifact &&
     line.estimatedWidth > previousLine.estimatedWidth * INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO
   ) {
     return undefined;
@@ -3070,9 +3092,7 @@ function classifyInlineMathArtifactBridgeKind(
   if (isDetachedSingleTokenArtifact) return "detachedSingleToken";
 
   const hasNumericOrSymbol = tokens.some(
-    (token) =>
-      INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
-      INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token),
+    (token) => isNumericOrSymbolInlineMathBridgeToken(token),
   );
   if (!hasNumericOrSymbol) {
     return isLowercaseSubscriptBridgeTokenLine(tokens, line, previousLine)
@@ -3082,11 +3102,18 @@ function classifyInlineMathArtifactBridgeKind(
 
   const hasValidNumericOrSymbolTokens = tokens.every(
     (token) =>
-      INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
-      INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token) ||
+      isNumericOrSymbolInlineMathBridgeToken(token) ||
       INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN.test(token),
   );
   return hasValidNumericOrSymbolTokens ? "numericOrSymbol" : undefined;
+}
+
+function isNumericOrSymbolInlineMathBridgeToken(token: string): boolean {
+  return (
+    INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN.test(token) ||
+    INLINE_MATH_BRIDGE_BRACKETED_NUMERIC_TOKEN_PATTERN.test(token) ||
+    INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN.test(token)
+  );
 }
 
 function toInlineMathArtifactBridgeText(
@@ -3134,6 +3161,26 @@ function isLowercaseSubscriptBridgeTokenLine(
   return tokens.every((token) => INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN.test(token));
 }
 
+function isSparseDispersedInlineMathArtifact(
+  tokens: string[],
+  line: TextLine,
+  previousLine: TextLine,
+): boolean {
+  if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_TOKEN_COUNT) {
+    return false;
+  }
+  if (line.fontSize > previousLine.fontSize * INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_FONT_RATIO) {
+    return false;
+  }
+  if (!tokens.some((token) => isNumericOrSymbolInlineMathBridgeToken(token))) return false;
+  return tokens.every(
+    (token) =>
+      token.length <= INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_TOKEN_LENGTH &&
+      (isNumericOrSymbolInlineMathBridgeToken(token) ||
+        INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN.test(token)),
+  );
+}
+
 function isBodyParagraphContinuationLine(
   line: TextLine,
   previousLine: TextLine,
@@ -3175,17 +3222,28 @@ function isBodyParagraphContinuationLine(
 
   if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
 
+  const isHyphenContinuation = isHyphenWrappedLineText(normalizeSpacing(previousLine.text));
+  const maxVerticalGapRatio = isHyphenContinuation
+    ? HYPHEN_WRAP_MAX_VERTICAL_GAP_RATIO
+    : BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO;
   const maxVerticalGap = getFontScaledVerticalGapLimit(
     previousLine.fontSize,
-    BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO,
+    maxVerticalGapRatio,
   );
   if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
+
+  const maxCenterOffsetRatio = isHyphenContinuation
+    ? HYPHEN_WRAP_MAX_CENTER_OFFSET_RATIO
+    : BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO;
+  const maxLeftOffsetRatio = isHyphenContinuation
+    ? HYPHEN_WRAP_MAX_LEFT_OFFSET_RATIO
+    : BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO;
 
   const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
   const leftOffset = Math.abs(line.x - previousLine.x);
   if (
-    centerOffset > line.pageWidth * BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO &&
-    leftOffset > line.pageWidth * BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO
+    centerOffset > line.pageWidth * maxCenterOffsetRatio &&
+    leftOffset > line.pageWidth * maxLeftOffsetRatio
   ) {
     return false;
   }
