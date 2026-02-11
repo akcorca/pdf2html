@@ -375,19 +375,11 @@ function calculateAverageColumnWidth(columnXs: number[]): number {
 }
 
 function splitFragmentGroup(group: FragmentGroup, columnXs: number[]): FragmentGroup[] {
-  const newGroups: FragmentGroup[][] = Array.from({ length: columnXs.length }, () => []);
+  const newGroups: ExtractedFragment[][] = Array.from({ length: columnXs.length }, () => []);
 
   for (const frag of group.fragments) {
-    let bestCol = 0;
-    let bestDist = Math.abs(frag.x - columnXs[0]);
-    for (let c = 1; c < columnXs.length; c++) {
-      const dist = Math.abs(frag.x - columnXs[c]);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestCol = c;
-      }
-    }
-    newGroups[bestCol].push(frag);
+    const nearestColumnIndex = findNearestColumnIndex(frag.x, columnXs);
+    newGroups[nearestColumnIndex].push(frag);
   }
 
   const resultGroups: FragmentGroup[] = [];
@@ -422,22 +414,28 @@ function parseRowCells(
       continue;
     }
 
-    if (pendingSuperscriptTexts.length > 0 && allParsedRows.length > 0) {
-      const lastRow = allParsedRows[allParsedRows.length - 1];
-      lastRow[lastRow.length - 1] += ` ${pendingSuperscriptTexts.join(" ")}`;
-      pendingSuperscriptTexts = [];
-    }
+    pendingSuperscriptTexts = appendPendingSuperscriptsToLastRow(
+      allParsedRows,
+      pendingSuperscriptTexts,
+    );
 
     allParsedRows.push(assignFragmentGroupsToCells(groups, columnXs));
   }
 
   // Flush trailing superscripts
-  if (pendingSuperscriptTexts.length > 0 && allParsedRows.length > 0) {
-    const lastRow = allParsedRows[allParsedRows.length - 1];
-    lastRow[lastRow.length - 1] += ` ${pendingSuperscriptTexts.join(" ")}`;
-  }
+  appendPendingSuperscriptsToLastRow(allParsedRows, pendingSuperscriptTexts);
 
   return allParsedRows;
+}
+
+function appendPendingSuperscriptsToLastRow(
+  rows: string[][],
+  pendingSuperscriptTexts: string[],
+): string[] {
+  if (pendingSuperscriptTexts.length === 0 || rows.length === 0) return pendingSuperscriptTexts;
+  const lastRow = rows[rows.length - 1];
+  lastRow[lastRow.length - 1] += ` ${pendingSuperscriptTexts.join(" ")}`;
+  return [];
 }
 
 function mergeHeaderContinuationRows(rows: string[][]): string[][] {
@@ -637,21 +635,29 @@ function assignFragmentGroupsToCells(
   const cells: string[] = new Array(columnXs.length).fill("");
 
   for (const group of groups) {
-    let bestCol = 0;
-    let bestDist = Math.abs(group.startX - columnXs[0]);
-    for (let c = 1; c < columnXs.length; c++) {
-      const dist = Math.abs(group.startX - columnXs[c]);
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestCol = c;
-      }
-    }
-    cells[bestCol] = cells[bestCol]
-      ? `${cells[bestCol]} ${group.text}`
+    const nearestColumnIndex = findNearestColumnIndex(group.startX, columnXs);
+    const currentCellText = cells[nearestColumnIndex];
+    cells[nearestColumnIndex] = currentCellText
+      ? `${currentCellText} ${group.text}`
       : group.text;
   }
 
   return cells;
+}
+
+function findNearestColumnIndex(value: number, columns: number[]): number {
+  let nearestIndex = 0;
+  let nearestDistance = Math.abs(value - columns[0]);
+
+  for (let index = 1; index < columns.length; index += 1) {
+    const candidateDistance = Math.abs(value - columns[index]);
+    if (candidateDistance < nearestDistance) {
+      nearestDistance = candidateDistance;
+      nearestIndex = index;
+    }
+  }
+
+  return nearestIndex;
 }
 
 function deduplicateByY(
