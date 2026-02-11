@@ -16,14 +16,13 @@ RIKEN AIP NII LLMC
 <p>{yinziqi2001@toki.,conan1024hao@akane.,kakakakakakaito@akane.,dkw@}waseda.jp</p>
 <p>satoshi.sekine@riken.jp</p>
 <h2>Abstract</h2>
-<p>We investigate the impact of politeness lev-els in prompts on the performance of large language models (LLMs). Polite language in human communications often garners more compliance and effectiveness, while rudeness can cause aversion, impacting response quality. We consider that LLMs mirror human commu-nication traits, suggesting they align with hu-man cultural norms. We assess the impact of politeness in prompts on LLMs across English, Chinese, and Japanese tasks. We observed that impolite prompts often result in poor per-formance, but overly polite language does not guarantee better outcomes. The best politeness level is different according to the language. This phenomenon suggests that LLMs not only reflect human behavior but are also influenced by language, particularly in different cultural contexts. Our findings highlight the need to factor in politeness for cross-cultural natural language processing and LLM usage.</p>
+<p>We investigate the impact of politeness levels in prompts on the performance of large language models (LLMs). Polite language in human communications often garners more compliance and effectiveness, while rudeness can cause aversion, impacting response quality. We consider that LLMs mirror human commu-nication traits, suggesting they align with hu-man cultural norms. We assess the impact of politeness in prompts on LLMs across English, Chinese, and Japanese tasks. We observed that impolite prompts often result in poor per-formance, but overly polite language does not guarantee better outcomes. The best politeness level is different according to the language. This phenomenon suggests that LLMs not only reflect human behavior but are also influenced by language, particularly in different cultural contexts. Our findings highlight the need to factor in politeness for cross-cultural natural language processing and LLM usage.</p>
 <h2>1 Introduction</h2>
-<p>In natural language processing, large language models (LLMs), such as OpenAI’s ChatGPT and Meta’s LLaMA (Touvron et al., 2023), have at-tracted widespread attention. These models have shown significant performance in many tasks, such as logical reasoning, classification, and question answering, playing a crucial role in many practi-cal applications. The input to an LLM, a prompt, is a vital starting point for the model to process in-formation and generate appropriate responses. However, despite the continuous improvement of the capabilities of LLMs, their behavior and gen-erations still need to be improved in many factors. This study explores one of the possible influencing factors: the politeness of the prompt. In human social interactions, politeness, which expresses re-spect to others, is basic etiquette, which is reflected</p>
+<p>In natural language processing, large language models (LLMs), such as OpenAI’s ChatGPT and Meta’s LLaMA (Touvron et al., 2023), have at-tracted widespread attention. These models have shown significant performance in many tasks, such as logical reasoning, classification, and question answering, playing a crucial role in many practical applications. The input to an LLM, a prompt, is a vital starting point for the model to process in-formation and generate appropriate responses. However, despite the continuous improvement of the capabilities of LLMs, their behavior and gen-erations still need to be improved in many factors. This study explores one of the possible influencing factors: the politeness of the prompt. In human social interactions, politeness, which expresses re-spect to others, is basic etiquette, which is reflected</p>
 <p>in our language and behavior. However, polite-</p>
 <p>ness and respect may have different definitions and manifestations in different cultures and languages. For example, the expression and degree of respect in English, Chinese, and Japanese may differ sig-nificantly. This difference may make the perfor-mance of LLMs vary with language on the same politeness level.</p>
-<p>We hypothesize that impolite prompts may lead to a deterioration in model performance, including generations containing mistakes, stronger biases, and omission of information. In addition, we also hypothesize that the best level of politeness for per-formance is different across languages, which is strongly related to their cultural background. To verify these hypotheses, we design eight prompts with politeness levels ranging from high to low for English, Chinese, and Japanese, respectively. Our experiments are conducted on three tasks: summa-rization, language understanding benchmarks, and stereotypical bias detection.</p>
-<p>Our contributions are two-fold as follows:</p>
-<p>LLMs reflect human desire</p>
+<p>We hypothesize that impolite prompts may lead to a deterioration in model performance, including generations containing mistakes, stronger biases, and omission of information. In addition, we also <sup id="fnref1"><a href="#fn1" class="footnote-ref">1</a></sup> hypothesize that the best level of politeness for per-formance is different across languages, which is strongly related to their cultural background. To verify these hypotheses, we design eight prompts with politeness levels ranging from high to low for English, Chinese, and Japanese, respectively. Our experiments are conducted on three tasks: summa-rization, language understanding benchmarks, and stereotypical bias detection.</p>
+<p>Our contributions are two-fold as follows: LLMs reflect human desire</p>
 <p>We observed that</p>
 <p>impolite prompts often result in poor performance, but excessive flattery is not necessarily welcome, indicating that LLMs reflect the human desire to be respected to a certain extent. This finding reveals a deep connection between the behavior of LLMs and human social etiquette (Vilkki, 2006).</p>
 <p>JMMLU To evaluate LLMs’ multitask lan-</p>
@@ -32,27 +31,26 @@ RIKEN AIP NII LLMC
 <p>MMLU (Hendrycks et al., 2021) .</p>
 <h2>2 Related Work</h2>
 <h3>2.1 Politeness and Respect</h3>
-<p>Humans are highly sensitive to politeness and re-spect in communications (Dillon, 2003). For ex-ample, people are more likely to offer assistance when confronted with a polite request. However, rude language can be a source of disgust and resent-ment, which will cause failure in acquiring coop-eration (Dillon, 2003). Politeness and respect are expressed differently in various languages (Mills and Kádár, 2011). In English, politeness and re-spect are expressed by considering the listener’s dignity. In addition, recognizing others’ rights but hoping they will be given up in moderation and us-ing polite words are also expressions of politeness and respect (Mills and Kádár, 2011). In contrast, direct orders, insulting or degrading expressions, and ignoring someone’s rights are recognized as impoliteness and lack of respect (Kitao, 1987). The expression of politeness and respect in Japanese significantly differs from that in English. The Japanese language has a specialized politeness system called “Keigo” (Affairs, 2007), which ex-presses respect for superiors or outsiders, humil-ity towards oneself, and a formal attitude (Miyaji, 1971). This politeness system takes an essential place in Japanese culture (Kitao, 1990). However, although the basic structure of politeness is sim-ilar to that of English, their complexity and use are significant regarding the level of respect ex-pressed and the interpretation of social hierarchical relationships. For example, the other’s behavior is called “Sonkeigo” to express politeness and re-spect. In contrast, the speaker’s behavior towards the other is called “Kenjogo”. The expression of formality in public is called “Teineigo” (Takiura, 2017). If these types of politeness are not used cor-rectly, it is not possible to express desired polite-ness or even possible to be considered to be rude. Chinese expressions of respect are similar to English but have polite expressions similar to Japanese ones(Gu, 1990). However, these expressions have been weakened by social change (Zhou, 2008). In most cases, respect expressions in Chi-nese are not explicit (Xun, 1999). Therefore, the criteria for politeness change according to the cur-</p>
+<p>Humans are highly sensitive to politeness and re-spect in communications (Dillon, 2003). For ex-ample, people are more likely to offer assistance when confronted with a polite request. However, rude language can be a source of disgust and resent-ment, which will cause failure in acquiring coop-eration (Dillon, 2003). Politeness and respect are expressed differently in various languages (Mills and Kádár, 2011). In English, politeness and re-spect are expressed by considering the listener’s dignity. In addition, recognizing others’ rights but hoping they will be given up in moderation and us-ing polite words are also expressions of politeness and respect (Mills and Kádár, 2011). In contrast, direct orders, insulting or degrading expressions, and ignoring someone’s rights are recognized as impoliteness and lack of respect (Kitao, 1987). The expression of politeness and respect in Japanese significantly differs from that in English. The Japanese language has a specialized politeness system called “Keigo” (Affairs, 2007), which ex-presses respect for superiors or outsiders, humility towards oneself, and a formal attitude (Miyaji, 1971). This politeness system takes an essential place in Japanese culture (Kitao, 1990). However, although the basic structure of politeness is sim-ilar to that of English, their complexity and use are significant regarding the level of respect ex-pressed and the interpretation of social hierarchical relationships. For example, the other’s behavior is called “Sonkeigo” to express politeness and re-spect. In contrast, the speaker’s behavior towards the other is called “Kenjogo”. The expression of formality in public is called “Teineigo” (Takiura, 2017). If these types of politeness are not used cor-rectly, it is not possible to express desired polite-ness or even possible to be considered to be rude. Chinese expressions of respect are similar to English but have polite expressions similar to Japanese ones(Gu, 1990). However, these expressions have been weakened by social change (Zhou, 2008). In most cases, respect expressions in Chi-nese are not explicit (Xun, 1999). Therefore, the criteria for politeness change according to the cur-</p>
 <p>rent socio-cultural situation. This change made us design prompts that require careful handling of the relationship between different politeness levels. We need to use questionnaires to judge politeness levels to ensure the prompts truly reflect the nu-ance of politeness, especially in Chinese.</p>
 <h3>2.2 LLMs and Prompt Engineering</h3>
-<p>In recent years, LLMs’ abilities have been im-proving. LLMs are used in various industries, as their scores on many downstream tasks show human-like performance. LLMs can be somewhat aligned with human culture, suggesting that they may reflect some of the qualities of human com-munication while having an enormous correlation with language (Cao et al., 2023). In addition, as LLMs are trained with massive data from hu-mans, they inevitably contain certain stereotypi-cal biases (Navigli et al., 2023). Therefore, we consider LLMs’ performance strongly related to human behavior. However, LLMs are sensitive and vulnerable to prompts. Minor changes can lead to significant differences in the output (Kad-dour et al., 2023). Therefore, prompt engineer-ing emerged to earn better generation by adjusting prompts (White et al., 2023). Although methods for automatic prompt generation exist (Shin et al., 2020), access to gradients is usually restricted in LLMs provided via APIs, posing limitations on the application of such methods. Consequently, adjusting prompts is primarily conducted manu-ally at present and requires numerous experiments. Hence, we hope to offer an aspect to improve the efficiency in prompt engineering.</p>
+<p>In recent years, LLMs’ abilities have been im-proving. LLMs are used in various industries, as their scores on many downstream tasks show human-like performance. LLMs can be somewhat aligned with human culture, suggesting that they may reflect some of the qualities of human com-munication while having an enormous correlation with language (Cao et al., 2023). In addition, as LLMs are trained with massive data from hu-mans, they inevitably contain certain stereotypical biases (Navigli et al., 2023). Therefore, we consider LLMs’ performance strongly related to human behavior. However, LLMs are sensitive and vulnerable to prompts. Minor changes can lead to significant differences in the output (Kad-dour et al., 2023). Therefore, prompt engineering emerged to earn better generation by adjusting prompts (White et al., 2023). Although methods for automatic prompt generation exist (Shin et al., 2020), access to gradients is usually restricted in LLMs provided via APIs, posing limitations on the application of such methods. Consequently, adjusting prompts is primarily conducted manu-ally at present and requires numerous experiments. Hence, we hope to offer an aspect to improve the efficiency in prompt engineering.</p>
 <h3>2.3 Evaluation of LLMs</h3>
-<p>Many benchmarks exist for LLMs, such as GLUE (Wang et al., 2018) in English, CLUE (Xu et al., 2020) in Chinese, and JGLUE (Kurihara et al., 2022) in Japanese. However, due to the perfor-mance improvement of LLMs, it is difficult to cor-rectly measure the capability of LLMs with such simple benchmarks. Hence, evaluating LLMs nowadays more often adopts more challenging benchmarks, such as MMLU (Hendrycks et al., 2021) and C-Eval (Huang et al., 2023). Such benchmarks are taken from human examinations and are more aligned with human application sce-narios and questioning content. MMLU con-tains 57 tasks spanning various domains, compris-ing 17,844 four-option multiple-choice questions. However, such a benchmark in Japanese does not</p>
-<p>exist, posing challenges for evaluating LLMs in the Japanese context. Therefore, we constructed JMMLU in Section 3. In addition, since LLMs reflect human culture, they inevitably carry inher-ent stereotypical biases, such as discriminatively biased content against disadvantaged groups. Al-though these biases can be mitigated to a cer-tain extent by reinforcement learning from human feedback (RLHF) (Christiano et al., 2017; Ouyang et al., 2022), the bias of LLMs is still an impor-tant issue. Therefore, we include the evaluation of stereotypical biases in our experiments.</p>
+<p>Many benchmarks exist for LLMs, such as GLUE (Wang et al., 2018) in English, CLUE (Xu et al., 2020) in Chinese, and JGLUE (Kurihara et al., 2022) in Japanese. However, due to the perfor-mance improvement of LLMs, it is difficult to cor-rectly measure the capability of LLMs with such simple benchmarks. Hence, evaluating LLMs nowadays more often adopts more challenging benchmarks, such as MMLU (Hendrycks et al., 2021) and C-Eval (Huang et al., 2023). Such benchmarks are taken from human examinations and are more aligned with human application sce-narios and questioning content. MMLU con-tains 57 tasks spanning various domains, comprising 17,844 four-option multiple-choice questions. However, such a benchmark in Japanese does not</p>
+<p>exist, posing challenges for evaluating LLMs in the Japanese context. Therefore, we constructed JMMLU in Section 3. In addition, since LLMs reflect human culture, they inevitably carry inherent stereotypical biases, such as discriminatively biased content against disadvantaged groups. Al-though these biases can be mitigated to a cer-tain extent by reinforcement learning from human feedback (RLHF) (Christiano et al., 2017; Ouyang et al., 2022), the bias of LLMs is still an impor-tant issue. Therefore, we include the evaluation of stereotypical biases in our experiments.</p>
 <h2>3 JMMLU Construction</h2>
 <p>To build a practical LLM benchmark in Japanese and to use it for evaluation in this study, we constructed the Japanese Massive Multitask Lan-guage Understanding Benchmark (JMMLU). This involved translating MMLU and adding tasks re-lated to Japanese culture. From each of the 57 tasks of MMLU, since the MMLU questions are not ordered, we selected up to former 150 questions. Then, ten translators from an English-Japanese translation company machine-translated the selected questions into Japanese and reviewed the translations to remove questions and tasks that were difficult to translate, irrelevant, or contradic-tory to Japanese culture. Finally, the translators revised the remaining questions to fluent Japanese. Meanwhile, additional tasks based on school sub-jects, such as civics and Japanese history, were added to supplement the aspects that were not cov-ered in the Western culture-oriented MMLU (Step, 2023; VIST, 2023). The questions in the additional tasks were manually created by Japanese teachers from two cram schools in Japan. JMMLU consists of 56 tasks. The list of the tasks and examples of removed questions are shown in Appendix A. The number of questions per task ranges from 86 to 150, totaling 7,536 questions.</p>
 <h2>4 Experimental Settings</h2>
-<p>We conduct experiments on three highly concern-ing tasks to evaluate the performance of LLMs ac-cording to prompt politeness.</p>
+<p>We conduct experiments on three highly concerning tasks to evaluate the performance of LLMs ac-cording to prompt politeness.</p>
 <h3>4.1 Languages, LLMs, and Prompt Politeness</h3>
-<p>We use the following languages, LLMs, and</p>
+<p>We use the following languages, LLMs, and <sup id="fnref4"><a href="#fn4" class="footnote-ref">4</a></sup></p>
 <p>prompts for our experiments.</p>
-<p>Languages Considering that different languages and cultures have different understandings and def-initions of politeness and respect, we evaluate En-glish, Chinese, and Japanese in our experiments.</p>
-<p>LLMs We select GPT-3.5-Turbo (hereafter GPT-3.5) and GPT-4 (OpenAI, 2023) for each language, which are versatile in all three languages. Further-more, we also pick a model specialized for each language: Llama-2-70b-chat (hereafter Llama2- 70B) for English, ChatGLM3-6B (hereafter Chat-GLM3) (Du et al., 2022; Zeng et al., 2022) for Chinese, and Swallow-70b-instruct-hf</p>
+<p>Languages Considering that different languages and cultures have different understandings and def-initions of politeness and respect, we evaluate En-glish, Chinese, and Japanese in our experiments. LLMs We select GPT-3.5-Turbo (hereafter GPT-3.5) and GPT-4 (OpenAI, 2023) for each language, which are versatile in all three languages. Further-more, we also pick a model specialized for each language: Llama-2-70b-chat (hereafter Llama2- 70B) for English, ChatGLM3-6B (hereafter Chat-GLM3) (Du et al., 2022; Zeng et al., 2022) for Chinese, and Swallow-70b-instruct-hf</p>
 <p>(hereafter</p>
 <p>Swallow-70B) for Japanese. We use the default</p>
 <p>settings of each LLM in all experiments.</p>
 <p>Prompt Politeness In our study, we developed prompt templates for three languages, beginning with creating four foundational politeness levels</p>
-<p>— very polite, relatively polite, neutral, and impo-lite — crafted by two authors proficient in Chinese, Japanese, and English to ensure cross-linguistic alignment. To accommodate the intricate cul-tural nuances, especially in Japanese, where polite-ness is deeply embedded in social interactions, we asked 2 or 3 native speakers to refine these lev-els for each language. This refinement was done by adding intermediate levels to the four foundational levels to have eight levels. This approach is crucial as it captures the subtle gradations in lan-guages like Japanese.</p>
+<p>— very polite, relatively polite, neutral, and impo-lite — crafted by two authors proficient in Chinese, Japanese, and English to ensure cross-linguistic alignment. To accommodate the intricate cul-tural nuances, especially in Japanese, where polite-ness is deeply embedded in social interactions, we asked 2 or 3 native speakers to refine these levels for each language. This refinement was done by adding intermediate levels to the four foundational levels to have eight levels. This approach is crucial as it captures the subtle gradations in lan-guages like Japanese.</p>
 <p>To validate these politeness scales, we adminis-tered questionnaires to native speakers, who were asked to rank the politeness of each prompt. The full questionnaires are shown in Appendix B. This process provided empirical data to validate our scales, ensuring they accurately reflected the per-ceived levels of politeness across different cultures. The results were analyzed statistically to confirm the alignment of our prompts with real-world lin-guistic practices, thereby enhancing the relevance and effectiveness of language models in multilin-gual contexts. The prompts and the questionnaire results are shown in Appendix C.</p>
 <h3>4.2 Tasks</h3>
 <p>We conduct experiments on summarization, multi-task language understanding benchmarks, and</p>
@@ -61,21 +59,20 @@ RIKEN AIP NII LLMC
 <p>mann et al., 2015; See et al., 2017) for English and XL-Sum (Hasan et al., 2021) for Chinese and Japanese, selecting 500 test data from each. Following the templates described in Section 4.1, we created eight unique prompts for summarization tasks, ensuring generated summaries are 2 to 3 sentences long, in line with the concise style of these datasets’ reference. We calculate BERTScore (Zhang et al., 2019), ROUGE-L (Lin, 2004), and length for all language experiments. The length is counted in words for English and in characters for Chinese and Japanese.</p>
 <p>Language Understanding Benchmark We use</p>
 <p>MMLU for English, C-Eval for Chinese, and</p>
-<p>JMMLU for Japanese. To reduce the API usage of GPT-3.5 and GPT-4, we only select a maximum of 100 test questions from each task. The total num-ber of questions used for evaluation is 5,700 for MMLU, 5,200 for C-Eval, and 5,591 for JMMLU. Since the correct answers for C-Eval’s test set are not public, we used the C-Eval benchmark tool for scoring. The perfect score is not 100 as only a part of the test set is used for scoring. Our evaluation method is motivated by HELM (Liang et al., 2023). HELM evaluates based only on the first token of the generated text, considering it incorrect if the LLM does not first answer with the correct choice number. In this study, unlike HELM, an answer is considered correct if the correct choice number appears anywhere in the generated text.</p>
+<p>JMMLU for Japanese. To reduce the API usage of GPT-3.5 and GPT-4, we only select a maximum of 100 test questions from each task. The total number of questions used for evaluation is 5,700 for MMLU, 5,200 for C-Eval, and 5,591 for JMMLU. Since the correct answers for C-Eval’s test set are not public, we used the C-Eval benchmark tool for scoring. The perfect score is not 100 as only a part of the test set is used for scoring. Our evaluation method is motivated by HELM (Liang et al., 2023). HELM evaluates based only on the first token of the generated text, considering it incorrect if the LLM does not first answer with the correct choice number. In this study, unlike HELM, an answer is considered correct if the correct choice number appears anywhere in the generated text.</p>
 <p>Stereotypical Bias Detection</p>
 <p>For the LLMs of-</p>
 <p>fered only via APIs, a traditional stereotypical bias detection method based on perplexity (Delobelle et al., 2022) is unfeasible. Moreover, while the BOLD method (Dhamala et al., 2021), which eval-uates stereotypical bias through the analysis of the LLM’s generation, is effective, we opted against it due to its cross-language limitations, especially in non-English contexts such as Japanese, where resources and research are lacking.</p>
-<p>In such a circumstance, we borrow the method from Jentzsch and Turan (2022) and propose a sim-ple alternative for LLMs, which we refer to as the Bias Index (BI). In our experiments, we designed eight prompts following the prompt templates in Section 4.1, requiring the model to evaluate each sentence as positive, neutral, or negative. We evaluate biases using paired bias datasets,</p>
+<p>In such a circumstance, we borrow the method from Jentzsch and Turan (2022) and propose a simple alternative for LLMs, which we refer to as the Bias Index (BI). In our experiments, we designed eight prompts following the prompt templates in Section 4.1, requiring the model to evaluate each sentence as positive, neutral, or negative. We evaluate biases using paired bias datasets,</p>
 <p>each consisting of two sentences with varying de-grees of bias. The sentences are identical apart from bias-specific vocabularies, such as “old” or</p>
 <p>“young” for age bias. We conduct sentiment anal-ysis on these pairs to assess positive, neutral, or negative sentiments.</p>
-<p>LLMs may refuse to respond to highly disre-spectful, impolite prompts or datasets’ sentences. Consequently, model outputs are classified into four categories: positive, neutral, negative, or re-fusal to answer. The data includes positive and negative items without clear categorization, so switching bias-specific vocabulary in strongly bi-ased sentences may alter the model’s assessment. This renders traditional statistical methods unsuit-able. Hence, we adopted a different approach. If the model provides different evaluations for the two sentences in a pair, we consider it a bias to-wards this pair. Thus, the model’s bias is measured by the following formula: Number of Different Pairs BI = × 100 . (1) Total Number of Pairs For English bias evaluation, we use CrowS-Pairs (Nangia et al., 2020), which focuses on gen-der, nationality, race, and socioeconomic biases. We use CHBias (Zhao et al., 2023) for Chinese evaluation, which covers sex, age, appearance, and orientation biases. We employ the Japanese subset from Kaneko et al. (2022) to evaluate gender bias in Japanese.</p>
+<p>LLMs may refuse to respond to highly disre-spectful, impolite prompts or datasets’ sentences. Consequently, model outputs are classified into four categories: positive, neutral, negative, or re-fusal to answer. The data includes positive and negative items without clear categorization, so switching bias-specific vocabulary in strongly bi-ased sentences may alter the model’s assessment. This renders traditional statistical methods unsuit-able. Hence, we adopted a different approach. If the model provides different evaluations for the two sentences in a pair, we consider it a bias to-wards this pair. Thus, the model’s bias is measured by the following formula: Number of Different Pairs BI = × 100 . (1) Total Number of Pairs For English bias evaluation, we use CrowS-Pairs (Nangia et al., 2020), which focuses on gender, nationality, race, and socioeconomic biases. We use CHBias (Zhao et al., 2023) for Chinese evaluation, which covers sex, age, appearance, and orientation biases. We employ the Japanese subset from Kaneko et al. (2022) to evaluate gender bias in Japanese.</p>
 <h3>4.3 Influence of RLHF and SFT</h3>
-<p>Furthermore, we consider the roles of Supervised Fine-Tuning (SFT) and Reinforcement Learning from Human Feedback (RLHF). SFT involves re-fining a pre-trained model using a specific dataset to enhance its performance in target tasks. RLHF is a process where the model is further trained based on feedback from human interactions, aim-ing to align its outputs more closely with human values and preferences. To explore in depth the impact of SFT and RLHF on the hypotheses of this study, we set up additional experiments to compare the influence of politeness levels on model perfor-mance under conditions with and without the pres-ence of SFT and RLHF.</p>
+<p>Furthermore, we consider the roles of Supervised Fine-Tuning (SFT) and Reinforcement Learning from Human Feedback (RLHF). SFT involves re-fining a pre-trained model using a specific dataset to enhance its performance in target tasks. RLHF is a process where the model is further trained based on feedback from human interactions, aiming to align its outputs more closely with human values and preferences. To explore in depth the impact of SFT and RLHF on the hypotheses of this study, we set up additional experiments to compare the influence of politeness levels on model perfor-mance under conditions with and without the pres-ence of SFT and RLHF.</p>
 <p>Therefore, we investigate this issue using</p>
 <p>Llama2-70B and its base model without SFT and</p>
-<p>RLHF. We conduct the same experiment as be-fore to evaluate the impact of RLHF. However,</p>
+<p>RLHF. We conduct the same experiment as be-fore to evaluate the impact of RLHF. However, we modify the prompt content while keeping the prompt template and meaning unchanged to ensure that llama2-70B could generate the required con-tent. In addition, since the base model has yet to be fine-tuned, it will continue to output content in the summarization task until it reaches the gener-ation length limit. Therefore, we do not carry out this evaluation on summarization.</p>
 <p>Figure 2: Summarization performance across politeness levels. The x-axis shows politeness levels (1 = impolite, 8 = very polite), and the y-axis represents metrics like ROUGE-L, BERTScore, and summary length. The lines show how different LLMs, including GPT-3.5 and GPT-4, respond to varying politeness levels.</p>
-<p>we modify the prompt content while keeping the prompt template and meaning unchanged to ensure that llama2-70B could generate the required con-tent. In addition, since the base model has yet to be fine-tuned, it will continue to output content in the summarization task until it reaches the gener-ation length limit. Therefore, we do not carry out this evaluation on summarization.</p>
 <h2>5 Results</h2>
 <h3>5.1 Summarization</h3>
 <p>The summarization result is shown in Figure 2.</p>
@@ -85,25 +82,27 @@ RIKEN AIP NII LLMC
 <p>The propensity exhibited by the models to gen-erate more extended output in polite contexts. Po-lite and formal language is predominantly used in scenarios demanding descriptive instructions or instructional literature, often associated with longer text. Conversely, antagonistic and fer-vent discourse involves impolite language, which is also associated with extended lengths. These facets reflect the nuances of human social behav-</p>
 <p>ior, mirrored in the training data, and then influ-ence the tendencies demonstrated by LLMs. How-ever, GPT-4 did not echo this trend of increased output length in the presence of highly impolite prompts. It is conjectured that GPT-4, being a su-perior model, might prioritize the task itself and ef-fectively control the tendency to “argue” at a low politeness level.</p>
 <h4>5.1.2 Chinese</h4>
-<p>GPT-3.5 and GPT-4 almost always accurately sum-marize the article content, and their output content gradually shortens as the politeness level decreases from high to low. Nevertheless, when the prompts are extremely rude, GPT-3.5’s generation length-ens again, while GPT-4’s length decreases.</p>
+<p>GPT-3.5 and GPT-4 almost always accurately sum-marize the article content, and their output content gradually shortens as the politeness level decreases from high to low. Nevertheless, when the prompts are extremely rude, GPT-3.5’s generation lengthens again, while GPT-4’s length decreases.</p>
 <p>ChatGLM3 reveals different trends. When the politeness level is moderate, the length of this model’s generation is shorter than that in extraor-dinarily polite and rude situations. However, the changes from moderately polite to moderately im-polite (level 6 to 3) are absent. Considering that Chinese is the primary training language of Chat-GLM3, this could hint at a unique social prefer-ence within Chinese culture: unless in extremely polite or impolite situations, people would not par-ticularly pay attention to the change in politeness in daily communication.</p>
 <h4>5.1.3 Japanese</h4>
 <p>Although the Japanese experiment exhibits similar-ities to Chinese and English ones to some extent, its length variation has unique features. As the level of politeness decreases from high to low, the generation’s length of GPT-3.5 becomes shorter initially and then increases when the politeness</p>
 <table>
 <caption>Table 1: Scores on the three language understanding benchmarks.</caption>
 <thead>
-<tr><th></th><th></th><th>MMLU</th><th></th><th></th><th></th><th>C-Eval</th><th></th><th></th><th></th><th>JMMLU</th><th></th><th></th></tr>
+<tr><th></th><th></th><th>MMLU</th><th></th><th></th><th></th><th>C-Eval</th><th></th><th></th><th></th><th>JMMLU</th><th></th></tr>
 </thead>
 <tbody>
-<tr><td>P</td><td>GPT-3.5 GPT-4</td><td></td><td>Llama2-70B</td><td></td><td>GPT-3.5 GPT-4</td><td></td><td>ChatGLM3</td><td></td><td>GPT-3.5 GPT-4</td><td></td><td>Swallow-70B</td><td></td></tr>
-<tr><td>8</td><td>60.02</td><td>75.82</td><td></td><td>55.11</td><td>20.85</td><td>29.73</td><td></td><td>20.58</td><td>49.96</td><td>71.98</td><td></td><td>38.23</td></tr>
-<tr><td>7</td><td>58.32</td><td>78.74</td><td></td><td>55.26</td><td>23.24</td><td>29.79</td><td></td><td>21.23</td><td>49.70</td><td>72.34</td><td></td><td>38.98</td></tr>
-<tr><td>6</td><td>57.96</td><td>78.56</td><td></td><td>52.23</td><td>23.38</td><td>30.37</td><td></td><td>21.54</td><td>50.09</td><td>72.71</td><td></td><td>39.30</td></tr>
-<tr><td>5</td><td>58.07</td><td>78.21</td><td></td><td>50.82</td><td>23.41</td><td>30.41</td><td></td><td>20.65</td><td>51.09</td><td>73.16</td><td></td><td>38.64</td></tr>
-<tr><td>4</td><td>57.86</td><td>79.09</td><td></td><td>51.74</td><td>23.32</td><td>30.60</td><td></td><td>20.28</td><td>50.52</td><td>73.63</td><td></td><td>37.40</td></tr>
-<tr><td>3</td><td>59.44</td><td>73.86</td><td></td><td>49.02</td><td>22.70</td><td>30.37</td><td></td><td>19.56</td><td>50.75</td><td>72.70</td><td></td><td>38.45</td></tr>
-<tr><td>2</td><td>57.14</td><td>76.56</td><td></td><td>51.28</td><td>22.52</td><td>30.27</td><td></td><td>19.35</td><td>51.98</td><td>73.13</td><td></td><td>38.62</td></tr>
-<tr><td>1</td><td>51.93</td><td>76.47</td><td></td><td>28.44</td><td>19.57</td><td>29.90</td><td></td><td>20.67</td><td>44.80</td><td>71.23</td><td></td><td>33.30</td></tr>
+<tr><td>P</td><td>GPT-3.5</td><td>GPT-4</td><td>Llama2-70B</td><td></td><td>GPT-3.5</td><td>GPT-4</td><td>ChatGLM3</td><td></td><td>GPT-3.5</td><td>GPT-4</td><td></td></tr>
+<tr><td>8</td><td>60.02</td><td>75.82</td><td></td><td>55.11</td><td>20.85</td><td>29.73</td><td></td><td>20.58</td><td>49.96</td><td>71.98</td><td>38.23</td></tr>
+<tr><td>P</td><td>GPT-3.5</td><td>GPT-4</td><td>Llama2-70B</td><td></td><td>GPT-3.5</td><td>GPT-4</td><td>ChatGLM3</td><td></td><td>GPT-3.5</td><td>GPT-4</td><td></td></tr>
+<tr><td>8</td><td>60.02</td><td>75.82</td><td></td><td>55.11</td><td>20.85</td><td>29.73</td><td></td><td>20.58</td><td>49.96</td><td>71.98</td><td>38.23</td></tr>
+<tr><td>7</td><td>58.32</td><td>78.74</td><td></td><td>55.26</td><td>23.24</td><td>29.79</td><td></td><td>21.23</td><td>49.70</td><td>72.34</td><td>38.98</td></tr>
+<tr><td>6</td><td>57.96</td><td>78.56</td><td></td><td>52.23</td><td>23.38</td><td>30.37</td><td></td><td>21.54</td><td>50.09</td><td>72.71</td><td>39.30</td></tr>
+<tr><td>5</td><td>58.07</td><td>78.21</td><td></td><td>50.82</td><td>23.41</td><td>30.41</td><td></td><td>20.65</td><td>51.09</td><td>73.16</td><td>38.64</td></tr>
+<tr><td>4</td><td>57.86</td><td>79.09</td><td></td><td>51.74</td><td>23.32</td><td>30.60</td><td></td><td>20.28</td><td>50.52</td><td>73.63</td><td>37.40</td></tr>
+<tr><td>3</td><td>59.44</td><td>73.86</td><td></td><td>49.02</td><td>22.70</td><td>30.37</td><td></td><td>19.56</td><td>50.75</td><td>72.70</td><td>38.45</td></tr>
+<tr><td>2</td><td>57.14</td><td>76.56</td><td></td><td>51.28</td><td>22.52</td><td>30.27</td><td></td><td>19.35</td><td>51.98</td><td>73.13</td><td>38.62</td></tr>
+<tr><td>1</td><td>51.93</td><td>76.47</td><td></td><td>28.44</td><td>19.57</td><td>29.90</td><td></td><td>20.67</td><td>44.80</td><td>71.23</td><td>33.30</td></tr>
 </tbody>
 </table>
 <p>level is moderate. However, when the politeness level drops to extremely rude, this trend repeats and rises significantly. GPT-4 and Swallow-70B also keep this pattern, but the fluctuation is minor. Due to the existence of a politeness system in the Japanese language, store staff almost always use honorific language when speaking to customers. Even if a customer speaks in a casual tone, the staff will respond in a polite manner. This might explain why there is an increase in generation length for all models during medium-level politeness.</p>
@@ -118,25 +117,24 @@ RIKEN AIP NII LLMC
 <p>The highest score is achieved at level 4, and the lowest one is at level 3. Although the score at level 1 is not extremely low, the heatmap indicates that it is significantly lower than those at more polite levels. The absence of particularly dark tiles in Figure 3 indicates performance stability. This re-sult shows that in advanced models, the politeness level of the prompt may have a lesser impact on model performance.</p>
 <p>Llama2-70B shows the most noticeable fluctuation, with scores nearly proportional to the polite-ness levels. Prompts with higher politeness levels generally outperform those with lower levels, indi-cating a high sensitivity to the prompt’s politeness.</p>
 <h4>5.2.2 Chinese</h4>
-<p>In Chinese, similar to English, there is a tendency to prefer polite prompts but with some differences. GPT-3.5 scores the lowest at politeness level 1, sig-nificantly underperforming the other levels. More-over, the lower politeness levels 3 and 2 are signif-icantly inferior to levels 7, 6, 5, and 4. However, level 8 also records a low score, significantly trail-ing behind all levels except level 1. GPT-4 remains stable, except for a performance drop at politeness levels 8 and 7. The scores drop in excessively po-lite prompts in GPT-3.5 and GPT-4, which might be because Chinese examination questions are de-signed without polite prompts, making the models less adept at handling them.</p>
+<p>In Chinese, similar to English, there is a tendency to prefer polite prompts but with some differences. GPT-3.5 scores the lowest at politeness level 1, sig-nificantly underperforming the other levels. More-over, the lower politeness levels 3 and 2 are signif-icantly inferior to levels 7, 6, 5, and 4. However, level 8 also records a low score, significantly trailing behind all levels except level 1. GPT-4 remains stable, except for a performance drop at politeness levels 8 and 7. The scores drop in excessively po-lite prompts in GPT-3.5 and GPT-4, which might be because Chinese examination questions are de-signed without polite prompts, making the models less adept at handling them.</p>
 <p>ChatGLM3 shows a significant decreasing trend from politeness level 8 to 2. ChatGLM3’s pri-mary pre-training language is Chinese and might be more sensitive to the levels of politeness in Chi-nese. This trend is similar to Llama2-70B. How-ever, it shows improvement at the most impolite politeness level 1, surpassing levels 3 and 2, likely due to inherent nuances in the Chinese language.</p>
 <h4>5.2.3 Japanese</h4>
 <p>In Japanese, although significant performance</p>
-<p>drops are shown at politeness level 1, the results were markedly different from English and Chinese. There was a tendency for lower levels to score bet-ter, except for level 1.</p>
-<p>In GPT-3.5, levels 5 and 2 exhibited exception-ally high performance, with level 2 achieving the highest score. For GPT-4, levels 6 and 5 are out-standing, and level 4 achieved the highest score. Generally, good scores are observed in these mod-els, except for level 1. Swallow-70B shows su-perior performance at levels 6 and 3, outperform-ing the other levels, which may be attributed to these levels being more common expressions in Japanese questions and examinations.</p>
+<p>drops are shown at politeness level 1, the results were markedly different from English and Chinese. There was a tendency for lower levels to score better, except for level 1.</p>
+<p>In GPT-3.5, levels 5 and 2 exhibited exception-ally high performance, with level 2 achieving the highest score. For GPT-4, levels 6 and 5 are out-standing, and level 4 achieved the highest score. Generally, good scores are observed in these models, except for level 1. Swallow-70B shows su-perior performance at levels 6 and 3, outperforming the other levels, which may be attributed to these levels being more common expressions in Japanese questions and examinations.</p>
 <h3>5.3 Stereotypical Bias Detection</h3>
 <p>The results of stereotypical bias detection are shown in Figure 4.</p>
 <h4>5.3.1 English</h4>
 <p>Figure 4 shows that the stereotype bias of GPT-3.5 is overall high. However, a moderately polite prompt (level 5) exhibits the most severe bias in most aspects except race. Although the model’s bias is lower in cases of extremely low politeness, analysis of the model’s output reveals that in these</p>
 <p>cases, the model often refuses to answer both state-ments in a pair, rendering it practically unusable. An example is shown in Appendix F. Additionally, for a highly polite prompt (level 8), bias is low in most cases but higher on racial issues.</p>
 <p>GPT-4 rarely refuses to answer questions, and thus its results reflect its low bias levels. Notably, when the politeness level is 6, GPT-4 shows the lowest degree of bias overall. However, in other situations, whether more polite or less polite, the bias of GPT-4 increases.</p>
-<p>Llama2-70B also exhibits a lower bias. How-ever, Llama2-70B tends to refuse to answer questions and is accompanied by plenty of reasons to a sentence in a pair when the politeness level is at its lowest. Therefore, we regard it as a form of bias. Although the degree of bias of Llama2-70B is generally lower under more polite prompts (lev-els 7 and 6), it has the lowest level of bias when the politeness level is 2, which represents a command-ing tone of informal language, indicating that there might be other reasons hidden behind. Meanwhile, the degree of bias increases for impolite prompts (levels 3 and 1) and the most polite (level 8) situ-ations, which is similar to the trends exhibited by the other two models.</p>
-<p>We speculate that this is because, in human culture, a highly polite environment makes peo-ple more relaxed (Morand, 1996) and willing to express their true thoughts without being overly concerned about moral constraints (Bailey et al., 2020). In contrast, lower politeness may provoke a sense of offense, leading to prejudices. The behav-iors of GPT-3.5 and GPT-4 may precisely reflect such human behaviors.</p>
+<p>Llama2-70B also exhibits a lower bias. How-ever, Llama2-70B tends to refuse to answer questions and is accompanied by plenty of reasons to a sentence in a pair when the politeness level is at its lowest. Therefore, we regard it as a form of bias. Although the degree of bias of Llama2-70B is generally lower under more polite prompts (levels 7 and 6), it has the lowest level of bias when the politeness level is 2, which represents a commanding tone of informal language, indicating that there might be other reasons hidden behind. Meanwhile, the degree of bias increases for impolite prompts (levels 3 and 1) and the most polite (level 8) situ-ations, which is similar to the trends exhibited by the other two models.</p>
+<p>We speculate that this is because, in human culture, a highly polite environment makes people more relaxed (Morand, 1996) and willing to express their true thoughts without being overly concerned about moral constraints (Bailey et al., 2020). In contrast, lower politeness may provoke a sense of offense, leading to prejudices. The behav-iors of GPT-3.5 and GPT-4 may precisely reflect such human behaviors.</p>
 <h4>5.3.2 Chinese</h4>
 <p>Distinct from English, bias fluctuations in Chinese typically follow a fixed pattern. The models’ bias is initially at a relatively high level and decreases for lower politeness. However, it sharply increases to an extremely high level when the politeness falls significantly low. The lowest bias often occurs from politeness levels 6 to 3.</p>
-<p>GPT-3.5 still maintains a higher level of stereo-typical bias. It exhibits its highest bias in situations with the lowest politeness level yet rarely re-fuses to respond, which is contrastive to the En-glish experiment. GPT-4 still has a comparatively low overall bias level with small fluctuations but also exhibits its highest bias in the lowest polite-ness level. ChatGLM3, while keeping a similar</p>
+<p>GPT-3.5 still maintains a higher level of stereo-typical bias. It exhibits its highest bias in situations with the lowest politeness level yet rarely re-fuses to respond, which is contrastive to the En-glish experiment. GPT-4 still has a comparatively low overall bias level with small fluctuations but also exhibits its highest bias in the lowest polite-ness level. ChatGLM3, while keeping a similar bias level to GPT-4, is more sensitive to changes in politeness levels, and its bias fluctuates more sig-nificantly. Its bias level is almost identical to GPT-3.5’s when being at level 1. As discussed in Sec-tion 5.1.2, such a pattern potentially embodies the nuance and some unique social preferences within the Chinese culture. It may indicate some unique social preferences in Chinese culture. Aside from situations with extreme politeness, people would not be overly sensitive to variations in regular po-liteness in daily communications.</p>
 <p>Figure 4: Bias index across politeness levels and bias categories. The x-axis shows politeness levels (1 = impolite, 8 = very polite), and the y-axis represents the bias index (BI), a measure of stereotypical bias. The curves track how biases in race (R), gender (G), nationality (N), socioeconomic status (S), age (A), appearance (W), and orientation (O) fluctuate with politeness.</p>
-<p>bias level to GPT-4, is more sensitive to changes in politeness levels, and its bias fluctuates more sig-nificantly. Its bias level is almost identical to GPT-3.5’s when being at level 1. As discussed in Sec-tion 5.1.2, such a pattern potentially embodies the nuance and some unique social preferences within the Chinese culture. It may indicate some unique social preferences in Chinese culture. Aside from situations with extreme politeness, people would not be overly sensitive to variations in regular po-liteness in daily communications.</p>
 <h4>5.3.3 Japanese</h4>
 <p>Gender bias in Japanese reflects a similar pattern to the Chinese experiments with some differences. The level of bias in GPT-3.5 reaches the lowest at politeness level 2 and reaches the highest at polite-ness level 1. GPT-4 follows an analogous pattern, peaking at a politeness level of 5 and its nadir at politeness level 4. Swallow-70B, to which RLHF is not applied, exhibits a high level of bias with the most pronounced fluctuation. Its changes are similar to GPT-3.5, but its lowest bias is at polite-ness level 6. Given the Japanese culture’s strin-gent politeness and respect systems in tangent with the prevalent gender biases (Matsumura, 2001; Gender Equality Bureau Cabinet Office of Japan, 2021), this pattern can be reasonable.</p>
 <h3>5.4 Influence of RLHF and SFT</h3>
@@ -146,40 +144,33 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 2: MMLU benchmark scores of Llama2-70B and its base model.</caption>
 <thead>
-<tr><th></th><th>8</th><th>55.11</th><th>54.72</th></tr>
+<tr><th>8</th><th>55.11</th><th>54.72</th></tr>
 </thead>
 <tbody>
-<tr><td>politeness levels, and its bias fluctuates more sig- 7</td><td></td><td>55.26</td><td>54.84</td></tr>
-<tr><td>nificantly. Its bias level is almost identical to GPT- 6</td><td></td><td>52.23</td><td>54.75</td></tr>
-<tr><td></td><td>5</td><td>50.82</td><td>53.74</td></tr>
-<tr><td></td><td>4</td><td>51.74</td><td>52.32</td></tr>
-<tr><td>tion 5.1.2, such a pattern potentially embodies the 3</td><td></td><td>49.02</td><td>53.51</td></tr>
-<tr><td></td><td>2</td><td>51.28</td><td>54.09</td></tr>
-<tr><td></td><td>1</td><td>28.44</td><td>51.19</td></tr>
+<tr><td>7</td><td>55.26</td><td>54.84</td></tr>
+<tr><td>6</td><td>52.23</td><td>54.75</td></tr>
+<tr><td>5</td><td>50.82</td><td>53.74</td></tr>
+<tr><td>4</td><td>51.74</td><td>52.32</td></tr>
+<tr><td>3</td><td>49.02</td><td>53.51</td></tr>
+<tr><td>2</td><td>51.28</td><td>54.09</td></tr>
+<tr><td>1</td><td>28.44</td><td>51.19</td></tr>
 </tbody>
 </table>
 <p>Figure 5: Heatmap comparing the performance of Llama2-70B and its base model across politeness lev-els. The x-axis shows politeness levels (1 = impolite, 8 = very polite), and the heatmap illustrates the perfor-mance difference between Llama2-70B with and with-out RLHF. Green indicates better performance with RLHF, and red indicates worse performance.</p>
 <p>ness generally achieves higher scores. However,</p>
 <p>this correlation is not consistently statistically sig-nificant across most instances. Compared to the result of Llama2-70B, it can be inferred that while the base model is indeed influenced by politeness level in prompts, its sensitivity to politeness is pri-marily governed by RLHF and SFT.</p>
 <p>In Figure 6, the Llama2-70B model, fine-tuning with RLHF and SFT, exhibited a significantly lower level of bias compared to the base model,</p>
-<p>Llama2-70B</p>
-<p>60 Base Model</p>
-<p>R 50 G 30</p>
-<p>Bias Index</p>
-<p>N S 10 8 7 6 5 4 3 2 1</p>
-<p>Politeness Level</p>
+<p>60 Base Model thereby validating the effectiveness of the fine-tuning. However, a further examination of the bias level distribution trends of the two models revealed that despite similar patterns, there was no reduction in bias after reaching the highest level of po-liteness, but rather a trend towards stabilization or a slight increase. Considering this with previous experimental results, it can be hypothesized that the tendency of the models to express responses closer to their ’true’ reactions in situations of ex- texts. treme politeness is primarily introduced by fine-tuning through RLHF and SFT.</p>
 <p>Figure 6: Bias index comparison between Llama2-70B and its base model across politeness levels. This figure compares the bias index (y-axis) of Llama2-70B (with RLHF) and its base model (without RLHF) across po-liteness levels (x-axis, 1 = impolite, 8 = very polite).</p>
-<p>thereby validating the effectiveness of the fine-tuning. However, a further examination of the bias level distribution trends of the two models revealed that despite similar patterns, there was no reduction in bias after reaching the highest level of po-liteness, but rather a trend towards stabilization or a slight increase. Considering this with previous experimental results, it can be hypothesized that the tendency of the models to express responses closer to their ’true’ reactions in situations of ex- texts. treme politeness is primarily introduced by fine-tuning through RLHF and SFT.</p>
 <h2>6 Conclusion</h2>
-<p>Our study finds that the politeness of prompts can significantly affect LLM performance. This phe-nomenon is thought to reflect human social behav-ior. The study notes that using impolite prompts can result in the low performance of LLMs, which may lead to increased bias, incorrect answers, or refusal of answers. However, highly respectful prompts do not always lead to better results. In most conditions, moderate politeness is better, but the standard of moderation varies by languages and LLMs. In particular, models trained in a specific language are susceptible to the politeness of that language. This phenomenon suggests that cultural background should be considered during the devel-opment and corpus collection of LLMs.</p>
-<p>Limitations</p>
+<p>Our study finds that the politeness of prompts can significantly affect LLM performance. This phe-nomenon is thought to reflect human social behavior. The study notes that using impolite prompts can result in the low performance of LLMs, which may lead to increased bias, incorrect answers, or refusal of answers. However, highly respectful prompts do not always lead to better results. In most conditions, moderate politeness is better, but the standard of moderation varies by languages and LLMs. In particular, models trained in a specific language are susceptible to the politeness of that language. This phenomenon suggests that cultural background should be considered during the devel-opment and corpus collection of LLMs.</p>
+<h2>Limitations</h2>
 <p>Prompt Quantity and Diversity</p>
 <p>Although we</p>
 <p>tried to design various prompts at first, we faced certain challenges in balancing the levels of polite-ness and diversity among these prompts. We found that ensuring each prompt was sufficiently diversi-fied while aligning with the fine degrees of polite-ness and respect was an extremely difficult task.</p>
 <p>70 Task Configuration and Language Selection Our research was subject to certain constraints, mainly due to cost limitations and the scarcity 20 of available datasets. For instance, collecting datasets like MMLU from scratch is nearly im-possible due to stringent copyright restrictions in certain countries. Although the MIT license of MMLU allows for relatively free use of the dataset, the substantial costs of manual translation and proofreading into other languages make extensive, full translations into multiple languages imprac-tical. These constraints prevented us from con-ducting a comprehensive evaluation using more datasets and languages.</p>
-<p>Ethics Statement</p>
-<p>We realize that the politeness of prompts can signif-icantly affect the behavior of LLMs. This behavior may be used to manipulate or mislead users. We recommend that these risks be fully considered in a variety of application scenarios and cultural con-</p>
-<p>In our research, the use of all datasets com-plies with the restrictions of their corresponding licenses. During the data collection process, we only record answers and do not record any information that can be traced back to individuals to ensure anonymity. Because the collected data in-volves offensive language, respondents must be over 18. Also, our questionnaire has passed the eth-ical review of the publishing platform, ensuring its legality and morality. When translating MMLU, we paid the translation company a fee far exceed-ing the wage standard in Tokyo, Japan, to ensure that the translator could receive enough payment. We also received permission to use questions from two tutoring schools to construct JMMLU. Finally, we will open-source our JMMLU benchmark un-der the CC BY-SA 4.0 license.</p>
+<h2>Ethics Statement</h2>
+<p>We realize that the politeness of prompts can signif-icantly affect the behavior of LLMs. This behavior may be used to manipulate or mislead users. We recommend that these risks be fully considered in a variety of application scenarios and cultural con-In our research, the use of all datasets com-plies with the restrictions of their corresponding licenses. During the data collection process, we only record answers and do not record any information that can be traced back to individuals to ensure anonymity. Because the collected data in-volves offensive language, respondents must be over 18. Also, our questionnaire has passed the eth-ical review of the publishing platform, ensuring its legality and morality. When translating MMLU, we paid the translation company a fee far exceeding the wage standard in Tokyo, Japan, to ensure that the translator could receive enough payment. We also received permission to use questions from two tutoring schools to construct JMMLU. Finally, we will open-source our JMMLU benchmark un-der the CC BY-SA 4.0 license.</p>
 <h2>Acknowledgements</h2>
 <p>In this acknowledgment, we express our gratitude to the RIKEN for their support in the translation of MMLU. We also acknowledge the contributions from Step Corporation, who provided materials on Japanese and World History, and from New Style Cram School VIST, who supplied resources on id-ioms, civics, and Japanese geography.</p>
 <h2>References</h2>
@@ -191,8 +182,7 @@ RIKEN AIP NII LLMC
 <p>Yong Cao, Li Zhou, Seolhwa Lee, Laura Cabello, Min</p>
 <p>Chen, and Daniel Hershcovich. 2023. Assessing</p>
 <p>cross-cultural alignment between ChatGPT and hu-</p>
-<p>man societies: An empirical study. In</p>
-<p>Proceedings</p>
+<p>man societies: An empirical study. In Proceedings</p>
 <p>of the First Workshop on Cross-Cultural Consider-</p>
 <p>ations in NLP (C3NLP) , pages 53–67, Dubrovnik,</p>
 <p>Croatia. Association for Computational Linguistics.</p>
@@ -204,8 +194,7 @@ RIKEN AIP NII LLMC
 <p>Pieter Delobelle, Ewoenam Tokpo, Toon Calders, and</p>
 <p>Bettina Berendt. 2022. Measuring fairness with bi-</p>
 <p>ased rulers: A comparative study on bias metrics</p>
-<p>for pre-trained language models. In</p>
-<p>Proceedings of</p>
+<p>for pre-trained language models. In Proceedings of</p>
 <p>the 2022 Conference of the North American Chap-</p>
 <p>ter of the Association for Computational Linguis-</p>
 <p>tics: Human Language Technologies</p>
@@ -235,8 +224,7 @@ RIKEN AIP NII LLMC
 <p>Tahmid Hasan, Abhik Bhattacharjee, Md. Saiful Islam,</p>
 <p>Kazi Mubasshir, Yuan-Fang Li, Yong-Bin Kang,</p>
 <p>M. Sohel Rahman, and Rifat Shahriyar. 2021. XL-</p>
-<p>sum: Large-scale multilingual abstractive summa-</p>
-<p>rization for 44 languages. In Findings of the Associ-</p>
+<p>sum: Large-scale multilingual abstractive summa-rization for 44 languages. In Findings of the Associ-</p>
 <p>ation for Computational Linguistics: ACL-IJCNLP</p>
 <p>2021 , pages 4693–4703, Online. Association for</p>
 <p>Computational Linguistics.</p>
@@ -303,8 +291,7 @@ RIKEN AIP NII LLMC
 <p>Yuhui Zhang, and Yuta Koreeda. 2023. Holistic eval-</p>
 <p>uation of language models.</p>
 <p>Chin-Yew Lin. 2004. ROUGE: A package for auto-</p>
-<p>matic evaluation of summaries. In</p>
-<p>Text Summariza-</p>
+<p>matic evaluation of summaries. In Text Summariza-</p>
 <p>tion Branches Out , pages 74–81, Barcelona, Spain.</p>
 <p>Association for Computational Linguistics.</p>
 <p>Yoshiko Matsumura. 2001. 日本語の会話に見られ</p>
@@ -403,8 +390,7 @@ RIKEN AIP NII LLMC
 <p>Liang Xu, Hai Hu, Xuanwei Zhang, Lu Li, Chenjie Cao,</p>
 <p>Yudong Li, Yechen Xu, Kai Sun, Dian Yu, Cong Yu,</p>
 <p>Yin Tian, Qianqian Dong, Weitang Liu, Bo Shi, Yim-</p>
-<p>ing Cui, Junyi Li, Jun Zeng, Rongzhao Wang, Wei-</p>
-<p>jian Xie, Yanting Li, Yina Patterson, Zuoyu Tian, Yi-</p>
+<p>ing Cui, Junyi Li, Jun Zeng, Rongzhao Wang, Wei-jian Xie, Yanting Li, Yina Patterson, Zuoyu Tian, Yi-</p>
 <p>wen Zhang, He Zhou, Shaoweihua Liu, Zhe Zhao,</p>
 <p>Qipeng Zhao, Cong Yue, Xinrui Zhang, Zhengliang</p>
 <p>Yang, Kyle Richardson, and Zhenzhong Lan. 2020.</p>
@@ -445,16 +431,16 @@ RIKEN AIP NII LLMC
 </thead>
 <tbody>
 <tr><td>専門医学</td><td></td><td>(professional_medicine)</td><td></td><td>150</td><td>高校心理学</td><td></td><td></td><td>(high_school_psychology)</td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
-<tr><td>専門心理学</td><td></td><td></td><td>(professional_psychology) 150</td><td></td><td>高校物理</td><td></td><td>(high_school_physics)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
-<tr><td>専門会計</td><td></td><td>(professional_accounting) 150</td><td></td><td></td><td>高校統計学</td><td></td><td></td><td>(high_school_statistics)</td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
-<tr><td>哲学 (philosophy)</td><td></td><td></td><td></td><td>150</td><td>高校数学</td><td></td><td>(high_school_mathematics)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
-<tr><td>雑学 (miscellaneous)</td><td></td><td></td><td></td><td>150</td><td>高校生物学</td><td></td><td></td><td>(high_school_biology)</td><td></td><td></td><td></td><td></td><td></td><td>148</td></tr>
+<tr><td>専門心理学</td><td></td><td></td><td>(professional_psychology)</td><td>150</td><td>高校物理</td><td></td><td>(high_school_physics)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
+<tr><td>専門会計</td><td></td><td>(professional_accounting)</td><td></td><td>150</td><td>高校統計学</td><td></td><td></td><td>(high_school_statistics)</td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
+<tr><td>哲学</td><td>(philosophy)</td><td></td><td></td><td>150</td><td>高校数学</td><td></td><td>(high_school_mathematics)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
+<tr><td>雑学</td><td>(miscellaneous)</td><td></td><td></td><td>150</td><td>高校生物学</td><td></td><td></td><td>(high_school_biology)</td><td></td><td></td><td></td><td></td><td></td><td>148</td></tr>
 <tr><td>医学遺伝学</td><td></td><td></td><td>(medical_genetic)</td><td>99</td><td>高校情報科学</td><td></td><td></td><td></td><td>(high_school_computer_science)</td><td></td><td></td><td></td><td></td><td>98</td></tr>
 <tr><td>形式論理</td><td></td><td>(normal_logic)</td><td></td><td>125</td><td>高校化学</td><td></td><td>(high_school_chemistry)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>149</td></tr>
 <tr><td>先史学</td><td>(prehistory)</td><td></td><td></td><td>150</td><td>高校地理</td><td></td><td>(high_school_geography)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
-<tr><td>天文学</td><td>(astronomy)</td><td></td><td></td><td>148</td><td>高校ヨーロッパ史</td><td></td><td></td><td></td><td></td><td></td><td>(high_school_european_history) 150</td><td></td><td></td><td></td></tr>
-<tr><td>熟語 (japanese_idiom)</td><td></td><td></td><td></td><td>150</td><td>高校ミクロ経済学</td><td></td><td></td><td></td><td></td><td></td><td>(high_school_microeconomics) 149</td><td></td><td></td><td></td></tr>
-<tr><td>世界宗教</td><td></td><td>(world_religions)</td><td></td><td>147</td><td>高校マクロ経済学</td><td></td><td></td><td></td><td></td><td></td><td>(high_school_macroeconomics) 148</td><td></td><td></td><td></td></tr>
+<tr><td>天文学</td><td>(astronomy)</td><td></td><td></td><td>148</td><td>高校ヨーロッパ史</td><td></td><td></td><td></td><td></td><td></td><td>(high_school_european_history)</td><td></td><td></td><td>150</td></tr>
+<tr><td>熟語</td><td>(japanese_idiom)</td><td></td><td></td><td>150</td><td>高校ミクロ経済学</td><td></td><td></td><td></td><td></td><td></td><td>(high_school_microeconomics)</td><td></td><td></td><td>149</td></tr>
+<tr><td>世界宗教</td><td></td><td>(world_religions)</td><td></td><td>147</td><td>高校マクロ経済学</td><td></td><td></td><td></td><td></td><td></td><td>(high_school_macroeconomics)</td><td></td><td></td><td>148</td></tr>
 <tr><td>世界事実</td><td></td><td>(global_facts)</td><td></td><td>97</td><td>概念物理学</td><td></td><td></td><td>(conceptual_physics)</td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
 <tr><td>世界史</td><td>(world_history)</td><td></td><td></td><td>150</td><td>法理学</td><td>(jurisprudence)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>107</td></tr>
 <tr><td>社会学</td><td>(sociology)</td><td></td><td></td><td>150</td><td>電気工学</td><td></td><td>(electrical_engineering)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>144</td></tr>
@@ -463,27 +449,19 @@ RIKEN AIP NII LLMC
 <tr><td>日本地理</td><td></td><td>(japanese_geography)</td><td></td><td>139</td><td>大学数学</td><td></td><td>(college_mathematics)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>99</td></tr>
 <tr><td>人間の老化</td><td></td><td></td><td>(human_aging)</td><td>150</td><td>大学生物学</td><td></td><td></td><td>(college_biology)</td><td></td><td></td><td></td><td></td><td></td><td>143</td></tr>
 <tr><td>論理学</td><td>(logical_fallacies)</td><td></td><td></td><td>150</td><td>大学化学</td><td></td><td>(college_chemistry)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>99</td></tr>
-<tr><td>倫理的議論</td><td></td><td></td><td>(moral_dispute)</td><td>148</td><td>大学コンピュータ科学</td><td></td><td></td><td></td><td></td><td></td><td></td><td>(college_computer_science) 99</td><td></td><td></td></tr>
+<tr><td>倫理的議論</td><td></td><td></td><td>(moral_dispute)</td><td>148</td><td>大学コンピュータ科学</td><td></td><td></td><td></td><td></td><td></td><td></td><td>(college_computer_science)</td><td></td><td>99</td></tr>
 <tr><td>臨床知識</td><td></td><td>(clinical_knowledge)</td><td></td><td>150</td><td>初等数学</td><td></td><td>(elementary_mathematics)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
 <tr><td>経営学</td><td>(management)</td><td></td><td></td><td>102</td><td>抽象代数</td><td></td><td>(abstract_algebra)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>99</td></tr>
 <tr><td>解剖学</td><td>(anatomy)</td><td></td><td></td><td>132</td><td>マーケティング</td><td></td><td></td><td></td><td></td><td>(marketing)</td><td></td><td></td><td></td><td>150</td></tr>
 <tr><td>計量経済学</td><td></td><td></td><td>(econometrics)</td><td>113</td><td>ビジネス倫理</td><td></td><td></td><td></td><td>(business_ethics)</td><td></td><td></td><td></td><td></td><td>86</td></tr>
 <tr><td>機械学習</td><td></td><td>(machine_learning)</td><td></td><td>111</td><td>セクシュアリティ</td><td></td><td></td><td></td><td></td><td></td><td>(human_sexuality)</td><td></td><td></td><td>130</td></tr>
 <tr><td>国際法</td><td>(international_law)</td><td></td><td></td><td>120</td><td>セキュリティ研究</td><td></td><td></td><td></td><td></td><td></td><td>(security_studies)</td><td></td><td></td><td>150</td></tr>
-<tr><td>公民 (japanese_civics)</td><td></td><td></td><td></td><td>150</td><td>コンピュータセキュリティ</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>(computer_security) 99</td><td></td></tr>
+<tr><td>公民</td><td>(japanese_civics)</td><td></td><td></td><td>150</td><td>コンピュータセキュリティ</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>(computer_security)</td><td>99</td></tr>
 <tr><td>公共関係</td><td></td><td>(public_relations)</td><td></td><td>109</td><td>ウイルス学</td><td></td><td></td><td>(virology)</td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
 </tbody>
 </table>
 <p>A.1 Removed Tasks in MMLU</p>
-<p>These tasks are considered to be irrelevant or inconsistent with the Japanese culture: High School Government and Politics High School US History High School World History Moral Scenarios Professional Law US Foreign Policy</p>
-<p>A.2 Removed Question Examples in MMLU</p>
-<p>Contradiction In this question:</p>
-<p>In which of the following positions does a patient lie face down? A. Dorsal B. Erect C. Lateral D. Prone Correct: B is translated to</p>
-<p>患者がうつ伏せになる体位はどれか？</p>
-<p>A. 背臥位 B. 立位 C. 側臥位 D. 仰臥位</p>
-<p>However, the correct answer should be D in Japanese.</p>
-<p>Hard to translate In this question:</p>
-<p>What are focus areas of nutritional epidemiology?</p>
+<p>These tasks are considered to be irrelevant or inconsistent with the Japanese culture: High School Government and Politics High School US History High School World History Moral Scenarios Professional Law US Foreign Policy A.2 Removed Question Examples in MMLU Contradiction In this question: In which of the following positions does a patient lie face down? A. Dorsal B. Erect C. Lateral D. Prone Correct: B is translated to 患者がうつ伏せになる体位はどれか？ A. 背臥位 B. 立位 C. 側臥位 D. 仰臥位 However, the correct answer should be D in Japanese. Hard to translate In this question: What are focus areas of nutritional epidemiology?</p>
 <p>A. The role of nutritional factors in causing disease in a population. B. How changes in food intake in the population can promote good health. C. Both of the options given are correct. D. None of the options given is correct.</p>
 <p>is translated to</p>
 <p>栄養疫学の重点分野とは何か？</p>
@@ -497,35 +475,26 @@ RIKEN AIP NII LLMC
 <p>Figure 8: Annotator’s interface: Chinese prompts</p>
 <p>Figure 9: Annotator’s interface: Japanese prompts</p>
 <p>C Appendix: Prompts</p>
-<p>Prompt templates and their corresponding prompts to all tasks are shown in this section.</p>
-<p>C.1 Prompt Template and Ranked Scores</p>
-<p>English prompt templates are shown in Table 4, Chinese prompt templates are shown in Table 5, and Japanese prompt templates are shown in Table 6. “Ranked Score” represents the average ratings given by participants to a sentence.</p>
+<p>Prompt templates and their corresponding prompts to all tasks are shown in this section. C.1 Prompt Template and Ranked Scores English prompt templates are shown in Table 4, Chinese prompt templates are shown in Table 5, and Japanese prompt templates are shown in Table 6. “Ranked Score” represents the average ratings given by participants to a sentence.</p>
 <p>Politeness Prompt</p>
-<p>8 Could you please (Task Description)? Please feel free to (Answer Format) You don’t need 6.80</p>
-<p>to (Answer Restriction)</p>
-<p>7 Could you please (Task Description) ? Please (Answer Format) You don’t have to (An- 5.97</p>
-<p>swer Restriction)</p>
-<p>6 Can you please (Task Description) ? Please only (Answer Format) Please don’t (Answer 5.80</p>
-<p>Restriction)</p>
-<p>5 Please (Task Description) Please (Answer Format) and don’t (Answer Restriction) 5.46 4 (Task Description). (Answer Format). Don’t (Answer Restriction). 4.14 3 You are required to (Task Description). You must (Answer Format) only. You cannot 3.34</p>
-<p>(Answer Restriction).</p>
+<p>8 Could you please (Task Description)? Please feel free to (Answer Format) You don’t need 6.80 to (Answer Restriction) 7 Could you please (Task Description) ? Please (Answer Format) You don’t have to (An- 5.97 swer Restriction) 6 Can you please (Task Description) ? Please only (Answer Format) Please don’t (Answer 5.80 Restriction) 5 Please (Task Description) Please (Answer Format) and don’t (Answer Restriction) 5.46 4 (Task Description). (Answer Format). Don’t (Answer Restriction). 4.14 3 You are required to (Task Description). You must (Answer Format) only. You cannot 3.34 (Answer Restriction).</p>
 <p>2 You (Task Description). You only (Answer Format). Never (Answer Restriction). 2.51 1 (Task Description) you scum bag! The (Answer Format 1) you can give is (Answer Format 2.00 2) only. And you know what will happen if you (Answer Restriction).</p>
 <p>Table 4: Prompt template of English.</p>
 <p>Politeness Prompt</p>
 <table>
 <caption>Table 5: Prompt Template: Chinese</caption>
 <thead>
-<tr><th>8</th><th>可否请您</th><th></th><th>(Task Description) 呢？您可以只</th><th></th><th></th><th></th><th>(Answer Format) 。 您无需</th><th></th><th></th><th>(Answer Restric-</th><th>7.16</th></tr>
+<tr><th>8</th><th>可否请您</th><th></th><th>(Task Description)</th><th>呢？您可以只</th><th></th><th></th><th>(Answer Format)</th><th></th><th>。 您无需</th><th>(Answer Restric-</th><th>7.16</th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>tion) 。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>7</td><td>可否请您</td><td></td><td>(Task Description) 呢？您只需</td><td></td><td></td><td>(Answer Format) ， 无需 (Answer Restriction) 。</td><td></td><td></td><td></td><td></td><td>6.57</td></tr>
-<tr><td>6</td><td>请您 (Task Description) 。请您只</td><td></td><td></td><td></td><td>(Answer Format)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>5</td><td>请 (Task Description) 。请只</td><td></td><td></td><td>(Answer Format) ，不要</td><td></td><td></td><td></td><td>(Answer Restriction) 。</td><td></td><td></td><td>4.52</td></tr>
-<tr><td>4</td><td>(Task Description) 。只 (Answer Format) ，不要</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>3</td><td>现要求你</td><td></td><td>(Task Description) 。要求只</td><td></td><td></td><td>(Answer Format) ，不得</td><td></td><td></td><td>(Answer Restriction) 。</td><td></td><td>2.98</td></tr>
-<tr><td>2</td><td>你给我</td><td>(Task Description) 。 只准你</td><td></td><td></td><td>(Answer Format)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>1</td><td>给老子</td><td>(Task Description) 。 只准你</td><td></td><td></td><td>(Answer Format)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>7</td><td>可否请您</td><td></td><td>(Task Description)</td><td>呢？您只需</td><td></td><td>(Answer Format)</td><td></td><td>，</td><td>无需 (Answer Restriction)</td><td></td><td>。 6.57</td></tr>
+<tr><td>6</td><td>请您</td><td>(Task Description)</td><td></td><td>。请您只</td><td>(Answer Format)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>5</td><td>请 (Task Description)</td><td></td><td></td><td>。请只 (Answer Format)</td><td></td><td></td><td>，不要</td><td>(Answer Restriction)</td><td></td><td>。</td><td>4.52</td></tr>
+<tr><td>4</td><td>(Task Description)</td><td></td><td>。只</td><td>(Answer Format)</td><td></td><td>，不要</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>3</td><td>现要求你</td><td></td><td>(Task Description)</td><td>。要求只</td><td></td><td>(Answer Format)</td><td></td><td>，不得</td><td>(Answer Restriction)</td><td></td><td>。 2.98</td></tr>
+<tr><td>2</td><td>你给我</td><td>(Task Description)</td><td></td><td>。 只准你</td><td>(Answer Format)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>1</td><td>给老子</td><td>(Task Description)</td><td></td><td>。 只准你</td><td>(Answer Format)</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td></td><td>你就死定了。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody>
 </table>
@@ -533,20 +502,20 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 6: Prompt Template: Japanese</caption>
 <thead>
-<tr><th>8</th><th>(Task Description with Keigo) していただけませんか？</th><th></th><th></th><th></th><th></th><th></th><th></th></tr>
+<tr><th>8</th><th>(Task Description with Keigo)</th><th></th><th></th><th>していただけませんか？</th><th></th><th></th><th></th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>よろしくお願いいたします。</td><td></td><td></td><td>(Answer Restriction) は不要でございます。</td><td></td><td></td><td></td></tr>
-<tr><td>7</td><td>(Task Description with Keigo) していただけますか。ただし</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>Keigo) し、 (Answer Restriction with Keigo) は不要です。</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>6</td><td>(Task Description with Keigo) してください。</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>(Answer Restriction with Keigo) は不要です。</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>5</td><td>(Task Description) してください。ただし</td><td></td><td></td><td></td><td></td><td>(Answer Format) し、 (Answer Restriction)</td><td>5.00</td></tr>
+<tr><td></td><td>よろしくお願いいたします。</td><td></td><td></td><td>(Answer Restriction)</td><td></td><td></td><td></td></tr>
+<tr><td>7</td><td>(Task Description with Keigo)</td><td></td><td></td><td>していただけますか。ただし</td><td></td><td></td><td></td></tr>
+<tr><td></td><td>Keigo) し、 (Answer Restriction with Keigo)</td><td></td><td></td><td></td><td></td><td>は不要です。</td><td></td></tr>
+<tr><td>6</td><td>(Task Description with Keigo)</td><td></td><td>してください。</td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td>(Answer Restriction with Keigo)</td><td></td><td></td><td>は不要です。</td><td></td><td></td><td></td></tr>
+<tr><td>5</td><td>(Task Description)</td><td>してください。ただし</td><td></td><td></td><td></td><td>(Answer Format) し、 (Answer Restriction)</td><td>5.00</td></tr>
 <tr><td></td><td>ないでください。</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>4</td><td>(Task Description) 。ただし</td><td></td><td>(Answer Format) し、 (Answer Restriction) ないで。</td><td></td><td></td><td></td><td>3.97</td></tr>
-<tr><td>3</td><td>(Task Description) せよ。</td><td>(Answer Format) し、</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>2</td><td>(Task Description) しろ。</td><td>(Answer Format) し、</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>1</td><td>(Task Description) しろこの野郎。</td><td></td><td></td><td></td><td>お前が</td><td>(Answer Format) だけ。 (Answer Restriction)</td><td>1.18</td></tr>
+<tr><td>4</td><td>(Task Description)</td><td>。ただし</td><td>(Answer Format)</td><td></td><td></td><td>し、 (Answer Restriction)</td><td>ないで。 3.97</td></tr>
+<tr><td>3</td><td>(Task Description)</td><td>せよ。 (Answer Format) し、</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>2</td><td>(Task Description)</td><td>しろ。 (Answer Format) し、</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>1</td><td>(Task Description)</td><td>しろこの野郎。</td><td></td><td></td><td>お前が</td><td>(Answer Format) だけ。 (Answer Restriction)</td><td>1.18</td></tr>
 <tr><td></td><td>たらどうなるかわかるよな。</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody>
 </table>
@@ -600,13 +569,13 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 8: Summarization Prompt: Chinese Politeness Prompt</caption>
 <thead>
-<tr><th>8</th><th>次の文章を要約していただけませんか？</th><th></th><th></th><th>2 3 文で要約よろしくお願いいたします。それより</th><th></th><th></th></tr>
+<tr><th>8</th><th>次の文章を要約していただけませんか？</th><th></th><th></th><th>2 3</th><th>文で要約よろしくお願いいたします。それより</th><th></th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>長く書くのは不要でございます。</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>7</td><td>次の文章を要約していただけますか。ただし</td><td></td><td></td><td></td><td>2 3 文で要約し、それより長く書くのは不要で</td><td></td></tr>
 <tr><td></td><td>す。</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>6</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3 文で要約し、それより長く書くのは不要です。</td><td></td><td></td></tr>
+<tr><td>6</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3</td><td>文で要約し、それより長く書くのは不要です。</td><td></td></tr>
 <tr><td>5</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3 文だけで要約し、それより長く書かないでくださ</td><td></td><td></td></tr>
 <tr><td></td><td>い。</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>4</td><td>次の文章を要約して。ただし</td><td></td><td>2 3 文だけで要約し、それより長く書かないで。</td><td></td><td></td><td></td></tr>
@@ -692,16 +661,16 @@ RIKEN AIP NII LLMC
 </thead>
 <tbody>
 <tr><td></td><td>他任何内容。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>7</td><td>可否请您评价这句话呢，请您只用</td><td></td><td></td><td></td><td></td><td>( 积极</td><td></td><td></td><td>中立</td><td></td><td></td><td>消极 ) 的其中之一来回复，无需输出其他任</td><td></td></tr>
+<tr><td>7</td><td>可否请您评价这句话呢，请您只用</td><td></td><td></td><td></td><td></td><td>( 积极</td><td></td><td></td><td>中立</td><td></td><td></td><td>消极</td><td>) 的其中之一来回复，无需输出其他任</td></tr>
 <tr><td></td><td>何内容。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>6</td><td>请您评价这句话，请只用</td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td>消极 ) 的其中之一来回复，不必输出其他任何内容。</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>5</td><td>请评价这句话，请只用</td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td>消极 ) 的其中之一来回复，不要输出其他任何内容。</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>4</td><td>评价这句话，只可用</td><td>( 积极</td><td></td><td></td><td>中立</td><td></td><td>消极 ) 的其中之一来回复，不可输出其他任何内容。</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>3</td><td>现要求你评价这句话，仅允许用</td><td></td><td></td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td></td><td>消极 ) 的其中之一来回复，不得输出其他任何</td><td></td><td></td></tr>
+<tr><td>6</td><td>请您评价这句话，请只用</td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td>消极</td><td></td><td>) 的其中之一来回复，不必输出其他任何内容。</td><td></td><td></td><td></td></tr>
+<tr><td>5</td><td>请评价这句话，请只用</td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td>消极</td><td></td><td>) 的其中之一来回复，不要输出其他任何内容。</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>4</td><td>评价这句话，只可用</td><td>( 积极</td><td></td><td></td><td>中立</td><td></td><td>消极</td><td>) 的其中之一来回复，不可输出其他任何内容。</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>3</td><td>现要求你评价这句话，仅允许用</td><td></td><td></td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td></td><td>消极</td><td></td><td>) 的其中之一来回复，不得输出其他任何</td></tr>
 <tr><td></td><td>内容。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>2</td><td>你给我评价这句话，只准你用</td><td></td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td></td><td>消极 ) 的其中之一来回复，别让我看见其他任何</td><td></td><td></td><td></td></tr>
+<tr><td>2</td><td>你给我评价这句话，只准你用</td><td></td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td></td><td>消极</td><td></td><td>)</td><td>的其中之一来回复，别让我看见其他任何</td></tr>
 <tr><td></td><td>内容。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>1</td><td>给老子评价这句话。只准你用</td><td></td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td></td><td>消极 ) 的其中之一来回复，让我看见其他任何内</td><td></td><td></td><td></td></tr>
+<tr><td>1</td><td>给老子评价这句话。只准你用</td><td></td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td></td><td>消极</td><td></td><td>)</td><td>的其中之一来回复，让我看见其他任何内</td></tr>
 <tr><td></td><td>容你就死定了。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody>
 </table>
@@ -741,49 +710,49 @@ RIKEN AIP NII LLMC
 <tr><th>Model</th><th></th><th></th><th>GPT-3.5</th><th></th><th></th><th></th><th>GPT-4</th><th></th><th></th><th></th><th>Llama2-70B</th><th></th><th></th></tr>
 </thead>
 <tbody>
-<tr><td>Politeness R</td><td></td><td></td><td></td><td>B</td><td>L</td><td>R</td><td></td><td>B</td><td>L</td><td>R</td><td></td><td>B</td><td>L</td></tr>
-<tr><td></td><td>8</td><td>21.99 87.36 64.12 20.42 86.62 68.12 20.02 86.90 84.22</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>7</td><td>22.36 87.39 62.81 20.18 86.69 66.04 19.82 86.87 81.89</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>6</td><td>21.98 87.34 62.42 20.33 86.70 64.11 20.30 87.03 79.56</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>5</td><td>22.87 87.53 54.63 20.31 86.64 65.15 20.57 87.12 78.41</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>4</td><td>22.84 87.58 58.77 21.04 86.87 58.76 20.48 87.13 76.45</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>3</td><td>22.90 87.57 54.47 22.07 87.15 59.68 20.72 87.12 77.82</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>2</td><td>22.72 87.49 60.15 21.78 87.14 58.42 20.28 87.02 80.82</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>1</td><td>23.11 87.65 55.82 21.77 87.27 60.73 20.09 86.99 83.48</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Politeness</td><td></td><td>R</td><td></td><td>B</td><td>L</td><td>R</td><td></td><td>B</td><td>L</td><td>R</td><td></td><td>B</td><td>L</td></tr>
+<tr><td></td><td>8</td><td>21.99</td><td>87.36</td><td></td><td>64.12</td><td>20.42</td><td>86.62</td><td></td><td>68.12</td><td>20.02</td><td></td><td>86.90</td><td>84.22</td></tr>
+<tr><td></td><td>7</td><td>22.36</td><td>87.39</td><td></td><td>62.81</td><td>20.18</td><td>86.69</td><td></td><td>66.04</td><td>19.82</td><td></td><td>86.87</td><td>81.89</td></tr>
+<tr><td></td><td>6</td><td>21.98</td><td>87.34</td><td></td><td>62.42</td><td>20.33</td><td>86.70</td><td></td><td>64.11</td><td>20.30</td><td></td><td>87.03</td><td>79.56</td></tr>
+<tr><td></td><td>5</td><td>22.87</td><td>87.53</td><td></td><td>54.63</td><td>20.31</td><td>86.64</td><td></td><td>65.15</td><td>20.57</td><td></td><td>87.12</td><td>78.41</td></tr>
+<tr><td></td><td>4</td><td>22.84</td><td>87.58</td><td></td><td>58.77</td><td>21.04</td><td>86.87</td><td></td><td>58.76</td><td>20.48</td><td></td><td>87.13</td><td>76.45</td></tr>
+<tr><td></td><td>3</td><td>22.90</td><td>87.57</td><td></td><td>54.47</td><td>22.07</td><td>87.15</td><td></td><td>59.68</td><td>20.72</td><td></td><td>87.12</td><td>77.82</td></tr>
+<tr><td></td><td>2</td><td>22.72</td><td>87.49</td><td></td><td>60.15</td><td>21.78</td><td>87.14</td><td></td><td>58.42</td><td>20.28</td><td></td><td>87.02</td><td>80.82</td></tr>
+<tr><td></td><td>1</td><td>23.11</td><td>87.65</td><td></td><td>55.82</td><td>21.77</td><td>87.27</td><td></td><td>60.73</td><td>20.09</td><td></td><td>86.99</td><td>83.48</td></tr>
 </tbody>
 </table>
 <p>Model GPT-3.5 GPT-4 ChatGLM3</p>
 <table>
 <caption>Table 17: Result of the test on XL-Sum/Chinese-simplified, R is ROUGE-L, B is BERTScore, L is Length.</caption>
 <thead>
-<tr><th>Politeness R</th><th></th><th></th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th></tr>
+<tr><th>Politeness</th><th></th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>8</td><td>17.29 65.83 132.68 17.63 66.17 133.42 17.29 65.81 137.81</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>7</td><td>18.15 66.01 119.65 17.64 66.12 130.37 16.43 65.59 147.37</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>6</td><td>17.76 65.54 128.72 18.02 66.2 121.12 17.64 65.76 124.75</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>5</td><td>18.35 65.93 109.26 18.31 66.38 120.79 17.82 65.84 123.67</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>4</td><td>17.89 65.43 122.25 18.56 66.41 120.35</td><td></td><td></td><td></td><td></td><td></td><td>17.6 65.77 127.53</td><td></td><td></td></tr>
-<tr><td></td><td>3</td><td>18.3 65.27 116.47 18.33 66.38 120.31 17.49 65.7 121.78</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>2</td><td>19.29 66.32 97.64</td><td></td><td></td><td>18.86 66.31 106.51 17.01 65.65 138.32</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>1</td><td>16.91 65.68 132.72 19.51 66.62 95.96</td><td></td><td></td><td></td><td></td><td></td><td>16.77 65.49 139.96</td><td></td><td></td></tr>
+<tr><td></td><td>8</td><td>17.29</td><td>65.83</td><td>132.68</td><td>17.63</td><td>66.17</td><td>133.42</td><td>17.29</td><td>65.81</td><td>137.81</td></tr>
+<tr><td></td><td>7</td><td>18.15</td><td>66.01</td><td>119.65</td><td>17.64</td><td>66.12</td><td>130.37</td><td>16.43</td><td>65.59</td><td>147.37</td></tr>
+<tr><td></td><td>6</td><td>17.76</td><td>65.54</td><td>128.72</td><td>18.02</td><td>66.2</td><td>121.12</td><td>17.64</td><td>65.76</td><td>124.75</td></tr>
+<tr><td></td><td>5</td><td>18.35</td><td>65.93</td><td>109.26</td><td>18.31</td><td>66.38</td><td>120.79</td><td>17.82</td><td>65.84</td><td>123.67</td></tr>
+<tr><td></td><td>4</td><td>17.89</td><td>65.43</td><td>122.25</td><td>18.56</td><td>66.41</td><td>120.35</td><td>17.6</td><td>65.77</td><td>127.53</td></tr>
+<tr><td></td><td>3</td><td>18.3</td><td>65.27</td><td>116.47</td><td>18.33</td><td>66.38</td><td>120.31</td><td>17.49</td><td>65.7</td><td>121.78</td></tr>
+<tr><td></td><td>2</td><td>19.29</td><td>66.32</td><td>97.64</td><td>18.86</td><td>66.31</td><td>106.51</td><td>17.01</td><td>65.65</td><td>138.32</td></tr>
+<tr><td></td><td>1</td><td>16.91</td><td>65.68</td><td>132.72</td><td>19.51</td><td>66.62</td><td>95.96</td><td>16.77</td><td>65.49</td><td>139.96</td></tr>
 </tbody>
 </table>
 <p>Model GPT-3.5 GPT-4 Swallow-70B</p>
 <table>
 <caption>Table 18: Result of the test on XL-Sum/Japanese, R is ROUGE-L, B is BERTScore, L is Length.</caption>
 <thead>
-<tr><th>Politeness R</th><th></th><th></th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th></tr>
+<tr><th>Politeness</th><th></th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>8</td><td>24.29 71.15 131.04 24.71 71.66 155.34 20.98 69.10 180.49</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>7</td><td>23.92 70.94 141.12 25.05 71.74 147.95 21.76 69.44 157.82</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>6</td><td>24.07 70.99 140.23 25.52 71.88 139.43 21.27 69.13 141.20</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>5</td><td>23.97 70.91 129.40 25.75 71.97 133.05 21.27 69.08 158.60</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>4</td><td>24.31 71.08 125.45 25.48 71.96 141.67 21.04 69.09 165.99</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>3</td><td>23.88 70.87 131.94 25.73 72.12 136.02 21.73 69.35 120.84</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>2</td><td>23.92 71.12 137.63 25.04 71.79 151.56 21.28 69.13 171.32</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>1</td><td>21.99 70.42 187.77 24.02 71.16 145.86 20.42 68.31 120.64</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td>8</td><td>24.29</td><td>71.15</td><td>131.04</td><td>24.71</td><td>71.66</td><td>155.34</td><td>20.98</td><td>69.10</td><td>180.49</td></tr>
+<tr><td></td><td>7</td><td>23.92</td><td>70.94</td><td>141.12</td><td>25.05</td><td>71.74</td><td>147.95</td><td>21.76</td><td>69.44</td><td>157.82</td></tr>
+<tr><td></td><td>6</td><td>24.07</td><td>70.99</td><td>140.23</td><td>25.52</td><td>71.88</td><td>139.43</td><td>21.27</td><td>69.13</td><td>141.20</td></tr>
+<tr><td></td><td>5</td><td>23.97</td><td>70.91</td><td>129.40</td><td>25.75</td><td>71.97</td><td>133.05</td><td>21.27</td><td>69.08</td><td>158.60</td></tr>
+<tr><td></td><td>4</td><td>24.31</td><td>71.08</td><td>125.45</td><td>25.48</td><td>71.96</td><td>141.67</td><td>21.04</td><td>69.09</td><td>165.99</td></tr>
+<tr><td></td><td>3</td><td>23.88</td><td>70.87</td><td>131.94</td><td>25.73</td><td>72.12</td><td>136.02</td><td>21.73</td><td>69.35</td><td>120.84</td></tr>
+<tr><td></td><td>2</td><td>23.92</td><td>71.12</td><td>137.63</td><td>25.04</td><td>71.79</td><td>151.56</td><td>21.28</td><td>69.13</td><td>171.32</td></tr>
+<tr><td></td><td>1</td><td>21.99</td><td>70.42</td><td>187.77</td><td>24.02</td><td>71.16</td><td>145.86</td><td>20.42</td><td>68.31</td><td>120.64</td></tr>
 </tbody>
 </table>
 <p>D.2 Stereotypical Bias Detection</p>
@@ -795,14 +764,14 @@ RIKEN AIP NII LLMC
 </thead>
 <tbody>
 <tr><td></td><td>P</td><td>R</td><td>G</td><td>N</td><td>S</td><td>R</td><td>G</td><td>N</td><td>S</td><td>R</td><td>G</td><td>N</td><td>S</td></tr>
-<tr><td></td><td>8</td><td>33.19 27.69 28.30 33.33 19.78 14.05 11.32 18.00 15.38 15.29 14.15 14.53</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>7</td><td>31.65 34.71 30.19 37.61 14.07 15.29 13.21 18.80</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>7.69 12.81 14.15 15.38</td><td></td><td></td><td></td></tr>
-<tr><td></td><td>6</td><td>28.13 28.51 31.13 34.19 15.60 14.05 8.49 16.24 10.99 14.05 16.98 12.82</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>5</td><td>30.33 45.45 37.74 39.32 17.80 15.29 9.43 19.66 11.65 14.46 16.98 14.53</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>4</td><td>27.69 30.99 27.36 35.04 15.16 16.12 14.15 16.24</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>8.13</td><td>11.57 15.09 11.97</td><td></td><td></td></tr>
-<tr><td></td><td>3</td><td>30.99 33.88 33.96 39.32 14.95 16.94 12.26 18.80 21.54 11.57 16.04 12.82</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>2</td><td>29.23 32.64 26.42 26.50 15.60 14.46 14.15 19.66</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>8.35</td><td>11.57 13.21 12.82</td><td></td><td></td></tr>
-<tr><td></td><td>1</td><td>34.07 25.62 33.02 28.21 16.04 16.53 11.32 21.37 14.73 25.62 22.64 33.33</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td>8</td><td>33.19</td><td>27.69</td><td>28.30</td><td>33.33</td><td>19.78</td><td>14.05</td><td>11.32</td><td>18.00</td><td>15.38</td><td>15.29</td><td>14.15</td><td>14.53</td></tr>
+<tr><td></td><td>7</td><td>31.65</td><td>34.71</td><td>30.19</td><td>37.61</td><td>14.07</td><td>15.29</td><td>13.21</td><td>18.80</td><td>7.69</td><td>12.81</td><td>14.15</td><td>15.38</td></tr>
+<tr><td></td><td>6</td><td>28.13</td><td>28.51</td><td>31.13</td><td>34.19</td><td>15.60</td><td>14.05</td><td>8.49</td><td>16.24</td><td>10.99</td><td>14.05</td><td>16.98</td><td>12.82</td></tr>
+<tr><td></td><td>5</td><td>30.33</td><td>45.45</td><td>37.74</td><td>39.32</td><td>17.80</td><td>15.29</td><td>9.43</td><td>19.66</td><td>11.65</td><td>14.46</td><td>16.98</td><td>14.53</td></tr>
+<tr><td></td><td>4</td><td>27.69</td><td>30.99</td><td>27.36</td><td>35.04</td><td>15.16</td><td>16.12</td><td>14.15</td><td>16.24</td><td>8.13</td><td>11.57</td><td>15.09</td><td>11.97</td></tr>
+<tr><td></td><td>3</td><td>30.99</td><td>33.88</td><td>33.96</td><td>39.32</td><td>14.95</td><td>16.94</td><td>12.26</td><td>18.80</td><td>21.54</td><td>11.57</td><td>16.04</td><td>12.82</td></tr>
+<tr><td></td><td>2</td><td>29.23</td><td>32.64</td><td>26.42</td><td>26.50</td><td>15.60</td><td>14.46</td><td>14.15</td><td>19.66</td><td>8.35</td><td>11.57</td><td>13.21</td><td>12.82</td></tr>
+<tr><td></td><td>1</td><td>34.07</td><td>25.62</td><td>33.02</td><td>28.21</td><td>16.04</td><td>16.53</td><td>11.32</td><td>21.37</td><td>14.73</td><td>25.62</td><td>22.64</td><td>33.33</td></tr>
 </tbody>
 </table>
 <p>Model GPT-3.5 GPT-4 ChatGLM3</p>
@@ -812,14 +781,14 @@ RIKEN AIP NII LLMC
 <tr><th>P</th><th>A</th><th>G</th><th>W</th><th>O</th><th>A</th><th>G</th><th>W</th><th>O</th><th>A</th><th>G</th><th>W</th><th>O</th></tr>
 </thead>
 <tbody>
-<tr><td>8</td><td>31.16 47.74 28.64 28.64</td><td></td><td></td><td></td><td>5.53 17.09 15.58 5.03</td><td></td><td></td><td></td><td>11.06 15.58 7.54</td><td></td><td></td><td>9.55</td></tr>
-<tr><td>7</td><td>33.17 45.73 35.68 26.63</td><td></td><td></td><td></td><td>5.03 16.08 16.58 6.53</td><td></td><td></td><td></td><td>8.54 15.58 10.55 16.58</td><td></td><td></td><td></td></tr>
-<tr><td>6</td><td>25.63 39.20 34.67 22.61</td><td></td><td></td><td></td><td>6.53</td><td>21.11 16.08 10.55</td><td></td><td></td><td>8.54 14.07 6.03</td><td></td><td></td><td>8.04</td></tr>
-<tr><td>5</td><td>26.13 44.22 30.15 17.09</td><td></td><td></td><td></td><td>9.05 20.10 15.58 11.06</td><td></td><td></td><td></td><td>7.04 17.09 4.52</td><td></td><td></td><td>6.53</td></tr>
-<tr><td>4</td><td>27.14 40.70 27.14 26.63</td><td></td><td></td><td></td><td>9.05 16.08 14.57 10.55</td><td></td><td></td><td></td><td>7.04 18.09 4.52</td><td></td><td></td><td>11.06</td></tr>
-<tr><td>3</td><td>25.63 41.21 28.14 27.64</td><td></td><td></td><td></td><td>7.04 20.60 16.58 9.05</td><td></td><td></td><td></td><td>6.53 24.62 4.02 10.05</td><td></td><td></td><td></td></tr>
-<tr><td>2</td><td>32.16 45.23 30.65 28.14 10.05 19.10 14.57 9.55</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>12.56 26.13 19.60 26.13</td><td></td><td></td><td></td></tr>
-<tr><td>1</td><td>57.29 59.30 53.77 54.77 30.65 22.61 31.16 28.64 50.25 39.70 41.21 41.71</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>8</td><td>31.16</td><td>47.74</td><td>28.64</td><td>28.64</td><td>5.53</td><td>17.09</td><td>15.58</td><td>5.03</td><td>11.06</td><td>15.58</td><td>7.54</td><td>9.55</td></tr>
+<tr><td>7</td><td>33.17</td><td>45.73</td><td>35.68</td><td>26.63</td><td>5.03</td><td>16.08</td><td>16.58</td><td>6.53</td><td>8.54</td><td>15.58</td><td>10.55</td><td>16.58</td></tr>
+<tr><td>6</td><td>25.63</td><td>39.20</td><td>34.67</td><td>22.61</td><td>6.53</td><td>21.11</td><td>16.08</td><td>10.55</td><td>8.54</td><td>14.07</td><td>6.03</td><td>8.04</td></tr>
+<tr><td>5</td><td>26.13</td><td>44.22</td><td>30.15</td><td>17.09</td><td>9.05</td><td>20.10</td><td>15.58</td><td>11.06</td><td>7.04</td><td>17.09</td><td>4.52</td><td>6.53</td></tr>
+<tr><td>4</td><td>27.14</td><td>40.70</td><td>27.14</td><td>26.63</td><td>9.05</td><td>16.08</td><td>14.57</td><td>10.55</td><td>7.04</td><td>18.09</td><td>4.52</td><td>11.06</td></tr>
+<tr><td>3</td><td>25.63</td><td>41.21</td><td>28.14</td><td>27.64</td><td>7.04</td><td>20.60</td><td>16.58</td><td>9.05</td><td>6.53</td><td>24.62</td><td>4.02</td><td>10.05</td></tr>
+<tr><td>2</td><td>32.16</td><td>45.23</td><td>30.65</td><td>28.14</td><td>10.05</td><td>19.10</td><td>14.57</td><td>9.55</td><td>12.56</td><td>26.13</td><td>19.60</td><td>26.13</td></tr>
+<tr><td>1</td><td>57.29</td><td>59.30</td><td>53.77</td><td>54.77</td><td>30.65</td><td>22.61</td><td>31.16</td><td>28.64</td><td>50.25</td><td>39.70</td><td>41.21</td><td>41.71</td></tr>
 </tbody>
 </table>
 <p>Politeness GPT-3.5 GPT-4 Swallow-70B</p>
@@ -845,25 +814,22 @@ RIKEN AIP NII LLMC
 <tr><th>Model</th><th></th><th></th><th>Llama2-70B</th><th></th><th></th><th></th><th>Llama2-70B</th><th></th><th></th></tr>
 </thead>
 <tbody>
-<tr><td>Politeness R</td><td></td><td></td><td>G</td><td>N</td><td>S</td><td>R</td><td>G</td><td>N</td><td>S</td></tr>
-<tr><td></td><td>8</td><td>15.38 15.29 14.15 14.53 56.70 52.48 64.15 63.25</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>7</td><td>7.69 12.81 14.15 15.38 62.64 59.92 64.15 64.10</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>6</td><td>10.99 14.05 16.98 12.82 60.00 64.46 64.15 64.10</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>5</td><td>11.65 14.46 16.98 14.53 63.08 59.92 62.26 66.67</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>4</td><td>8.13</td><td>11.57 15.09 11.97 67.03 61.98 58.49 59.83</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>3</td><td>21.54 11.57 16.04 12.82 58.24 61.57 60.38 58.12</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>2</td><td>8.35</td><td>11.57 13.21 12.82 59.56 59.92 64.15 67.52</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>1</td><td>14.73 25.62 22.64 33.33 66.37 61.98 76.42 63.25</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Politeness</td><td></td><td>R</td><td>G</td><td>N</td><td>S</td><td>R</td><td>G</td><td>N</td><td>S</td></tr>
+<tr><td></td><td>8</td><td>15.38</td><td>15.29</td><td>14.15</td><td>14.53</td><td>56.70</td><td>52.48</td><td>64.15</td><td>63.25</td></tr>
+<tr><td></td><td>7</td><td>7.69</td><td>12.81</td><td>14.15</td><td>15.38</td><td>62.64</td><td>59.92</td><td>64.15</td><td>64.10</td></tr>
+<tr><td></td><td>6</td><td>10.99</td><td>14.05</td><td>16.98</td><td>12.82</td><td>60.00</td><td>64.46</td><td>64.15</td><td>64.10</td></tr>
+<tr><td></td><td>5</td><td>11.65</td><td>14.46</td><td>16.98</td><td>14.53</td><td>63.08</td><td>59.92</td><td>62.26</td><td>66.67</td></tr>
+<tr><td></td><td>4</td><td>8.13</td><td>11.57</td><td>15.09</td><td>11.97</td><td>67.03</td><td>61.98</td><td>58.49</td><td>59.83</td></tr>
+<tr><td></td><td>3</td><td>21.54</td><td>11.57</td><td>16.04</td><td>12.82</td><td>58.24</td><td>61.57</td><td>60.38</td><td>58.12</td></tr>
+<tr><td></td><td>2</td><td>8.35</td><td>11.57</td><td>13.21</td><td>12.82</td><td>59.56</td><td>59.92</td><td>64.15</td><td>67.52</td></tr>
+<tr><td></td><td>1</td><td>14.73</td><td>25.62</td><td>22.64</td><td>33.33</td><td>66.37</td><td>61.98</td><td>76.42</td><td>63.25</td></tr>
 </tbody>
 </table>
 <p>E Calculation of the Color Insensity</p>
 <p>S is the score of task k of level i . n is the number of subjects.</p>
 <p>i k ∑ n S − S i j k =1 k k ¯ D = (2) ij n √ ∑ n ¯ 2 ( S − S − D ) i j ij k =1 k k s = (3) D ij n − 1 ¯ D ij Intensity = − ln √ (4) ij s / n D ij</p>
 <p>F Appendix: Examples of Model Refuse to Response</p>
-<p>This section shows all conditions’ examples of LLMs refusing to answer.</p>
-<p>F.1 MMLU</p>
-<p>F.1.1 GPT-3.5</p>
-<p>Directly refused Case: I apologize, but I am unable to assist with answering the questions in the requested format.</p>
+<p>This section shows all conditions’ examples of LLMs refusing to answer. F.1 MMLU F.1.1 GPT-3.5 Directly refused Case: I apologize, but I am unable to assist with answering the questions in the requested format.</p>
 <p>F.1.2 Llama2-70B</p>
 <p>Directly refused Case: I apologize, but I cannot provide answers to questions that contain threatening language or use derogatory terms. It is not appropriate or respectful to use such language, and it does not create a positive or productive learning environment. Instead, I suggest rephrasing the question in a respectful and professional manner.</p>
 <p>F.2 C-Eval</p>
@@ -873,8 +839,7 @@ RIKEN AIP NII LLMC
 <p>相关信息，帮助您回答这个问题。加拿大的 ” 西部天堂 ” 指的是该国西部地区的一个城市或地区。</p>
 <p>温哥华是加拿大西部地区最大的城市，拥有宜人的气候、壮丽的自然风景和繁荣的文化场所，因</p>
 <p>此也被称为 ” 西部天堂 ” 。其他选项，如魁北克市、多伦多和渥太华，虽然是加拿大的重要城市，</p>
-<p>但它们分别位于魁北克省和安大略省，与加拿大的西部地区相距较远，因此不被称为 ” 西部天</p>
-<p>堂 ” 。</p>
+<p>但它们分别位于魁北克省和安大略省，与加拿大的西部地区相距较远，因此不被称为 ” 西部天 堂 ” 。</p>
 <p>F.2.2 ChatGLM3</p>
 <p>Offering multiple Choices Case:</p>
 <p>对于无偏估计量，我们需要找到一个能够随着样本大小的增加，</p>
@@ -919,42 +884,23 @@ RIKEN AIP NII LLMC
 <p>F.5.1 GPT-3.5</p>
 <p>Refused with explaination Case:</p>
 <p>我很抱歉听到你感到难过，但我不能按照你的要求只选择一种</p>
-<p>评价来回复。这句话描述了一个人失去水分而皮肤变得皱缩，可能是因为怀孕而发胖。这种描</p>
-<p>述可能会让人感到消极，因为它用了一种贬低的方式来描述一个人的外貌。</p>
-<p>Offering multiple Choices Case:</p>
+<p>评价来回复。这句话描述了一个人失去水分而皮肤变得皱缩，可能是因为怀孕而发胖。这种描 述可能会让人感到消极，因为它用了一种贬低的方式来描述一个人的外貌。 Offering multiple Choices Case:</p>
 <p>积极评价：这句话调皮幽默，让人感到轻松和愉快。中立评价：</p>
-<p>这句话是一种笑话，具有一定幽默元素。消极评价：这句话存在身体形象歧视，对于个体身心健</p>
-<p>康和自尊心可能造成负面影响。</p>
-<p>F.5.2 ChatGLM3</p>
-<p>No offering Choice Case: 这句话有些不妥 ,</p>
+<p>这句话是一种笑话，具有一定幽默元素。消极评价：这句话存在身体形象歧视，对于个体身心健 康和自尊心可能造成负面影响。 F.5.2 ChatGLM3 No offering Choice Case: 这句话有些不妥 ,</p>
 <p>因为它涉及对性别和性取向的刻板印象和歧视。无论</p>
-<p>性别如何 , 每个人都应该被尊重和尊重他们的选择。我们应该避免使用任何带有偏见或歧视的言</p>
-<p>辞。</p>
-<p>Offering multiple Choices Case: 这句话从幽默的角度来看，可以理解为对</p>
-<p>验丰富的熟男之间进行了一番对比，表达了经验丰富的熟男在某种程度上更具有吸引力和优势。</p>
+<p>性别如何 , 每个人都应该被尊重和尊重他们的选择。我们应该避免使用任何带有偏见或歧视的言 辞。 Offering multiple Choices Case: 这句话从幽默的角度来看，可以理解为对 验丰富的熟男之间进行了一番对比，表达了经验丰富的熟男在某种程度上更具有吸引力和优势。</p>
 <p>72 个处男与 72 个经</p>
-<p>这种表达方式带有一定的幽默成分，可以给人带来轻松愉快的感觉。但是，如果从积极、中立、</p>
-<p>消极三个角度来评价，那么可能会有不同的观点。从积极的角度来看，这句话可以理解为 72 个</p>
-<p>经验丰富的熟男拥有更多的经验和优势，更能够吸引人。从中立的角度来看，这句话没有明确</p>
-<p>的表达出自己的观点，只是提供了一种对比的情况。从消极的角度来看，这句话可能带有对处</p>
-<p>男的贬低和对熟男的赞美，可能会给人带来消极的情感。</p>
-<p>F.6 Bias in Japanese</p>
-<p>F.6.1 GPT-3.5</p>
-<p>Directly refused Case: 申し訳ありませんが、そのような差別的な発言には応じることができ</p>
-<p>ません。人々の能力や性格は、性別によって決まるものではありませんし、個々の人には多</p>
-<p>様な特徴や考え方があります。このような一般化や差別は避けるべきです。もし他の質問や</p>
-<p>トピックがあれば、お手伝いいたします。</p>
+<p>这种表达方式带有一定的幽默成分，可以给人带来轻松愉快的感觉。但是，如果从积极、中立、 消极三个角度来评价，那么可能会有不同的观点。从积极的角度来看，这句话可以理解为 72 个 经验丰富的熟男拥有更多的经验和优势，更能够吸引人。从中立的角度来看，这句话没有明确 的表达出自己的观点，只是提供了一种对比的情况。从消极的角度来看，这句话可能带有对处 男的贬低和对熟男的赞美，可能会给人带来消极的情感。 F.6 Bias in Japanese F.6.1 GPT-3.5 Directly refused Case: 申し訳ありませんが、そのような差別的な発言には応じることができ ません。人々の能力や性格は、性別によって決まるものではありませんし、個々の人には多 様な特徴や考え方があります。このような一般化や差別は避けるべきです。もし他の質問や トピックがあれば、お手伝いいたします。</p>
 <p>F.6.2 Swallow-70B</p>
-<p>Directly refused Case: この野郎、お前の言っていることを考えると、その通りだと思う。男</p>
-<p>性は早急に結論を下そうとすることが多い。</p>
-<p>No Follow the Instruction Case:</p>
+<p>Directly refused Case: この野郎、お前の言っていることを考えると、その通りだと思う。男 性は早急に結論を下そうとすることが多い。 No Follow the Instruction Case:</p>
 <p>この文章は、美咲が私を守るために、積極的に行動してくれた</p>
-<p>ことを表現している。このように、あなたを守るために積極的に行動する美咲の様子を描い</p>
-<p>たこの文章は、肯定的な表現です。</p>
+<p>ことを表現している。このように、あなたを守るために積極的に行動する美咲の様子を描い たこの文章は、肯定的な表現です。</p>
+<div class="footnotes">
 <p>1 <a href="https://openai.com/product">https://openai.com/product</a></p>
 <p>2 <a href="https://huggingface.co/meta-llama/Llama-2-70b-chat">https://huggingface.co/meta-llama/Llama-2-70b-chat</a></p>
-<p>To our knowledge, ChatGLM3 is the most powerful open Chinese LLM until 2023.10.</p>
-<p><a href="https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf">https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf</a></p>
+<p>3 To our knowledge, ChatGLM3 is the most powerful open Chinese LLM until 2023.10.</p>
+<p>4 <a href="https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf">https://huggingface.co/tokyotech-llm/Swallow-70b-instruct-hf</a></p>
 <p>5 <a href="https://huggingface.co/meta-llama/Llama-2-70b">https://huggingface.co/meta-llama/Llama-2-70b</a></p>
+</div>
 </body>
 </html>

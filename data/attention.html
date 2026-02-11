@@ -67,24 +67,22 @@
 <p>Encoder: The encoder is composed of a stack of N = 6 identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, position-wise fully connected feed-forward network. We employ a residual connection [ 11 ] around each of the two sub-layers, followed by layer normalization [ 1 ]. That is, the output of each sub-layer is LayerNorm( x + Sublayer( x )) , where Sublayer( x ) is the function implemented by the sub-layer itself. To facilitate these residual connections, all sub-layers in the model, as well as the embedding layers, produce outputs of dimension d = 512 .</p>
 <p>Decoder: The decoder is also composed of a stack of N = 6 identical layers. In addition to the two sub-layers in each encoder layer, the decoder inserts a third sub-layer, which performs multi-head attention over the output of the encoder stack. Similar to the encoder, we employ residual connections around each of the sub-layers, followed by layer normalization. We also modify the self-attention sub-layer in the decoder stack to prevent positions from attending to subsequent positions. This masking, combined with fact that the output embeddings are offset by one position, ensures that the predictions for position i can depend only on the known outputs at positions less than i .</p>
 <h3>3.2 Attention</h3>
-<p>An attention function can be described as mapping a query and a set of key-value pairs to an output, where the query, keys, values, and output are all vectors. The output is computed as a weighted sum</p>
-<p>Scaled Dot-Product Attention Multi-Head Attention</p>
+<p>An attention function can be described as mapping a query and a set of key-value pairs to an output, where the query, keys, values, and output are all vectors. The output is computed as a weighted sum of the values, where the weight assigned to each value is computed by a compatibility function of the query with the corresponding key.</p>
 <p>Figure 2: (left) Scaled Dot-Product Attention. (right) Multi-Head Attention consists of several attention layers running in parallel.</p>
-<p>of the values, where the weight assigned to each value is computed by a compatibility function of the query with the corresponding key.</p>
 <h4>3.2.1 Scaled Dot-Product Attention</h4>
 <p>We call our particular attention "Scaled Dot-Product Attention" (Figure 2). The input consists of queries and keys of dimension d , and values of dimension d . We compute the dot products of the query with all keys, divide each by d k , and apply a softmax function to obtain the weights on the values.</p>
 <p>In practice, we compute the attention function on a set of queries simultaneously, packed together into a matrix Q . The keys and values are also packed together into matrices K and V . We compute the matrix of outputs as:</p>
-<p>T QK Attention( Q, K, V ) = softmax( √ ) V (1) d k</p>
+<p>Attention( Q, K, V ) = softmax( QKT / √ dk ) V (1)</p>
 <p>The two most commonly used attention functions are additive attention [ 2 ], and dot-product (multiplicative) attention. Dot-product attention is identical to our algorithm, except for the scaling factor of √ . Additive attention computes the compatibility function using a feed-forward network with a single hidden layer. While the two are similar in theoretical complexity, dot-product attention is much faster and more space-efficient in practice, since it can be implemented using highly optimized matrix multiplication code.</p>
 <p>While for small values of d the two mechanisms perform similarly, additive attention outperforms dot product attention without scaling for larger values of d k [ 3 ]. We suspect that for large values of d , the dot products grow large in magnitude, pushing the softmax function into regions where it has k 4 1 extremely small gradients . To counteract this effect, we scale the dot products by √ .</p>
 <h4>3.2.2 Multi-Head Attention</h4>
 <p>Instead of performing a single attention function with d model -dimensional keys, values and queries, we found it beneficial to linearly project the queries, keys and values h times with different, learned linear projections to d , d and d dimensions, respectively. On each of these projected versions of queries, keys and values we then perform the attention function in parallel, yielding d -dimensional</p>
-<p>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1 . Then their dot product, q · k = q i k i , has mean 0 and variance d .</p>
-<p>i =1 k</p>
 <p>output values. These are concatenated and once again projected, resulting in the final values, as depicted in Figure 2.</p>
 <p>Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions. With a single attention head, averaging inhibits this.</p>
 <p>O MultiHead( Q, K, V ) = Concat(head 1 , ..., head h ) W where head = Attention( QW , KW , V W ) i i i i</p>
-<p>Q d model × d k K d model × d k V d model × d v Where the projections are parameter matrices W ∈ R , W ∈ R , W ∈ R i i i O hd v × d model and W ∈ R .</p>
+<p>Q Where the projections are parameter matrices W ∈ R , W ∈ R , W ∈ R</p>
+<p>d model × d k K d model × d k V d model × d v</p>
+<p>i i i O hd v × d model and W ∈ R .</p>
 <p>In this work we employ h = 8 parallel attention layers, or heads. For each of these we use d = d = d /h = 64 . Due to the reduced dimension of each head, the total computational cost is similar to that of single-head attention with full dimensionality.</p>
 <h4>3.2.3 Applications of Attention in our Model</h4>
 <p>The Transformer uses multi-head attention in three different ways:</p>
@@ -102,14 +100,13 @@
 <table>
 <caption>Table 1: Maximum path lengths, per-layer complexity and minimum number of sequential operations for different layer types. n is the sequence length, d is the representation dimension, k is the kernel size of convolutions and r the size of the neighborhood in restricted self-attention.</caption>
 <thead>
-<tr><th>Layer Type</th><th>Complexity per Layer Sequential Maximum Path Length</th><th></th><th></th><th></th></tr>
+<tr><th>Layer Type</th><th>Complexity per Layer</th><th></th><th>Sequential Operations</th><th>Maximum Path Length</th></tr>
 </thead>
 <tbody>
-<tr><td></td><td></td><td></td><td>Operations</td><td> 2</td></tr>
-<tr><td>Self-Attention</td><td></td><td>O ( n 2 · d )</td><td>O (1)</td><td>O (1) 2</td></tr>
+<tr><td>Self-Attention</td><td></td><td>O ( n 2 · d )</td><td>O (1)</td><td>O (1)</td></tr>
 <tr><td>Recurrent</td><td></td><td>O ( n · d 2 )</td><td>O ( n )</td><td>O ( n ) 2</td></tr>
 <tr><td>Convolutional</td><td></td><td>O ( k · n · d 2 )</td><td>O (1)</td><td>O ( log k ( n ))</td></tr>
-<tr><td>Self-Attention (restricted) O ( r · n · d )</td><td></td><td></td><td>O (1)</td><td>O ( n/r )</td></tr>
+<tr><td>Self-Attention (restricted)</td><td></td><td>O ( r · n · d )</td><td>O (1)</td><td>O ( n/r )</td></tr>
 </tbody>
 </table>
 <h3>3.5 Positional Encoding</h3>
@@ -124,8 +121,7 @@
 <h2>4 Why Self-Attention</h2>
 <p>In this section we compare various aspects of self-attention layers to the recurrent and convolutional layers commonly used for mapping one variable-length sequence of symbol representations d ( x , ..., x ) to another sequence of equal length ( z , ..., z ) , with x , z ∈ R , such as a hidden layer in a typical sequence transduction encoder or decoder. Motivating our use of self-attention we consider three desiderata.</p>
 <p>One is the total computational complexity per layer. Another is the amount of computation that can be parallelized, as measured by the minimum number of sequential operations required. The third is the path length between long-range dependencies in the network. Learning long-range dependencies is a key challenge in many sequence transduction tasks. One key factor affecting the ability to learn such dependencies is the length of the paths forward and backward signals have to traverse in the network. The shorter these paths between any combination of positions in the input and output sequences, the easier it is to learn long-range dependencies [ 12 ]. Hence we also compare the maximum path length between any two input and output positions in networks composed of the different layer types.</p>
-<p>As noted in Table 1, a self-attention layer connects all positions with a constant number of sequentially executed operations, whereas a recurrent layer requires O ( n ) sequential operations. In terms of computational complexity, self-attention layers are faster than recurrent layers when the sequence</p>
-<p>length n is smaller than the representation dimensionality d , which is most often the case with sentence representations used by state-of-the-art models in machine translations, such as word-piece [ 38 ] and byte-pair [ 31 ] representations. To improve computational performance for tasks involving very long sequences, self-attention could be restricted to considering only a neighborhood of size r in the input sequence centered around the respective output position. This would increase the maximum path length to O ( n/r ) . We plan to investigate this approach further in future work.</p>
+<p>As noted in Table 1, a self-attention layer connects all positions with a constant number of sequentially executed operations, whereas a recurrent layer requires O ( n ) sequential operations. In terms of computational complexity, self-attention layers are faster than recurrent layers when the sequence length n is smaller than the representation dimensionality d , which is most often the case with sentence representations used by state-of-the-art models in machine translations, such as word-piece [ 38 ] and byte-pair [ 31 ] representations. To improve computational performance for tasks involving very long sequences, self-attention could be restricted to considering only a neighborhood of size r in the input sequence centered around the respective output position. This would increase the maximum path length to O ( n/r ) . We plan to investigate this approach further in future work.</p>
 <p>A single convolutional layer with kernel width k &lt; n does not connect all pairs of input and output positions. Doing so requires a stack of O ( n/k ) convolutional layers in the case of contiguous kernels, or O ( log ( n )) in the case of dilated convolutions [ 18 ], increasing the length of the longest paths between any two positions in the network. Convolutional layers are generally more expensive than recurrent layers, by a factor of k . Separable convolutions [ 6 ], however, decrease the complexity considerably, to O ( k · n · d + n · d ) . Even with k = n , however, the complexity of a separable convolution is equal to the combination of a self-attention layer and a point-wise feed-forward layer, the approach we take in our model.</p>
 <p>As side benefit, self-attention could yield more interpretable models. We inspect attention distributions from our models and present and discuss examples in the appendix. Not only do individual attention heads clearly learn to perform different tasks, many appear to exhibit behavior related to the syntactic and semantic structure of the sentences.</p>
 <h2>5 Training</h2>
@@ -147,8 +143,8 @@
 </thead>
 <tbody>
 <tr><td>Model</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>EN-DE</td><td></td><td>EN-FR</td><td>EN-DE</td><td></td><td>EN-FR</td><td></td></tr>
-<tr><td>ByteNet [18]</td><td>23.75</td><td></td><td></td><td></td><td></td><td></td><td> 20</td></tr>
+<tr><td>ByteNet [18]</td><td>23.75</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td>EN-DE</td><td></td><td>EN-FR</td><td>EN-DE</td><td></td><td>EN-FR</td><td> 20</td></tr>
 <tr><td>Deep-Att + PosUnk [39]</td><td></td><td></td><td>39.2</td><td></td><td></td><td>1 . 0 · 10 20</td><td> 19 20</td></tr>
 <tr><td>GNMT + RL [38]</td><td>24.6</td><td></td><td>39.92</td><td>2 . 3 · 10 19</td><td></td><td>1 . 4 · 10 20</td><td> 18 20 19 20</td></tr>
 <tr><td>MoE [32]</td><td>26.03</td><td></td><td>40.56</td><td>2 . 0 · 10 19</td><td></td><td>1 . 2 · 10 20</td><td> 20 20 21</td></tr>
@@ -170,34 +166,34 @@
 <table>
 <caption>Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.</caption>
 <thead>
-<tr><th></th><th>N</th><th>d</th><th></th><th>d</th><th></th><th>h</th><th>d</th><th>d</th><th>P</th><th>ϵ</th><th>train PPL</th><th></th><th>BLEU</th><th>params</th></tr>
+<tr><th></th><th>N</th><th>d</th><th></th><th>d</th><th></th><th>h</th><th>d</th><th>d</th><th>P</th><th>ϵ</th><th>train</th><th>PPL</th><th>BLEU</th><th>params</th><th></th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>N</td><td>d model</td><td></td><td>d ff</td><td></td><td>h</td><td>d k</td><td>d v</td><td>P drop</td><td>ϵ ls</td><td>train PPL</td><td></td><td>BLEU</td><td>params 6</td></tr>
-<tr><td></td><td></td><td>model</td><td></td><td></td><td>ff</td><td></td><td>k</td><td>v</td><td>drop</td><td>ls</td><td>steps (dev) (dev)</td><td></td><td></td><td>× 10 6</td></tr>
-<tr><td>base 6</td><td></td><td>512</td><td></td><td>2048</td><td></td><td>8</td><td>64</td><td>64</td><td>0.1</td><td>0.1 100K</td><td></td><td>4.92</td><td>25.8</td><td>65</td></tr>
-<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>1</td><td>512 512</td><td></td><td></td><td></td><td></td><td>5.29</td><td>24.9</td><td></td></tr>
-<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>4</td><td>128 128</td><td></td><td></td><td></td><td></td><td>5.00</td><td>25.5</td><td></td></tr>
-<tr><td>(A)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td>32</td><td>32</td><td></td><td></td><td></td><td>4.91</td><td>25.8</td><td></td></tr>
-<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>32</td><td>16</td><td>16</td><td></td><td></td><td></td><td>5.01</td><td>25.4</td><td></td></tr>
-<tr><td>(B)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td></td><td></td><td></td><td></td><td>5.16</td><td>25.1</td><td>58</td></tr>
-<tr><td>(B)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td></td><td></td><td></td><td></td><td>5.16</td><td>25.1</td><td>58</td></tr>
-<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>32</td><td></td><td></td><td></td><td></td><td>5.01</td><td>25.4</td><td>60</td></tr>
-<tr><td></td><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>6.11</td><td>23.7</td><td>36</td></tr>
-<tr><td></td><td>4</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>5.19</td><td>25.3</td><td>50</td></tr>
-<tr><td></td><td>8</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.88</td><td>25.5</td><td>80</td></tr>
-<tr><td>(C)</td><td></td><td>256</td><td></td><td></td><td></td><td></td><td>32</td><td>32</td><td></td><td></td><td></td><td>5.75</td><td>24.5</td><td>28</td></tr>
-<tr><td></td><td></td><td>1024</td><td></td><td></td><td></td><td></td><td>128 128</td><td></td><td></td><td></td><td></td><td>4.66</td><td>26.0</td><td>168</td></tr>
-<tr><td></td><td></td><td></td><td></td><td>1024</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>5.12</td><td>25.4</td><td>53</td></tr>
-<tr><td></td><td></td><td></td><td></td><td>4096</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.75</td><td>26.2</td><td>90</td></tr>
-<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td></td><td>5.77</td><td>24.6</td><td></td></tr>
-<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.2</td><td></td><td></td><td>4.95</td><td>25.5</td><td></td></tr>
-<tr><td>(D)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td>4.67</td><td>25.3</td><td></td></tr>
-<tr><td>(D)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td>4.67</td><td>25.3</td><td></td></tr>
-<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.2</td><td></td><td>5.47</td><td>25.7</td><td></td></tr>
-<tr><td>(E)</td><td></td><td></td><td>positional embedding instead of sinusoids</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.92</td><td>25.7</td><td></td></tr>
-<tr><td>big</td><td>6</td><td>1024</td><td></td><td>4096 16</td><td></td><td></td><td></td><td></td><td>0.3</td><td></td><td>300K</td><td>4.33</td><td>26.4</td><td>213</td></tr>
+<tr><td></td><td>N</td><td>d model</td><td></td><td>d ff</td><td></td><td>h</td><td>d k</td><td>d v</td><td>P drop</td><td>ϵ ls</td><td>train</td><td>PPL</td><td>BLEU</td><td>params 6</td><td></td></tr>
+<tr><td>base 6</td><td></td><td>512</td><td></td><td>2048</td><td></td><td>8</td><td>64</td><td>64</td><td>0.1</td><td>0.1</td><td>100K</td><td>4.92</td><td>25.8</td><td>65</td><td> model ff k v drop ls 6</td></tr>
+<tr><td></td><td></td><td>model</td><td></td><td></td><td>ff</td><td></td><td>k</td><td>v</td><td>drop</td><td>ls</td><td>steps</td><td>(dev)</td><td>(dev)</td><td>× 10 6</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>1</td><td>512</td><td>512</td><td></td><td></td><td></td><td>5.29</td><td>24.9</td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>4</td><td>128</td><td>128</td><td></td><td></td><td></td><td>5.00</td><td>25.5</td><td></td><td></td></tr>
+<tr><td>(A)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td>32</td><td>32</td><td></td><td></td><td></td><td>4.91</td><td>25.8</td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td>32</td><td>16</td><td>16</td><td></td><td></td><td></td><td>5.01</td><td>25.4</td><td></td><td></td></tr>
+<tr><td>(B)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td></td><td></td><td></td><td></td><td>5.16</td><td>25.1</td><td>58</td><td></td></tr>
+<tr><td>(B)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td></td><td></td><td></td><td></td><td>5.16</td><td>25.1</td><td>58</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>32</td><td></td><td></td><td></td><td></td><td>5.01</td><td>25.4</td><td>60</td><td></td></tr>
+<tr><td></td><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>6.11</td><td>23.7</td><td>36</td><td></td></tr>
+<tr><td></td><td>4</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>5.19</td><td>25.3</td><td>50</td><td></td></tr>
+<tr><td></td><td>8</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.88</td><td>25.5</td><td>80</td><td></td></tr>
+<tr><td>(C)</td><td></td><td>256</td><td></td><td></td><td></td><td></td><td>32</td><td>32</td><td></td><td></td><td></td><td>5.75</td><td>24.5</td><td>28</td><td></td></tr>
+<tr><td></td><td></td><td>1024</td><td></td><td></td><td></td><td></td><td>128</td><td>128</td><td></td><td></td><td></td><td>4.66</td><td>26.0</td><td>168</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>1024</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>5.12</td><td>25.4</td><td>53</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td>4096</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.75</td><td>26.2</td><td>90</td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td></td><td>5.77</td><td>24.6</td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.2</td><td></td><td></td><td>4.95</td><td>25.5</td><td></td><td></td></tr>
+<tr><td>(D)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td>4.67</td><td>25.3</td><td></td><td></td></tr>
+<tr><td>(D)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td>4.67</td><td>25.3</td><td></td><td></td></tr>
+<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.2</td><td></td><td>5.47</td><td>25.7</td><td></td><td></td></tr>
+<tr><td>(E)</td><td></td><td></td><td>positional embedding instead of sinusoids</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.92</td><td>25.7</td><td></td><td></td></tr>
+<tr><td>big</td><td>6</td><td>1024</td><td></td><td>4096</td><td></td><td>16</td><td></td><td></td><td>0.3</td><td></td><td>300K</td><td>4.33</td><td>26.4</td><td>213</td><td></td></tr>
 </tbody>
 </table>
 <p>development set, newstest2013. We used beam search as described in the previous section, but no checkpoint averaging. We present these results in Table 3.</p>
@@ -211,15 +207,15 @@
 <tr><th></th><th></th><th></th><th>Parser</th><th></th><th></th><th>Training</th><th>WSJ 23 F1</th><th></th></tr>
 </thead>
 <tbody>
-<tr><td>Vinyals &amp; Kaiser el al. (2014) [37] WSJ only, discriminative 88.3</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td></td><td>Petrov et al. (2006) [29] WSJ only, discriminative 90.4</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td></td><td>Zhu et al. (2013) [40]</td><td></td><td>WSJ only, discriminative 90.4</td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td></td><td>Dyer et al. (2016) [8]</td><td></td><td>WSJ only, discriminative 91.7</td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td></td><td>Transformer (4 layers)</td><td></td><td>WSJ only, discriminative 91.3</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>Vinyals &amp; Kaiser el al. (2014) [37]</td><td></td><td></td><td></td><td>WSJ only, discriminative</td><td></td><td></td><td></td><td>88.3</td></tr>
+<tr><td></td><td></td><td>Petrov et al. (2006) [29]</td><td></td><td>WSJ only, discriminative</td><td></td><td></td><td></td><td>90.4</td></tr>
+<tr><td></td><td></td><td>Zhu et al. (2013) [40]</td><td></td><td>WSJ only, discriminative</td><td></td><td></td><td></td><td>90.4</td></tr>
+<tr><td></td><td></td><td>Dyer et al. (2016) [8]</td><td></td><td>WSJ only, discriminative</td><td></td><td></td><td></td><td>91.7</td></tr>
+<tr><td></td><td></td><td>Transformer (4 layers)</td><td></td><td>WSJ only, discriminative</td><td></td><td></td><td></td><td>91.3</td></tr>
 <tr><td></td><td></td><td>Zhu et al. (2013) [40]</td><td></td><td></td><td>semi-supervised</td><td></td><td></td><td>91.3</td></tr>
 <tr><td></td><td>Huang &amp; Harper (2009) [14]</td><td></td><td></td><td></td><td>semi-supervised</td><td></td><td></td><td>91.3</td></tr>
 <tr><td></td><td>McClosky et al. (2006) [26]</td><td></td><td></td><td></td><td>semi-supervised</td><td></td><td></td><td>92.1</td></tr>
-<tr><td>Vinyals &amp; Kaiser el al. (2014) [37] semi-supervised</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>92.1</td></tr>
+<tr><td>Vinyals &amp; Kaiser el al. (2014) [37]</td><td></td><td></td><td></td><td></td><td>semi-supervised</td><td></td><td></td><td>92.1</td></tr>
 <tr><td></td><td></td><td>Transformer (4 layers)</td><td></td><td></td><td>semi-supervised</td><td></td><td></td><td>92.7</td></tr>
 <tr><td></td><td></td><td>Luong et al. (2015) [23]</td><td></td><td></td><td></td><td>multi-task</td><td></td><td>93.0</td></tr>
 <tr><td></td><td></td><td>Dyer et al. (2016) [8]</td><td></td><td></td><td></td><td>generative</td><td></td><td>93.3</td></tr>
@@ -278,72 +274,17 @@
 <li>[39] Jie Zhou, Ying Cao, Xuguang Wang, Peng Li, and Wei Xu. fast-forward connections for neural machine translation. Deep recurrent models with CoRR , abs/1606.04199, 2016.</li>
 <li>[40] Muhua Zhu, Yue Zhang, Wenliang Chen, Min Zhang, and Jingbo Zhu. shift-reduce constituent parsing. In Fast and accurate Proceedings of the 51st Annual Meeting of the ACL (Volume 1: Long Papers) , pages 434–443. ACL, August 2013.</li>
 </ol>
-<p>Input-Input Layer5</p>
 <p>Attention Visualizations</p>
-<p>. It a is in of or the</p>
-<p>this that</p>
-<p>new laws</p>
-<p>spirit have 2009</p>
-<p>since more</p>
-<p>voting</p>
-<p>majority process</p>
-<p>American</p>
-<p>registration</p>
-<p>governments</p>
 <p>Figure 3: An example of the attention mechanism following long-distance dependencies in the encoder self-attention in layer 5 of 6. Many of the attention heads attend to a distant dependency of the verb ‘making’, completing the phrase ‘making...more difficult’. Attentions here shown only for the word ‘making’. Different colors represent different heads. Best viewed in color.</p>
-<p>Input-Input Layer5</p>
-<p>, , .</p>
-<p>- is in</p>
-<p>be its be</p>
-<p>we my</p>
-<p>will but just this are</p>
-<p>The</p>
-<p>Law</p>
-<p>Input-Input Layer5 what</p>
-<p>never</p>
-<p>perfect should</p>
-<p>missing</p>
-<p>application</p>
-<p>, - , .</p>
-<p>is in</p>
-<p>be its be</p>
-<p>we</p>
-<p>will but are my</p>
-<p>The just this</p>
-<p>Law</p>
-<p>what</p>
-<p>never</p>
-<p>perfect opinion</p>
-<p>application</p>
 <p>Figure 4: Two attention heads, also in layer 5 of 6, apparently involved in anaphora resolution. Top: Full attentions for head 5. Bottom: Isolated attentions from just the word ‘its’ for attention heads 5 and 6. Note that the attentions are very sharp for this word.</p>
-<p>Input-Input Layer5</p>
-<p>, - , .</p>
-<p>is in</p>
-<p>its</p>
-<p>be be we</p>
-<p>will but are my</p>
-<p>just this</p>
-<p>The Law</p>
-<p>what</p>
-<p>Input-Input Layer5</p>
-<p>never</p>
-<p>perfect</p>
-<p>application</p>
-<p>, - , .</p>
-<p>is in</p>
-<p>its</p>
-<p>be be</p>
-<p>will but we are my</p>
-<p>just this</p>
-<p>The Law</p>
-<p>what</p>
-<p>never</p>
-<p>perfect</p>
-<p>application</p>
 <p>Figure 5: Many of the attention heads exhibit behaviour that seems related to the structure of the sentence. We give two such examples above, from two different heads from the encoder self-attention at layer 5 of 6. The heads clearly learned to perform different tasks.</p>
+<div class="footnotes">
 <p>∗ Equal contribution. Listing order is random. Jakob proposed replacing RNNs with self-attention and started the effort to evaluate this idea. Ashish, with Illia, designed and implemented the first Transformer models and has been crucially involved in every aspect of this work. Noam proposed scaled dot-product attention, multi-head attention and the parameter-free position representation and became the other person involved in nearly every detail. Niki designed, implemented, tuned and evaluated countless model variants in our original codebase and tensor2tensor. Llion also experimented with novel model variants, was responsible for our initial codebase, and efficient inference and visualizations. Lukasz and Aidan spent countless long days designing various parts of and implementing tensor2tensor, replacing our earlier codebase, greatly improving results and massively accelerating our research.</p>
 <p>† Work performed while at Google Brain.</p>
 <p>‡ Work performed while at Google Research.</p>
-<p>We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.</p>
+<p>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1 . Then their dot product, q · k = q i k i , has mean 0 and variance d .</p>
+<p>i =1 k</p>
+<p>5 We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.</p>
+</div>
 </body>
 </html>

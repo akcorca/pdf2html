@@ -122,4 +122,44 @@ describe("attention abstract same-row merge", () => {
       /representations<\/p>\s*<p>d<\/p>\s*<p>\( x , \.\.\., x \) to another sequence of equal length/,
     );
   });
+
+  it("keeps paragraph continuity across page boundaries when the next line is a lowercase continuation", () => {
+    expect(attentionHtml).toContain(
+      "computational complexity, self-attention layers are faster than recurrent layers when the sequence length n is smaller than the representation dimensionality d",
+    );
+    expect(attentionHtml).not.toMatch(
+      /when the sequence<\/p>\s*<p>length n is smaller than the representation dimensionality d/u,
+    );
+  });
+
+  it("drops dense figure-embedded word-label artifacts in the appendix while keeping figure captions", () => {
+    expect(attentionHtml).toContain("Figure 3: An example of the attention mechanism");
+    expect(attentionHtml).toContain("Figure 4: Two attention heads, also in layer 5 of 6");
+    expect(attentionHtml).toContain(
+      "Figure 5: Many of the attention heads exhibit behaviour that seems related to the structure of the",
+    );
+
+    expect(attentionHtml).not.toContain("<p>majority process</p>");
+    expect(attentionHtml).not.toContain("<p>perfect opinion</p>");
+    expect(attentionHtml).not.toContain("<p>application</p>");
+    expect(attentionHtml).not.toContain("<p>Input-Input Layer5 what</p>");
+  });
+
+  it("drops standalone figure panel labels that duplicate nearby caption text", () => {
+    expect(attentionHtml).toContain(
+      "Figure 2: (left) Scaled Dot-Product Attention. (right) Multi-Head Attention consists of several attention layers running in parallel.",
+    );
+    expect(attentionHtml).not.toContain("<p>Scaled Dot-Product Attention Multi-Head Attention</p>");
+  });
+
+  it("moves unmarked bottom footnote prose out of section body and into footnotes", () => {
+    const footnoteText = "To illustrate why the dot products get large";
+    const footnoteBlock = attentionHtml.match(/<div class=\"footnotes\">(.|\n)*<\/div>/);
+
+    expect(footnoteBlock).not.toBeNull();
+    expect(footnoteBlock![0]).toContain(footnoteText);
+
+    const mainBody = attentionHtml.replace(footnoteBlock![0], "");
+    expect(mainBody).not.toContain(footnoteText);
+  });
 });

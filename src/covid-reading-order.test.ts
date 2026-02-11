@@ -74,6 +74,30 @@ describe("covid numbered heading order", () => {
     expect(covidHtml.indexOf(heading)).toBeLessThan(covidHtml.indexOf(body));
   });
 
+  it("keeps the abstract Interpretation continuation before the Research in context heading", () => {
+    const interpretationContinuation =
+      "state associated with COVID-19 infection and potential impact of delays in seeking help.";
+    const researchHeading = "<h2>Research in context</h2>";
+
+    expect(covidHtml).toContain(interpretationContinuation);
+    expect(covidHtml).toContain(researchHeading);
+    expect(covidHtml.indexOf(interpretationContinuation)).toBeLessThan(
+      covidHtml.indexOf(researchHeading),
+    );
+  });
+
+  it("keeps the Abstract keyword label separate from the Background sentence", () => {
+    const keywordsLine = "<p>Keywords:</p>";
+    const backgroundLinePrefix =
+      "<p>Background: Evidence supports an excess of deaths during the COVID-19 pandemic.";
+    const mergedLinePrefix = "<p>Keywords: Background:";
+
+    expect(covidHtml).toContain(keywordsLine);
+    expect(covidHtml).toContain(backgroundLinePrefix);
+    expect(covidHtml).not.toContain(mergedLinePrefix);
+    expect(covidHtml.indexOf(keywordsLine)).toBeLessThan(covidHtml.indexOf(backgroundLinePrefix));
+  });
+
   it("does not merge opposite-column lines into a single paragraph around the introduction transition", () => {
     expect(covidHtml).not.toContain("major cardio - on acute CV events");
   });
@@ -129,5 +153,40 @@ describe("covid numbered heading order", () => {
     expect(covidHtml).toContain(reference31);
     expect(covidHtml.indexOf(reference24)).toBeLessThan(covidHtml.indexOf(reference31));
     expect(covidHtml.indexOf(reference30)).toBeLessThan(covidHtml.indexOf(reference31));
+  });
+
+  it("should correctly order keywords before the abstract body", () => {
+    const keyword = "<p>Thrombo-embolic events</p>";
+    const abstractBody = "mortality of thrombo-embolic events";
+    expect(covidHtml.indexOf(keyword)).toBeLessThan(covidHtml.indexOf(abstractBody));
+  });
+
+  it("keeps the full keyword sidebar block before the abstract Background sentence", () => {
+    const lastKeywordLine = "<p>Pulmonary embolism</p>";
+    const mergedBackgroundSentence =
+      "Background: Evidence supports an excess of deaths during the COVID-19 pandemic. We report the incidence and mortality of thrombo-embolic events (TE) during the COVID-19 pandemic.";
+
+    expect(covidHtml).toContain(lastKeywordLine);
+    expect(covidHtml).toContain(mergedBackgroundSentence);
+    expect(covidHtml.indexOf(lastKeywordLine)).toBeLessThan(
+      covidHtml.indexOf(mergedBackgroundSentence),
+    );
+  });
+
+  it("promotes back-matter section labels to semantic headings", () => {
+    const ethicalApprovalHeading = "<h2>Ethical approval</h2>";
+    const creditHeading = "<h2>CRediT authorship contribution statement</h2>";
+    const competingInterestHeading = "<h2>Declaration of competing interest</h2>";
+    const appendixHeading = "<h2>Appendix A. Supplementary data</h2>";
+
+    expect(covidHtml).toContain(ethicalApprovalHeading);
+    expect(covidHtml).toContain(creditHeading);
+    expect(covidHtml).toContain(competingInterestHeading);
+    expect(covidHtml).toContain(appendixHeading);
+
+    expect(covidHtml).not.toContain("<p>Ethical approval</p>");
+    expect(covidHtml).not.toContain("<p>CRediT authorship contribution statement</p>");
+    expect(covidHtml).not.toContain("<p>Declaration of competing interest</p>");
+    expect(covidHtml).not.toContain("<p>Appendix A. Supplementary data</p>");
   });
 });

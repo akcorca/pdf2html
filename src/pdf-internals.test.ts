@@ -60,8 +60,8 @@ describe("pdfToHtmlInternals", () => {
     expect(pdfToHtmlInternals.estimateLineWidth([frag("very-long-fragment", 0)])).toBeGreaterThan(80);
   });
 
-  it("splits heading-prefixed rows even when a page is not globally multi-column", () => {
-    const lines = pdfToHtmlInternals.collectTextLines({
+  it("splits heading-prefixed rows even when a page is not globally multi-column", async () => {
+    const lines = await pdfToHtmlInternals.collectTextLines({
       pages: [
         {
           pageIndex: 0,
@@ -91,11 +91,21 @@ describe("pdfToHtmlInternals", () => {
   });
 
   it("renders title as h1 and escapes body text", () => {
-    const html = pdfToHtmlInternals.renderHtml([
-      line({ text: "Attention Is All You Need", x: 210, y: 630, fontSize: 17, estimatedWidth: 220 }),
-      line({ text: "Abstract", x: 280, y: 560, fontSize: 12, estimatedWidth: 60 }),
-      line({ text: "This is a regular paragraph.", x: 100, y: 500, fontSize: 10 }),
-    ]);
+    const html = pdfToHtmlInternals.renderHtml(
+      [
+        line({
+          text: "Attention Is All You Need",
+          x: 210,
+          y: 630,
+          fontSize: 17,
+          estimatedWidth: 220,
+        }),
+        line({ text: "Abstract", x: 280, y: 560, fontSize: 12, estimatedWidth: 60 }),
+        line({ text: "This is a regular paragraph.", x: 100, y: 500, fontSize: 10 }),
+      ],
+      undefined,
+      [],
+    );
     expect(html).toContain("<h1>Attention Is All You Need</h1>");
     expect(html).toContain("<p>This is a regular paragraph.</p>");
   });
@@ -117,6 +127,8 @@ describe("pdfToHtmlInternals", () => {
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Abstract")?.level).toBe(2);
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("References")?.level).toBe(2);
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Conclusion")?.level).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Limitations")?.level).toBe(2);
+    expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Ethics Statement")?.level).toBe(2);
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("Research in context")?.level).toBe(2);
     expect(pdfToHtmlInternals.detectNamedSectionHeadingLevel("In this work, we show")).toBeUndefined();
   });
@@ -235,6 +247,7 @@ function line(overrides: Partial<TextLine> = {}): TextLine {
   return {
     pageIndex: 0, pageHeight: 792, pageWidth: 612,
     estimatedWidth: 100, x: 120, y: 500, fontSize: 10, text: "line",
+    fragments: [],
     ...overrides,
   };
 }

@@ -16,9 +16,17 @@ const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
   ["acknowledgments", 2],
   ["conclusion", 2],
   ["conclusions", 2],
+  ["conflict of interest", 2],
+  ["conflicts of interest", 2],
   ["data sharing statement", 2],
+  ["declaration", 2],
+  ["declarations", 2],
   ["discussion", 2],
+  ["ethics statement", 2],
+  ["ethical statement", 2],
   ["experimental section", 2],
+  ["funding", 2],
+  ["limitations", 2],
   ["research in context", 2],
   ["references", 2],
   ["supporting information", 2],
@@ -57,16 +65,18 @@ export function detectNamedSectionHeadingLevel(text: string): NamedHeading | und
   const normalized = normalizeHeadingCandidate(candidate, 4, 40);
   if (normalized === undefined) return undefined;
 
-  const level = NAMED_SECTION_HEADING_LEVELS.get(normalized.toLowerCase());
-  if (level === undefined) return undefined;
-
-  // The regex check might be too strict for our transformed candidates.
-  // Let's rely on the map lookup.
-  if (!/^[A-Za-z][A-Za-z\s-]*[A-Za-z]$/u.test(normalized) && candidate === text) {
-    return undefined;
+  const normalizedLower = normalized.toLowerCase();
+  const level = NAMED_SECTION_HEADING_LEVELS.get(normalizedLower);
+  if (level !== undefined) {
+    // The regex check might be too strict for our transformed candidates.
+    // Let's rely on the map lookup.
+    if (!/^[A-Za-z][A-Za-z\s-]*[A-Za-z]$/u.test(normalized) && candidate === text) {
+      return undefined;
+    }
+    return { level, text: candidate };
   }
 
-  return { level, text: candidate };
+  return undefined;
 }
 
 function normalizeWideKernedHeadingCandidate(text: string): string {

@@ -5,10 +5,12 @@ import { extractDocument } from "./pdf-extract.ts";
 describe("author block", () => {
   it("should parse authors into a structured block", async () => {
     const pdf = await extractDocument("data/attention.pdf");
+    const collectedLines = await pdfToHtmlInternals.collectTextLines(pdf);
     const lines = pdfToHtmlInternals.filterPageArtifacts(
-      pdfToHtmlInternals.collectTextLines(pdf),
+      collectedLines,
     );
-    const html = pdfToHtmlInternals.renderHtml(lines, pdf);
+    const { bodyLines, footnoteLines } = pdfToHtmlInternals.movePageFootnotesToDocumentEnd(lines);
+    const html = pdfToHtmlInternals.renderHtml(bodyLines, pdf, footnoteLines);
     const normalize = (str: string) => str.replace(/\s+/g, " ").trim();
     const normalizedHtml = normalize(html);
 

@@ -3764,12 +3764,12 @@ function isBodyParagraphContinuationLine(
   ) {
     return false;
   }
-  if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
-  const previousNormalized = normalizeSpacing(previousLine.text);
-  if (
-    isLikelyAffiliationAddressToNewEntryBoundary(
-      previousLine,
-      previousNormalized,
+      if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
+    
+      const previousNormalized = normalizeSpacing(previousLine.text);
+      if (
+        isLikelyAffiliationAddressToNewEntryBoundary(
+          previousLine,      previousNormalized,
       line,
       normalized,
     )

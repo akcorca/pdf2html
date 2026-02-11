@@ -77,6 +77,27 @@ const INLINE_FIGURE_LABEL_NEAR_BODY_MAX_Y_DELTA_FONT_RATIO = 2.4;
 const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_Y_DELTA = 10;
 const INLINE_FIGURE_LABEL_NEAR_BODY_MIN_SUBSTANTIVE_CHARS = 8;
 const DENSE_INLINE_FIGURE_LABEL_MIN_LINES = 20;
+const FIGURE_CAPTION_ANCHOR_PATTERN = /^(?:Figure|Fig\.?)\s+\d+[A-Za-z]?[.:]\s+/iu;
+const FIGURE_CAPTION_ANCHOR_MIN_SUBSTANTIVE_CHARS = 24;
+const FIGURE_CAPTION_ANCHOR_MIN_WORDS = 6;
+const DENSE_FIGURE_EMBEDDED_LABEL_MIN_LINES = 10;
+const FIGURE_EMBEDDED_LABEL_MAX_WORDS = 5;
+const FIGURE_EMBEDDED_LABEL_MAX_SUBSTANTIVE_CHARS = 20;
+const FIGURE_EMBEDDED_LABEL_MAX_TEXT_LENGTH = 28;
+const FIGURE_EMBEDDED_LABEL_MAX_WIDTH_RATIO = 0.58;
+const FIGURE_EMBEDDED_LABEL_MAX_FONT_RATIO = 1.02;
+const FIGURE_EMBEDDED_LABEL_MAX_CAPTION_FONT_RATIO = 1.08;
+const FIGURE_EMBEDDED_LABEL_MIN_ABOVE_CAPTION_Y_DELTA = 14;
+const FIGURE_EMBEDDED_LABEL_MAX_ABOVE_CAPTION_Y_RATIO = 0.72;
+const FIGURE_EMBEDDED_LABEL_SENTENCE_END_PATTERN = /[.!?]["')\]]?$/u;
+const FIGURE_EMBEDDED_STEP_LABEL_PATTERN =
+  /^\d{1,2}\s+[A-Za-z][A-Za-z-]{2,}(?:\s+[A-Za-z][A-Za-z-]{2,})?$/u;
+const FIGURE_EMBEDDED_HEADING_LABEL_PATTERN = /[\d-]/u;
+const FIGURE_EMBEDDED_HEADING_LABEL_MAX_WORDS = 6;
+const FIGURE_EMBEDDED_HEADING_LABEL_MAX_SUBSTANTIVE_CHARS = 30;
+const FIGURE_EMBEDDED_HEADING_LABEL_MAX_TEXT_LENGTH = 34;
+const FIGURE_EMBEDDED_HEADING_LABEL_MAX_WIDTH_RATIO = 0.62;
+const FIGURE_EMBEDDED_HEADING_LABEL_MAX_FONT_RATIO = 2.2;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_PATTERN = /^Figure\s+\d+[A-Za-z]?:\s+/u;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_END_PATTERN = /[.!?]["')\]]?$/;
 const FIRST_PAGE_INLINE_FIGURE_CAPTION_HYPHEN_WRAP_PATTERN = /-\s*$/;
@@ -221,6 +242,7 @@ function collectRemovablePageArtifactLines(
     findLikelyPageNumberLines(lines, pageExtents),
     findLikelyTopMatterAlphabeticAffiliationLines(lines, bodyFontSize),
     findLikelyInlineFigureLabelLines(lines, bodyFontSize),
+    findLikelyFigureEmbeddedLabelLines(lines, bodyFontSize),
     findLikelyFirstPageInlineFigureCaptionLines(lines, bodyFontSize),
     findLikelyDetachedMathFragmentLines(lines, bodyFontSize),
     findLikelyAlternatingRunningHeaderLines(lines, pageExtents, bodyFontSize),
@@ -724,6 +746,121 @@ function findLikelyFirstPageInlineFigureCaptionLines(
     if (continuation) result.add(continuation);
   }
   return result;
+}
+
+function findLikelyFigureEmbeddedLabelLines(
+  lines: TextLine[],
+  bodyFontSize: number,
+): Set<TextLine> {
+  const result = new Set<TextLine>();
+  for (const pageLines of groupLinesByPage(lines).values()) {
+    const captionAnchors = pageLines.filter((line) =>
+      isLikelyFigureCaptionAnchorLine(line, bodyFontSize),
+    );
+    if (captionAnchors.length === 0) continue;
+
+    const candidates = pageLines.filter((line) =>
+      isLikelyFigureEmbeddedLabelLine(line, captionAnchors, bodyFontSize),
+    );
+    if (candidates.length < DENSE_FIGURE_EMBEDDED_LABEL_MIN_LINES) continue;
+    for (const candidate of candidates) {
+      result.add(candidate);
+    }
+    for (const line of pageLines) {
+      if (isLikelyFigureEmbeddedHeadingLabelLine(line, captionAnchors, bodyFontSize)) {
+        result.add(line);
+      }
+    }
+  }
+  return result;
+}
+
+function isLikelyFigureCaptionAnchorLine(line: TextLine, bodyFontSize: number): boolean {
+  if (line.pageWidth <= 0) return false;
+  if (line.fontSize > bodyFontSize * 1.25) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (!FIGURE_CAPTION_ANCHOR_PATTERN.test(normalized)) return false;
+  if (countSubstantiveChars(normalized) < FIGURE_CAPTION_ANCHOR_MIN_SUBSTANTIVE_CHARS) {
+    return false;
+  }
+  return countWords(normalized) >= FIGURE_CAPTION_ANCHOR_MIN_WORDS;
+}
+
+function isLikelyFigureEmbeddedLabelLine(
+  line: TextLine,
+  captionAnchors: TextLine[],
+  bodyFontSize: number,
+): boolean {
+  if (line.pageWidth <= 0) return false;
+  if (line.fontSize > bodyFontSize * FIGURE_EMBEDDED_LABEL_MAX_FONT_RATIO) return false;
+  if (line.estimatedWidth > line.pageWidth * FIGURE_EMBEDDED_LABEL_MAX_WIDTH_RATIO) return false;
+
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0 || normalized.length > FIGURE_EMBEDDED_LABEL_MAX_TEXT_LENGTH) {
+    return false;
+  }
+  if (FIGURE_CAPTION_ANCHOR_PATTERN.test(normalized)) return false;
+  if (FIGURE_EMBEDDED_STEP_LABEL_PATTERN.test(normalized)) return false;
+  if (countWords(normalized) > FIGURE_EMBEDDED_LABEL_MAX_WORDS) return false;
+  if (countSubstantiveChars(normalized) > FIGURE_EMBEDDED_LABEL_MAX_SUBSTANTIVE_CHARS) {
+    return false;
+  }
+
+  if (
+    FIGURE_EMBEDDED_LABEL_SENTENCE_END_PATTERN.test(normalized) &&
+    countWords(normalized) >= 3 &&
+    countSubstantiveChars(normalized) >= 10
+  ) {
+    return false;
+  }
+
+  return captionAnchors.some(
+    (captionLine) =>
+      line.fontSize <= captionLine.fontSize * FIGURE_EMBEDDED_LABEL_MAX_CAPTION_FONT_RATIO &&
+      isLikelyAboveFigureCaption(line, captionLine),
+  );
+}
+
+function isLikelyAboveFigureCaption(line: TextLine, captionLine: TextLine): boolean {
+  if (line === captionLine) return false;
+  if (line.pageIndex !== captionLine.pageIndex) return false;
+
+  const yDelta = line.y - captionLine.y;
+  if (yDelta <= FIGURE_EMBEDDED_LABEL_MIN_ABOVE_CAPTION_Y_DELTA) return false;
+  return yDelta <= line.pageHeight * FIGURE_EMBEDDED_LABEL_MAX_ABOVE_CAPTION_Y_RATIO;
+}
+
+function isLikelyFigureEmbeddedHeadingLabelLine(
+  line: TextLine,
+  captionAnchors: TextLine[],
+  bodyFontSize: number,
+): boolean {
+  if (line.pageWidth <= 0) return false;
+  if (line.estimatedWidth > line.pageWidth * FIGURE_EMBEDDED_HEADING_LABEL_MAX_WIDTH_RATIO) {
+    return false;
+  }
+  if (line.fontSize > bodyFontSize * FIGURE_EMBEDDED_HEADING_LABEL_MAX_FONT_RATIO) {
+    return false;
+  }
+
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0 || normalized.length > FIGURE_EMBEDDED_HEADING_LABEL_MAX_TEXT_LENGTH) {
+    return false;
+  }
+  if (FIGURE_CAPTION_ANCHOR_PATTERN.test(normalized)) return false;
+  if (FIGURE_EMBEDDED_STEP_LABEL_PATTERN.test(normalized)) return false;
+  if (countWords(normalized) > FIGURE_EMBEDDED_HEADING_LABEL_MAX_WORDS) return false;
+  if (countSubstantiveChars(normalized) > FIGURE_EMBEDDED_HEADING_LABEL_MAX_SUBSTANTIVE_CHARS) {
+    return false;
+  }
+  if (!/[A-Za-z]/u.test(normalized)) return false;
+  if (!FIGURE_EMBEDDED_HEADING_LABEL_PATTERN.test(normalized)) return false;
+  if (FIGURE_EMBEDDED_LABEL_SENTENCE_END_PATTERN.test(normalized)) return false;
+
+  return captionAnchors.some((captionLine) =>
+    isLikelyAboveFigureCaption(line, captionLine),
+  );
 }
 
 function isLikelyFirstPageInlineFigureCaptionLine(

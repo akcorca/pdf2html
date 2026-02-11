@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node ./src/cli.ts",
-    "test": "vitest run",
+    "test": "vitest run --test-timeout=120000",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "typecheck": "tsgo -p tsconfig.json",

@@ -13,7 +13,7 @@ done
 while true; do
   for pdf in data/*.pdf; do
     doc="$(basename "$pdf")"
-    claude --dangerously-skip-permissions -p "docs/improvement.md를 읽고 절차에 따라 품질을 개선한다. ${doc} 문서에 집중해서 절차를 1회 수행하고 중단할 것."
+    # claude --dangerously-skip-permissions -p "docs/improvement.md를 읽고 절차에 따라 품질을 개선한다. ${doc} 문서에 집중해서 절차를 1회 수행하고 중단할 것."
     codex exec --yolo "docs/improvement.md를 읽고 절차에 따라 품질을 개선한다. ${doc} 문서에 집중해서 절차를 1회 수행하고 중단할 것."
     gemini -y "docs/improvement.md를 읽고 절차에 따라 품질을 개선한다. ${doc} 문서에 집중해서 절차를 1회 수행하고 중단할 것."
 

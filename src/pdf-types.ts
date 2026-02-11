@@ -36,6 +36,7 @@ export interface TextLine {
   y: number;
   fontSize: number;
   text: string;
+  fragments: ExtractedFragment[];
   /** Which column this line belongs to on a multi-column page. */
   column?: "left" | "right";
 }

@@ -11,6 +11,10 @@ interface PdfTextItem {
 
 export async function extractDocument(inputPdfPath: string): Promise<ExtractedDocument> {
   const data = new Uint8Array(await readFile(inputPdfPath));
+  return extractDocumentFromBuffer(data);
+}
+
+export async function extractDocumentFromBuffer(data: Uint8Array): Promise<ExtractedDocument> {
   const pdf = await getDocument({ data, useSystemFonts: true }).promise;
   const pages: ExtractedPage[] = [];
 

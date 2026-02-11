@@ -66,4 +66,26 @@ describe("tft-reading-order", () => {
     expect(tftHtml).not.toContain("<p>was used as the dielec-</p>");
     expect(tftHtml).not.toContain("<p>grazing-</p>");
   });
+
+  it("keeps experimental section prose separate from right-column references", () => {
+    expect(tftHtml).toContain(
+      "Device and Film Characterization : The current–voltage characteristics",
+    );
+    expect(tftHtml).not.toContain(
+      "Device and Film Characterization : The current–voltage characteristics h)",
+    );
+    expect(tftHtml).not.toContain(
+      "using a Keithley 4200 SCS. The saturation mobilities ( μ ) and SS were [2] a)",
+    );
+    expect(tftHtml).not.toContain("mask. M. F. Toney");
+  });
+
+  it("does not merge affiliation address lines with the next author entry", () => {
+    expect(tftHtml).not.toContain(
+      "30 Pildong-ro 1-gil, Jung-gu, Seoul 04620, Republic of Korea Prof. S.Y. Seo",
+    );
+    expect(tftHtml).toMatch(
+      /<p>30 Pildong-ro 1-gil, Jung-gu, Seoul 04620, Republic of Korea<\/p>\s*<p>Prof\. S\.Y\. Seo<\/p>\s*<p>Department of Chemistry<\/p>\s*<p>Pukyong National University<\/p>\s*<p>45 Yongso-ro, Namgu Pusan 48513, Republic of Korea<\/p>/u,
+    );
+  });
 });

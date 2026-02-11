@@ -84,9 +84,9 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).not.toContain("<h2>1 Historical 5 Historical</h2>");
   });
 
-  it("does not treat tiny flowchart step labels as numbered section headings in clean.pdf", () => {
+  it("does not treat tiny flowchart step labels as semantic content in clean.pdf", () => {
     expect(cleanHtml).not.toContain("<h2>3 Historical</h2>");
-    expect(cleanHtml).toContain("<p>3 Historical</p>");
+    expect(cleanHtml).not.toContain("<p>3 Historical</p>");
   });
 
   it("merges wrapped numbered section headings in clean.pdf into a single semantic heading", () => {
@@ -615,6 +615,15 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("<p>− 9</p>");
     expect(html).not.toContain("<p>1 2</p>");
     expect(html).not.toContain("<p>− 0 . 5 − 0 . 5 − 1 . 5</p>");
+  });
+
+  it("reconstructs Scaled Dot-Product Attention formula from attention.pdf", () => {
+    // The current output is a mangled version of the formula:
+    // "T QK Attention( Q, K, V ) = softmax( √ ) V (1) d k"
+    const expectedFormula = "Attention( Q, K, V ) = softmax( QKT / √ dk ) V (1)";
+
+    // The goal is to have a readable plain-text representation.
+    expect(html).toContain(expectedFormula);
   });
 
   it("moves first-page footnotes in attention.pdf to the end of the document", () => {

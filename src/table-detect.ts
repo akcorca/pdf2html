@@ -2,7 +2,7 @@
 import type { ExtractedDocument, ExtractedFragment, TextLine } from "./pdf-types.ts";
 import { LINE_Y_BUCKET_SIZE } from "./pdf-types.ts";
 
-const TABLE_CAPTION_PATTERN = /^Table\s+\d+[A-Za-z]?\s*[:.]/iu;
+const TABLE_CAPTION_PATTERN = /^Table\s+\d+[A-Za-z]?\s*[:.]?/iu;
 
 /** Minimum data rows (excluding header) to confirm a table. */
 const MIN_TABLE_DATA_ROWS = 2;
@@ -85,7 +85,7 @@ function detectTableWithLeadingCaption(
   const { bodyEntries, nextIndex } =
     collectTableBodyLines(lines, nextBodyIndex, captionPage, firstLine, fragments);
 
-  return finalizeDetectedTable({
+  const result = finalizeDetectedTable({
     startIndex,
     captionText,
     captionLineIndexes,
@@ -94,6 +94,7 @@ function detectTableWithLeadingCaption(
     bodyFontSize,
     fragments,
   });
+  return result;
 }
 
 function detectTableWithTrailingCaption(
@@ -703,7 +704,13 @@ export function renderTableHtml(table: DetectedTable): string[] {
 
   if (table.dataRows.length > 0) {
     out.push("<tbody>");
+    const uniqueRows = new Set<string>();
     for (const row of table.dataRows) {
+      const rowString = JSON.stringify(row);
+      if (uniqueRows.has(rowString)) {
+        continue;
+      }
+      uniqueRows.add(rowString);
       out.push(`<tr>${row.map((c) => `<td>${esc(c)}</td>`).join("")}</tr>`);
     }
     out.push("</tbody>");
