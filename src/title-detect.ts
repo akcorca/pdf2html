@@ -105,18 +105,18 @@ function findTopMatterTitleFallback(pageLines: TextLine[]): TextLine | undefined
   if (authorIdx <= 0) return undefined;
 
   const authorLine = sorted[authorIdx];
-  const minIdx = Math.max(0, authorIdx - TOP_MATTER_TITLE_LOOKBACK_LINES);
-  let scanIndex = authorIdx - 1;
+  const candidateWindow = sorted.slice(
+    Math.max(0, authorIdx - TOP_MATTER_TITLE_LOOKBACK_LINES),
+    authorIdx,
+  );
+  let fallbackTitleLine: TextLine | undefined;
 
-  while (scanIndex >= minIdx && !isAlignedTopMatterTitleLine(sorted[scanIndex], authorLine)) {
-    scanIndex -= 1;
-  }
-  if (scanIndex < minIdx) return undefined;
-
-  let fallbackTitleLine = sorted[scanIndex];
-  for (scanIndex -= 1; scanIndex >= minIdx; scanIndex -= 1) {
-    const line = sorted[scanIndex];
-    if (!isAlignedTopMatterTitleLine(line, authorLine)) break;
+  for (let index = candidateWindow.length - 1; index >= 0; index -= 1) {
+    const line = candidateWindow[index];
+    if (!isAlignedTopMatterTitleLine(line, authorLine)) {
+      if (fallbackTitleLine) break;
+      continue;
+    }
     fallbackTitleLine = line;
   }
 
