@@ -97,7 +97,7 @@
 <table>
 <caption>Table 1: Maximum path lengths, per-layer complexity and minimum number of sequential operations for different layer types. n is the sequence length, d is the representation dimension, k is the kernel size of convolutions and r the size of the neighborhood in restricted self-attention.</caption>
 <thead>
-<tr><th>Layer Type</th><th>Complexity per Layer</th><th></th><th>Sequential Operations</th><th>Maximum Path Length</th></tr>
+<tr><th>Layer Type</th><th>Complexity per Layer</th><th>Sequential Operations</th><th>Maximum Path Length</th></tr>
 </thead>
 <tbody>
 <tr><td>Self-Attention</td><td></td><td>O ( n 2 · d )</td><td>O (1)</td><td>O (1)</td></tr>
@@ -134,7 +134,7 @@
 <table>
 <caption>Table 2: The Transformer achieves better BLEU scores than previous state-of-the-art models on the English-to-German and English-to-French newstest2014 tests at a fraction of the training cost.</caption>
 <thead>
-<tr><th></th><th>BLEU</th><th></th><th>Training Cost (FLOPs)</th></tr>
+<tr><th>BLEU</th><th>Training Cost (FLOPs)</th></tr>
 </thead>
 <tbody>
 <tr><td>Model</td><td></td><td></td><td></td></tr>
@@ -161,8 +161,8 @@
 <table>
 <caption>Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.</caption>
 <thead>
-<tr><th></th><th>N</th><th>d</th><th>d</th><th>h</th><th>d</th><th>d</th><th>P</th><th>ϵ</th><th>train</th><th>PPL</th><th>BLEU</th><th>params</th></tr>
-<tr><th></th><th>N</th><th>d model</th><th>d ff</th><th>h</th><th>d k</th><th>d v</th><th>P drop</th><th>ϵ ls</th><th>train</th><th>PPL</th><th>BLEU</th><th>params</th></tr>
+<tr><th>N</th><th>d</th><th>d</th><th>h</th><th>d</th><th>d</th><th>P</th><th>ϵ</th><th>train</th><th>PPL</th><th>BLEU</th><th>params</th></tr>
+<tr><th>N</th><th>d model</th><th>d ff</th><th>h</th><th>d k</th><th>d v</th><th>P drop</th><th>ϵ ls</th><th>train</th><th>PPL</th><th>BLEU</th><th>params</th></tr>
 </thead>
 <tbody>
 <tr><td>base 6</td><td></td><td>512</td><td>2048</td><td>8</td><td>64</td><td>64</td><td>0.1</td><td>0.1 100K</td><td></td><td>4.92</td><td>25.8</td><td>65 model ff k v drop ls 6</td></tr>
@@ -197,7 +197,7 @@
 <table>
 <caption>Table 4: The Transformer generalizes well to English constituency parsing (Results are on Section 23 of WSJ)</caption>
 <thead>
-<tr><th></th><th></th><th></th><th>Parser</th><th></th><th></th><th>Training</th><th>WSJ 23 F1</th><th></th></tr>
+<tr><th>Parser</th><th>Training</th><th>WSJ 23 F1</th></tr>
 </thead>
 <tbody>
 <tr><td>Vinyals &amp; Kaiser el al. (2014) [37]</td><td></td><td></td><td></td><td>WSJ only, discriminative</td><td></td><td></td><td></td><td>88.3</td></tr>

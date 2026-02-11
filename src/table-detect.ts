@@ -193,13 +193,65 @@ function splitHeaderAndDataRows(
     dataRows.shift();
   }
 
-  const headerRowKeys = new Set(headerRows.map(buildComparableRowKey));
+  const normalizedHeaderRows = collapseComplementaryHeaderRows(headerRows);
+  const headerRowKeys = new Set(normalizedHeaderRows.map(buildComparableRowKey));
   const filteredDataRows = dataRows.filter((row) => {
     if (isLikelyNumericDataRow(row)) return true;
     return !headerRowKeys.has(buildComparableRowKey(sanitizeHeaderCells(row)));
   });
 
-  return { headerRows, dataRows: filteredDataRows };
+  return { headerRows: normalizedHeaderRows, dataRows: filteredDataRows };
+}
+
+function collapseComplementaryHeaderRows(headerRows: string[][]): string[][] {
+  if (headerRows.length < 2) return headerRows;
+
+  const maxCols = Math.max(...headerRows.map((row) => row.length));
+  if (maxCols < 2) return headerRows;
+
+  const nonEmptyCountByRow = countNonEmptyCellsByRow(headerRows);
+  if (nonEmptyCountByRow.some((count) => count === 0)) return headerRows;
+  if (nonEmptyCountByRow.some((count) => count >= maxCols)) return headerRows;
+  if (hasOverlappingNonEmptyColumns(headerRows, maxCols)) return headerRows;
+
+  const collapsedRow = buildCollapsedHeaderRow(headerRows, maxCols);
+
+  const collapsedNonEmptyCount = collapsedRow.filter(
+    (cell) => cell.trim().length > 0,
+  ).length;
+  const maxRowNonEmptyCount = Math.max(...nonEmptyCountByRow);
+  if (collapsedNonEmptyCount <= maxRowNonEmptyCount) return headerRows;
+  if (!collapsedRow.some((cell) => isHeaderTextLikeCell(cell))) return headerRows;
+  return [collapsedRow];
+}
+
+function countNonEmptyCellsByRow(rows: string[][]): number[] {
+  return rows.map((row) => row.filter((cell) => cell.trim().length > 0).length);
+}
+
+function hasOverlappingNonEmptyColumns(rows: string[][], maxCols: number): boolean {
+  const nonEmptyCountByColumn = new Array(maxCols).fill(0);
+  for (const row of rows) {
+    for (let columnIndex = 0; columnIndex < maxCols; columnIndex += 1) {
+      const value = row[columnIndex]?.trim() ?? "";
+      if (value.length === 0) continue;
+      nonEmptyCountByColumn[columnIndex] += 1;
+    }
+  }
+  return nonEmptyCountByColumn.some((count) => count > 1);
+}
+
+function buildCollapsedHeaderRow(rows: string[][], maxCols: number): string[] {
+  const collapsedRow = new Array(maxCols).fill("");
+  for (let columnIndex = 0; columnIndex < maxCols; columnIndex += 1) {
+    for (let rowIndex = rows.length - 1; rowIndex >= 0; rowIndex -= 1) {
+      const value = rows[rowIndex]?.[columnIndex]?.trim() ?? "";
+      if (value.length === 0) continue;
+      collapsedRow[columnIndex] = value;
+      break;
+    }
+  }
+  return collapsedRow;
 }
 
 function removeCompletelyEmptyColumns(rows: string[][]): string[][] {

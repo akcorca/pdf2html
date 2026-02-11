@@ -94,6 +94,36 @@ describe("table detection in attention.pdf", () => {
   });
 });
 
+describe("table detection in clean.pdf", () => {
+  let cleanHtml = "";
+
+  beforeAll(async () => {
+    await mkdir(outputDirPath, { recursive: true });
+    const pdf = { input: "data/clean.pdf", output: "clean.html" };
+    await convertPdfToHtml({
+      inputPdfPath: resolve(pdf.input),
+      outputHtmlPath: join(outputDirPath, pdf.output),
+    });
+    cleanHtml = await readFile(join(outputDirPath, "clean.html"), "utf8");
+  });
+
+  it("renders sparse multi-row headers as a complete semantic header row", () => {
+    const table1Match = cleanHtml.match(
+      /<caption>Table 1: Data standardization performance by comparing different systems\.<\/caption>[\s\S]*?<\/table>/,
+    );
+    expect(table1Match).toBeTruthy();
+    const table1 = table1Match?.[0] ?? "";
+
+    expect(table1).toContain("<thead>");
+    expect(table1).toContain(
+      "<tr><th>System</th><th>Cell-Level Matching Rate(%)</th><th>Latency (s)</th></tr>",
+    );
+    expect(table1).not.toContain(
+      "<tr><th>Cell-Level Matching Rate(%)</th></tr>",
+    );
+  });
+});
+
 describe("table detection in covid.pdf", () => {
   let covidHtml = "";
 

@@ -74,8 +74,8 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 1: Scores on the three language understanding benchmarks.</caption>
 <thead>
-<tr><th></th><th></th><th>MMLU</th><th></th><th></th><th>C-Eval</th><th></th><th></th><th>JMMLU</th><th></th></tr>
-<tr><th>P</th><th>GPT-3.5</th><th>GPT-4</th><th>Llama2-70B</th><th>GPT-3.5</th><th>GPT-4</th><th>ChatGLM3</th><th>GPT-3.5</th><th>GPT-4</th><th></th></tr>
+<tr><th>MMLU</th><th>C-Eval</th><th>JMMLU</th></tr>
+<tr><th>P</th><th>GPT-3.5</th><th>GPT-4</th><th>Llama2-70B</th><th>GPT-3.5</th><th>GPT-4</th><th>ChatGLM3</th><th>GPT-3.5</th><th>GPT-4</th></tr>
 </thead>
 <tbody>
 <tr><td>8</td><td>60.02</td><td>75.82</td><td>55.11</td><td>20.85</td><td>29.73</td><td>20.58</td><td>49.96</td><td>71.98</td><td>38.23</td></tr>
@@ -326,7 +326,7 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 3: JMMLU tasks.</caption>
 <thead>
-<tr><th>Task Name</th><th></th><th></th><th></th><th>Number</th><th>Task Name</th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th></th><th>Number</th></tr>
+<tr><th>Task Name</th><th>Number</th><th>Task Name</th><th>Number</th></tr>
 </thead>
 <tbody>
 <tr><td>専門医学</td><td></td><td>(professional_medicine)</td><td></td><td>150</td><td>高校心理学</td><td></td><td></td><td>(high_school_psychology)</td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
@@ -383,7 +383,7 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 5: Prompt Template: Chinese</caption>
 <thead>
-<tr><th>8</th><th>可否请您</th><th></th><th>(Task Description)</th><th>呢？您可以只</th><th></th><th></th><th>(Answer Format)</th><th></th><th>。 您无需</th><th>(Answer Restric-</th><th>7.16</th></tr>
+<tr><th>8</th><th>可否请您</th><th>(Task Description)</th><th>呢？您可以只</th><th>(Answer Format)</th><th>。 您无需</th><th>(Answer Restric-</th><th>7.16</th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>tion) 。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -401,7 +401,7 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 6: Prompt Template: Japanese</caption>
 <thead>
-<tr><th>8</th><th>(Task Description with Keigo)</th><th>していただけませんか？</th><th></th><th></th></tr>
+<tr><th>8</th><th>(Task Description with Keigo)</th><th>していただけませんか？</th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>よろしくお願いいたします。</td><td>(Answer Restriction)</td><td></td><td></td></tr>
@@ -457,7 +457,7 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 8: Summarization Prompt: Chinese Politeness Prompt</caption>
 <thead>
-<tr><th>8</th><th>次の文章を要約していただけませんか？</th><th></th><th></th><th>2 3</th><th>文で要約よろしくお願いいたします。それより</th><th></th></tr>
+<tr><th>8</th><th>次の文章を要約していただけませんか？</th><th>2 3</th><th>文で要約よろしくお願いいたします。それより</th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>長く書くのは不要でございます。</td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -538,7 +538,7 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 13: Stereotypical Bias Prompt: English Politeness Prompt</caption>
 <thead>
-<tr><th>8</th><th>可否请您评价这句话呢，您可以只用</th><th></th><th></th><th></th><th></th><th></th><th>( 积极</th><th></th><th></th><th>中立</th><th></th><th></th><th>消极 ) 的其中之一来回复。您无需输出其</th></tr>
+<tr><th>8</th><th>可否请您评价这句话呢，您可以只用</th><th>( 积极</th><th>中立</th><th>消极 ) 的其中之一来回复。您无需输出其</th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>他任何内容。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -559,7 +559,7 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 15: Stereotypical Bias Prompt: Japanese</caption>
 <thead>
-<tr><th>8</th><th>次の文についていかが考えられるか教えていただけませんか？</th><th></th><th></th><th></th><th></th><th>（ポジティブ・ニュートラ</th></tr>
+<tr><th>8</th><th>次の文についていかが考えられるか教えていただけませんか？</th><th>（ポジティブ・ニュートラ</th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>ル・ネガティブ）のいずれかでご回答よろしくお願いします。理由は不要でございます。</td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -584,8 +584,8 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 16: Result of the test on CNN/Dailymail, R is ROUGE-L, B is BERTScore, L is Length.</caption>
 <thead>
-<tr><th>Model</th><th></th><th></th><th>GPT-3.5</th><th></th><th></th><th></th><th>GPT-4</th><th></th><th></th><th></th><th>Llama2-70B</th><th></th><th></th></tr>
-<tr><th>Politeness</th><th></th><th>R</th><th></th><th>B</th><th>L</th><th>R</th><th></th><th>B</th><th>L</th><th>R</th><th></th><th>B</th><th>L</th></tr>
+<tr><th>Model</th><th>GPT-3.5</th><th>GPT-4</th><th>Llama2-70B</th></tr>
+<tr><th>Politeness</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>8</td><td>21.99</td><td>87.36</td><td></td><td>64.12</td><td>20.42</td><td>86.62</td><td></td><td>68.12</td><td>20.02</td><td></td><td>86.90</td><td>84.22</td></tr>
@@ -602,7 +602,7 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 17: Result of the test on XL-Sum/Chinese-simplified, R is ROUGE-L, B is BERTScore, L is Length.</caption>
 <thead>
-<tr><th>Politeness</th><th></th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th></tr>
+<tr><th>Politeness</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>8</td><td>17.29</td><td>65.83</td><td>132.68</td><td>17.63</td><td>66.17</td><td>133.42</td><td>17.29</td><td>65.81</td><td>137.81</td></tr>
@@ -619,7 +619,7 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 18: Result of the test on XL-Sum/Japanese, R is ROUGE-L, B is BERTScore, L is Length.</caption>
 <thead>
-<tr><th>Politeness</th><th></th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th></tr>
+<tr><th>Politeness</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th><th>R</th><th>B</th><th>L</th></tr>
 </thead>
 <tbody>
 <tr><td></td><td>8</td><td>24.29</td><td>71.15</td><td>131.04</td><td>24.71</td><td>71.66</td><td>155.34</td><td>20.98</td><td>69.10</td><td>180.49</td></tr>
@@ -688,8 +688,8 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 22: Result of the test on Crows-Pairs. R is race, G is gender, N is nationality, S is socioeconomic status.</caption>
 <thead>
-<tr><th>Model</th><th></th><th>Llama2-70B Llama2-70B</th></tr>
-<tr><th>Politeness R</th><th></th><th>G N S R G N S</th></tr>
+<tr><th>Model</th><th>Llama2-70B Llama2-70B</th></tr>
+<tr><th>Politeness R</th><th>G N S R G N S</th></tr>
 </thead>
 <tbody>
 <tr><td>8</td><td>15.38</td><td>15.29 14.15 14.53 56.70 52.48 64.15 63.25</td></tr>
