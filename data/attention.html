@@ -167,9 +167,9 @@
 <caption>Table 3: Variations on the Transformer architecture. Unlisted values are identical to those of the base model. All metrics are on the English-to-German translation development set, newstest2013. Listed perplexities are per-wordpiece, according to our byte-pair encoding, and should not be compared to per-word perplexities.</caption>
 <thead>
 <tr><th></th><th>N</th><th>d</th><th></th><th>d</th><th></th><th>h</th><th>d</th><th>d</th><th>P</th><th>ϵ</th><th>train</th><th>PPL</th><th>BLEU</th><th>params</th><th></th></tr>
+<tr><th></th><th>N</th><th>d model</th><th></th><th>d ff</th><th></th><th>h</th><th>d k</th><th>d v</th><th>P drop</th><th>ϵ ls</th><th>train</th><th>PPL</th><th>BLEU</th><th>params</th><th></th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>N</td><td>d model</td><td></td><td>d ff</td><td></td><td>h</td><td>d k</td><td>d v</td><td>P drop</td><td>ϵ ls</td><td>train</td><td>PPL</td><td>BLEU</td><td>params 6</td><td></td></tr>
 <tr><td>base 6</td><td></td><td>512</td><td></td><td>2048</td><td></td><td>8</td><td>64</td><td>64</td><td>0.1</td><td>0.1</td><td>100K</td><td>4.92</td><td>25.8</td><td>65</td><td> model ff k v drop ls 6</td></tr>
 <tr><td></td><td></td><td>model</td><td></td><td></td><td>ff</td><td></td><td>k</td><td>v</td><td>drop</td><td>ls</td><td>steps</td><td>(dev)</td><td>(dev)</td><td>× 10 6</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td>1</td><td>512</td><td>512</td><td></td><td></td><td></td><td>5.29</td><td>24.9</td><td></td><td></td></tr>
@@ -177,7 +177,6 @@
 <tr><td>(A)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td>32</td><td>32</td><td></td><td></td><td></td><td>4.91</td><td>25.8</td><td></td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td>32</td><td>16</td><td>16</td><td></td><td></td><td></td><td>5.01</td><td>25.4</td><td></td><td></td></tr>
-<tr><td>(B)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td></td><td></td><td></td><td></td><td>5.16</td><td>25.1</td><td>58</td><td></td></tr>
 <tr><td>(B)</td><td></td><td></td><td></td><td></td><td></td><td></td><td>16</td><td></td><td></td><td></td><td></td><td>5.16</td><td>25.1</td><td>58</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>32</td><td></td><td></td><td></td><td></td><td>5.01</td><td>25.4</td><td>60</td><td></td></tr>
 <tr><td></td><td>2</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>6.11</td><td>23.7</td><td>36</td><td></td></tr>
@@ -189,7 +188,6 @@
 <tr><td></td><td></td><td></td><td></td><td>4096</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.75</td><td>26.2</td><td>90</td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td></td><td>5.77</td><td>24.6</td><td></td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.2</td><td></td><td></td><td>4.95</td><td>25.5</td><td></td><td></td></tr>
-<tr><td>(D)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td>4.67</td><td>25.3</td><td></td><td></td></tr>
 <tr><td>(D)</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.0</td><td></td><td>4.67</td><td>25.3</td><td></td><td></td></tr>
 <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>0.2</td><td></td><td>5.47</td><td>25.7</td><td></td><td></td></tr>
 <tr><td>(E)</td><td></td><td></td><td>positional embedding instead of sinusoids</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td>4.92</td><td>25.7</td><td></td><td></td></tr>
@@ -282,8 +280,7 @@
 <p>∗ Equal contribution. Listing order is random. Jakob proposed replacing RNNs with self-attention and started the effort to evaluate this idea. Ashish, with Illia, designed and implemented the first Transformer models and has been crucially involved in every aspect of this work. Noam proposed scaled dot-product attention, multi-head attention and the parameter-free position representation and became the other person involved in nearly every detail. Niki designed, implemented, tuned and evaluated countless model variants in our original codebase and tensor2tensor. Llion also experimented with novel model variants, was responsible for our initial codebase, and efficient inference and visualizations. Lukasz and Aidan spent countless long days designing various parts of and implementing tensor2tensor, replacing our earlier codebase, greatly improving results and massively accelerating our research.</p>
 <p>† Work performed while at Google Brain.</p>
 <p>‡ Work performed while at Google Research.</p>
-<p>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1 . Then their dot product, q · k = q i k i , has mean 0 and variance d .</p>
-<p>i =1 k</p>
+<p>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1 . Then their dot product, q · k = q i k i , has mean 0 and variance d . i =1 k</p>
 <p>5 We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.</p>
 </div>
 </body>

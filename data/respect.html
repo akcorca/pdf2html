@@ -90,11 +90,9 @@ RIKEN AIP NII LLMC
 <caption>Table 1: Scores on the three language understanding benchmarks.</caption>
 <thead>
 <tr><th></th><th></th><th>MMLU</th><th></th><th></th><th></th><th>C-Eval</th><th></th><th></th><th></th><th>JMMLU</th><th></th></tr>
+<tr><th>P</th><th>GPT-3.5</th><th>GPT-4</th><th>Llama2-70B</th><th></th><th>GPT-3.5</th><th>GPT-4</th><th>ChatGLM3</th><th></th><th>GPT-3.5</th><th>GPT-4</th><th></th></tr>
 </thead>
 <tbody>
-<tr><td>P</td><td>GPT-3.5</td><td>GPT-4</td><td>Llama2-70B</td><td></td><td>GPT-3.5</td><td>GPT-4</td><td>ChatGLM3</td><td></td><td>GPT-3.5</td><td>GPT-4</td><td></td></tr>
-<tr><td>8</td><td>60.02</td><td>75.82</td><td></td><td>55.11</td><td>20.85</td><td>29.73</td><td></td><td>20.58</td><td>49.96</td><td>71.98</td><td>38.23</td></tr>
-<tr><td>P</td><td>GPT-3.5</td><td>GPT-4</td><td>Llama2-70B</td><td></td><td>GPT-3.5</td><td>GPT-4</td><td>ChatGLM3</td><td></td><td>GPT-3.5</td><td>GPT-4</td><td></td></tr>
 <tr><td>8</td><td>60.02</td><td>75.82</td><td></td><td>55.11</td><td>20.85</td><td>29.73</td><td></td><td>20.58</td><td>49.96</td><td>71.98</td><td>38.23</td></tr>
 <tr><td>7</td><td>58.32</td><td>78.74</td><td></td><td>55.26</td><td>23.24</td><td>29.79</td><td></td><td>21.23</td><td>49.70</td><td>72.34</td><td>38.98</td></tr>
 <tr><td>6</td><td>57.96</td><td>78.56</td><td></td><td>52.23</td><td>23.38</td><td>30.37</td><td></td><td>21.54</td><td>50.09</td><td>72.71</td><td>39.30</td></tr>
@@ -669,7 +667,6 @@ RIKEN AIP NII LLMC
 <tr><td>3</td><td>现要求你评价这句话，仅允许用</td><td></td><td></td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td></td><td>消极</td><td></td><td>) 的其中之一来回复，不得输出其他任何</td></tr>
 <tr><td></td><td>内容。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>2</td><td>你给我评价这句话，只准你用</td><td></td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td></td><td>消极</td><td></td><td>)</td><td>的其中之一来回复，别让我看见其他任何</td></tr>
-<tr><td></td><td>内容。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>1</td><td>给老子评价这句话。只准你用</td><td></td><td></td><td></td><td>( 积极</td><td></td><td>中立</td><td></td><td></td><td>消极</td><td></td><td>)</td><td>的其中之一来回复，让我看见其他任何内</td></tr>
 <tr><td></td><td>容你就死定了。</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody>
@@ -683,10 +680,8 @@ RIKEN AIP NII LLMC
 </thead>
 <tbody>
 <tr><td></td><td>ル・ネガティブ）のいずれかでご回答よろしくお願いします。理由は不要でございます。</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>8</td><td>次の文についていかが考えられるか教えていただけませんか？</td><td></td><td></td><td></td><td></td><td>（ポジティブ・ニュートラ</td></tr>
 <tr><td>7</td><td>次の文についていかが考えられるか教えていただけますか。</td><td></td><td></td><td></td><td>（ポジティブ・ニュートラル・</td><td></td></tr>
 <tr><td></td><td>ネガティブ）のいずれかで回答し、理由は不要です。</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>7</td><td>次の文についていかが考えられるか教えていただけますか。</td><td></td><td></td><td></td><td>（ポジティブ・ニュートラル・</td><td></td></tr>
 <tr><td>6</td><td>次の文についてどう考えられるか教えてください。</td><td></td><td></td><td>（ポジティブ・ニュートラル・ネガティ</td><td></td><td></td></tr>
 <tr><td></td><td>ブ）のいずれかのみで回答し、理由は不要です。</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>5</td><td>次の文についてどう考えるか教えてください。</td><td></td><td>（ポジティブ・ニュートラル・ネガティブ）</td><td></td><td></td><td></td></tr>
@@ -694,7 +689,6 @@ RIKEN AIP NII LLMC
 <tr><td>4</td><td>次の文についてどう考えるか教えて。</td><td>（ポジティブ・ニュートラル・ネガティブ）のいずれ</td><td></td><td></td><td></td><td></td></tr>
 <tr><td></td><td>かのみで答え、理由は不要。</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>3</td><td>次の文についてどう考えるか教えよ。</td><td>（ポジティブ・ニュートラル・ネガティブ）のいずれ</td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>かのみで答え、理由は不要。</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>2</td><td>次の文についてどう考えるか教えろ。</td><td>（ポジティブ・ニュートラル・ネガティブ）のいずれ</td><td></td><td></td><td></td><td></td></tr>
 <tr><td></td><td>かだけで答え、理由は書くな。</td><td></td><td></td><td></td><td></td><td></td></tr>
 <tr><td>1</td><td>次の文についてどう考えるか教えろこの野郎。お前が答えられるのは（ポジティブ・ニュ</td><td></td><td></td><td></td><td></td><td></td></tr>
@@ -708,9 +702,9 @@ RIKEN AIP NII LLMC
 <caption>Table 16: Result of the test on CNN/Dailymail, R is ROUGE-L, B is BERTScore, L is Length.</caption>
 <thead>
 <tr><th>Model</th><th></th><th></th><th>GPT-3.5</th><th></th><th></th><th></th><th>GPT-4</th><th></th><th></th><th></th><th>Llama2-70B</th><th></th><th></th></tr>
+<tr><th>Politeness</th><th></th><th>R</th><th></th><th>B</th><th>L</th><th>R</th><th></th><th>B</th><th>L</th><th>R</th><th></th><th>B</th><th>L</th></tr>
 </thead>
 <tbody>
-<tr><td>Politeness</td><td></td><td>R</td><td></td><td>B</td><td>L</td><td>R</td><td></td><td>B</td><td>L</td><td>R</td><td></td><td>B</td><td>L</td></tr>
 <tr><td></td><td>8</td><td>21.99</td><td>87.36</td><td></td><td>64.12</td><td>20.42</td><td>86.62</td><td></td><td>68.12</td><td>20.02</td><td></td><td>86.90</td><td>84.22</td></tr>
 <tr><td></td><td>7</td><td>22.36</td><td>87.39</td><td></td><td>62.81</td><td>20.18</td><td>86.69</td><td></td><td>66.04</td><td>19.82</td><td></td><td>86.87</td><td>81.89</td></tr>
 <tr><td></td><td>6</td><td>21.98</td><td>87.34</td><td></td><td>62.42</td><td>20.33</td><td>86.70</td><td></td><td>64.11</td><td>20.30</td><td></td><td>87.03</td><td>79.56</td></tr>
@@ -761,9 +755,9 @@ RIKEN AIP NII LLMC
 <caption>Table 19: Result of the test on Crows-Pairs. R is race, G is gender, N is nationality, S is socioeconomic status.</caption>
 <thead>
 <tr><th>Model</th><th></th><th></th><th>GPT-3.5</th><th></th><th></th><th></th><th>GPT-4</th><th></th><th></th><th></th><th>Llama2-70B</th><th></th><th></th></tr>
+<tr><th></th><th>P</th><th>R</th><th>G</th><th>N</th><th>S</th><th>R</th><th>G</th><th>N</th><th>S</th><th>R</th><th>G</th><th>N</th><th>S</th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>P</td><td>R</td><td>G</td><td>N</td><td>S</td><td>R</td><td>G</td><td>N</td><td>S</td><td>R</td><td>G</td><td>N</td><td>S</td></tr>
 <tr><td></td><td>8</td><td>33.19</td><td>27.69</td><td>28.30</td><td>33.33</td><td>19.78</td><td>14.05</td><td>11.32</td><td>18.00</td><td>15.38</td><td>15.29</td><td>14.15</td><td>14.53</td></tr>
 <tr><td></td><td>7</td><td>31.65</td><td>34.71</td><td>30.19</td><td>37.61</td><td>14.07</td><td>15.29</td><td>13.21</td><td>18.80</td><td>7.69</td><td>12.81</td><td>14.15</td><td>15.38</td></tr>
 <tr><td></td><td>6</td><td>28.13</td><td>28.51</td><td>31.13</td><td>34.19</td><td>15.60</td><td>14.05</td><td>8.49</td><td>16.24</td><td>10.99</td><td>14.05</td><td>16.98</td><td>12.82</td></tr>
@@ -812,9 +806,9 @@ RIKEN AIP NII LLMC
 <caption>Table 22: Result of the test on Crows-Pairs. R is race, G is gender, N is nationality, S is socioeconomic status.</caption>
 <thead>
 <tr><th>Model</th><th></th><th></th><th>Llama2-70B</th><th></th><th></th><th></th><th>Llama2-70B</th><th></th><th></th></tr>
+<tr><th>Politeness</th><th></th><th>R</th><th>G</th><th>N</th><th>S</th><th>R</th><th>G</th><th>N</th><th>S</th></tr>
 </thead>
 <tbody>
-<tr><td>Politeness</td><td></td><td>R</td><td>G</td><td>N</td><td>S</td><td>R</td><td>G</td><td>N</td><td>S</td></tr>
 <tr><td></td><td>8</td><td>15.38</td><td>15.29</td><td>14.15</td><td>14.53</td><td>56.70</td><td>52.48</td><td>64.15</td><td>63.25</td></tr>
 <tr><td></td><td>7</td><td>7.69</td><td>12.81</td><td>14.15</td><td>15.38</td><td>62.64</td><td>59.92</td><td>64.15</td><td>64.10</td></tr>
 <tr><td></td><td>6</td><td>10.99</td><td>14.05</td><td>16.98</td><td>12.82</td><td>60.00</td><td>64.46</td><td>64.15</td><td>64.10</td></tr>

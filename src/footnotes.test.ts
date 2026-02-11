@@ -70,4 +70,20 @@ describe("footnotes", () => {
     const mainBody = attentionHtml.replace(footnoteBlock[0], "");
     expect(mainBody).not.toContain(footnoteText);
   });
+
+  it("should merge detached tiny math-fragment footnote continuations into the preceding footnote paragraph", () => {
+    const footnoteBlock = expectMatch(attentionHtml, /<div class="footnotes">(.|\n)*<\/div>/);
+    const paragraphs = [...footnoteBlock[0].matchAll(/<p>(.*?)<\/p>/gs)].map((match) => match[1]);
+
+    const proseParagraph = paragraphs.find((paragraph) =>
+      paragraph.includes("To illustrate why the dot products get large")
+    );
+    expect(proseParagraph).toBeDefined();
+    if (!proseParagraph) {
+      throw new Error("Expected explanatory dot-product footnote paragraph to exist");
+    }
+
+    expect(proseParagraph).toContain("i =1 k");
+    expect(paragraphs).not.toContain("i =1 k");
+  });
 });

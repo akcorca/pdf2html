@@ -13,6 +13,16 @@ const FOOTNOTE_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.08;
 const FOOTNOTE_CONTINUATION_MAX_FONT_DELTA = 0.8;
 const FOOTNOTE_MARKER_PREFIX_PATTERN = /^(?:[*∗†‡§¶#]|\(?\d{1,2}\)?[.)]?)\s+/u;
 const FOOTNOTE_URL_START_PATTERN = /^https?:\/\//iu;
+const FOOTNOTE_TINY_MATH_FRAGMENT_MAX_TEXT_LENGTH = 24;
+const FOOTNOTE_TINY_MATH_FRAGMENT_MAX_TOKEN_COUNT = 8;
+const FOOTNOTE_TINY_MATH_FRAGMENT_MAX_VERTICAL_GAP = 4;
+const FOOTNOTE_TINY_MATH_FRAGMENT_MAX_FONT_RATIO = 0.85;
+const FOOTNOTE_TINY_MATH_FRAGMENT_ALLOWED_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}[\],.;:·√∑∏∞]+$/u;
+const FOOTNOTE_TINY_MATH_FRAGMENT_SYMBOL_PATTERN = /[=+\-−*/√∑∏∞·]/u;
+const FOOTNOTE_TINY_MATH_FRAGMENT_NUMERIC_PATTERN = /\d/;
+const FOOTNOTE_TINY_MATH_FRAGMENT_ALPHA_TOKEN_PATTERN = /[A-Za-z]/;
+const FOOTNOTE_TINY_MATH_FRAGMENT_MULTI_LETTER_TOKEN_PATTERN = /[A-Za-z]{2,}/;
+const FOOTNOTE_TINY_MATH_CONTEXT_PATTERN = /[=+\-−*/√∑∏∞·]/u;
 
 export function normalizeFootnoteLines(footnoteLines: TextLine[], bodyFontSize: number): TextLine[] {
   return inferMissingNumericFootnoteMarkers(
@@ -93,12 +103,8 @@ function mergeFootnoteContinuationLine(
   bodyFontSize: number,
 ): TextLine | undefined {
   if (!isDescendingNearbyFootnoteLine(line, previousLine)) return undefined;
-  if (Math.abs(line.fontSize - previousLine.fontSize) > FOOTNOTE_CONTINUATION_MAX_FONT_DELTA) {
-    return undefined;
-  }
 
   const leftOffset = Math.abs(line.x - previousLine.x);
-  if (leftOffset > line.pageWidth * FOOTNOTE_CONTINUATION_MAX_LEFT_OFFSET_RATIO) return undefined;
 
   const previousText = getFootnoteBlockText(previousLine, bodyFontSize);
   const currentText = getFootnoteBlockText(line, bodyFontSize);
@@ -106,6 +112,24 @@ function mergeFootnoteContinuationLine(
   if (FOOTNOTE_MARKER_PREFIX_PATTERN.test(currentText)) return undefined;
   if (FOOTNOTE_URL_START_PATTERN.test(currentText)) return undefined;
   if (FOOTNOTE_URL_START_PATTERN.test(previousText)) return undefined;
+  const detachedTinyMathContinuation = isDetachedTinyMathContinuationLine(
+    previousLine,
+    line,
+    previousText,
+    currentText,
+  );
+  if (
+    Math.abs(line.fontSize - previousLine.fontSize) > FOOTNOTE_CONTINUATION_MAX_FONT_DELTA &&
+    !detachedTinyMathContinuation
+  ) {
+    return undefined;
+  }
+  if (
+    leftOffset > line.pageWidth * FOOTNOTE_CONTINUATION_MAX_LEFT_OFFSET_RATIO &&
+    !detachedTinyMathContinuation
+  ) {
+    return undefined;
+  }
 
   return {
     ...previousLine,
@@ -115,6 +139,42 @@ function mergeFootnoteContinuationLine(
     estimatedWidth: Math.max(previousLine.estimatedWidth, line.estimatedWidth),
     text: `${previousText} ${currentText}`,
   };
+}
+
+function isDetachedTinyMathContinuationLine(
+  previousLine: TextLine,
+  line: TextLine,
+  previousText: string,
+  currentText: string,
+): boolean {
+  if (previousLine.y <= line.y) return false;
+  if (previousLine.y - line.y > FOOTNOTE_TINY_MATH_FRAGMENT_MAX_VERTICAL_GAP) return false;
+  if (line.fontSize > previousLine.fontSize * FOOTNOTE_TINY_MATH_FRAGMENT_MAX_FONT_RATIO) {
+    return false;
+  }
+  if (currentText.length > FOOTNOTE_TINY_MATH_FRAGMENT_MAX_TEXT_LENGTH) return false;
+  if (!FOOTNOTE_TINY_MATH_FRAGMENT_ALLOWED_PATTERN.test(currentText)) return false;
+
+  const tokens = currentText.split(/\s+/).filter((token) => token.length > 0);
+  if (tokens.length === 0 || tokens.length > FOOTNOTE_TINY_MATH_FRAGMENT_MAX_TOKEN_COUNT) {
+    return false;
+  }
+  if (
+    tokens.some(
+      (token) =>
+        FOOTNOTE_TINY_MATH_FRAGMENT_ALPHA_TOKEN_PATTERN.test(token) &&
+        FOOTNOTE_TINY_MATH_FRAGMENT_MULTI_LETTER_TOKEN_PATTERN.test(token),
+    )
+  ) {
+    return false;
+  }
+
+  const hasMathSignal =
+    FOOTNOTE_TINY_MATH_FRAGMENT_SYMBOL_PATTERN.test(currentText) ||
+    FOOTNOTE_TINY_MATH_FRAGMENT_NUMERIC_PATTERN.test(currentText);
+  if (!hasMathSignal) return false;
+
+  return FOOTNOTE_TINY_MATH_CONTEXT_PATTERN.test(previousText);
 }
 
 function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
