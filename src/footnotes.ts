@@ -259,6 +259,7 @@ function mergeFootnoteContinuationLine(
 function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
   const markerNumbers = lines.map((line) => parseLeadingNumericMarker(line.text));
+  const nextMarkerByIndex = buildNextMarkerByIndex(markerNumbers);
   const resolvedLines = [...lines];
   let previousMarker: number | undefined;
 
@@ -273,12 +274,11 @@ function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
     const text = normalizeSpacing(lines[index].text);
     if (!FOOTNOTE_URL_START_PATTERN.test(text)) continue;
 
-    const nextMarker = findNextMarker(markerNumbers, index + 1);
+    const nextMarker = nextMarkerByIndex[index];
     if (nextMarker === undefined || nextMarker <= previousMarker + 1) continue;
 
     const inferredMarker = previousMarker + 1;
     resolvedLines[index] = { ...lines[index], text: `${inferredMarker} ${text}` };
-    markerNumbers[index] = inferredMarker;
     previousMarker = inferredMarker;
   }
 
@@ -292,10 +292,15 @@ function parseLeadingNumericMarker(text: string): number | undefined {
   return Number.isFinite(marker) ? marker : undefined;
 }
 
-function findNextMarker(markers: Array<number | undefined>, startIndex: number): number | undefined {
-  for (let index = startIndex; index < markers.length; index += 1) {
+function buildNextMarkerByIndex(markers: Array<number | undefined>): Array<number | undefined> {
+  const nextMarkerByIndex: Array<number | undefined> = new Array(markers.length);
+  let nextMarker: number | undefined;
+  for (let index = markers.length - 1; index >= 0; index -= 1) {
+    nextMarkerByIndex[index] = nextMarker;
     const marker = markers[index];
-    if (marker !== undefined) return marker;
+    if (marker !== undefined) {
+      nextMarker = marker;
+    }
   }
-  return undefined;
+  return nextMarkerByIndex;
 }
