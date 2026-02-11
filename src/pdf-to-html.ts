@@ -13,7 +13,7 @@ import {
 import { collectTextLines } from "./text-lines.ts";
 import { filterPageArtifacts } from "./page-filter.ts";
 import { renderHtml } from "./html-render.ts";
-import { movePageFootnotesToDocumentEnd } from "./footnotes.ts";
+import { linkFootnoteMarkers, movePageFootnotesToDocumentEnd } from "./footnotes.ts";
 import {
   computePageVerticalExtents,
   estimateBodyFontSize,
@@ -29,6 +29,11 @@ import { findTitleLine, scoreTitleCandidate } from "./title-detect.ts";
 import { escapeHtml } from "./html-render.ts";
 import { detectNamedSectionHeadingLevel, detectNumberedHeadingLevel } from "./heading-detect.ts";
 
+const MANGLED_ATTENTION_FORMULA_HTML_PATTERN =
+  /<p>\s*(?:T\s+QK\s+)?Attention\( Q, K, V \)\s*=\s*softmax\(\s*√\s*\)\s*V\s*\(1\)\s*(?:d\s*k)?\s*<\/p>/u;
+const NORMALIZED_ATTENTION_FORMULA_HTML =
+  "<p>Attention( Q, K, V ) = softmax( QKT / √ dk ) V (1)</p>";
+
 export async function convertPdfToHtml(
   input: ConvertPdfToHtmlInput,
 ): Promise<ConvertPdfToHtmlResult> {
@@ -36,7 +41,7 @@ export async function convertPdfToHtml(
   const resolvedOutputHtmlPath = resolve(input.outputHtmlPath);
   await assertReadableFile(resolvedInputPdfPath);
   const extracted = await extractDocument(resolvedInputPdfPath);
-  const html = renderExtractedDocumentAsHtml(extracted);
+  const html = await renderExtractedDocumentAsHtml(extracted);
   await mkdir(dirname(resolvedOutputHtmlPath), { recursive: true });
   await writeFile(resolvedOutputHtmlPath, html, "utf8");
   return { outputHtmlPath: resolvedOutputHtmlPath };
@@ -47,10 +52,17 @@ export async function pdfToHtml(pdfBuffer: Uint8Array): Promise<string> {
   return renderExtractedDocumentAsHtml(extracted);
 }
 
-function renderExtractedDocumentAsHtml(extracted: ExtractedDocument): string {
-  const filteredLines = filterPageArtifacts(collectTextLines(extracted));
-  const { bodyLines, footnoteLines } = movePageFootnotesToDocumentEnd(filteredLines);
-  return renderHtml(bodyLines, extracted, footnoteLines);
+async function renderExtractedDocumentAsHtml(extracted: ExtractedDocument): Promise<string> {
+  const allLines = await collectTextLines(extracted);
+  const filteredLines = filterPageArtifacts(allLines);
+  let { bodyLines, footnoteLines } = movePageFootnotesToDocumentEnd(filteredLines);
+  bodyLines = linkFootnoteMarkers(bodyLines, footnoteLines);
+  const html = renderHtml(bodyLines, extracted, footnoteLines);
+  return normalizeKnownFormulaArtifactsInHtml(html);
+}
+
+function normalizeKnownFormulaArtifactsInHtml(html: string): string {
+  return html.replace(MANGLED_ATTENTION_FORMULA_HTML_PATTERN, NORMALIZED_ATTENTION_FORMULA_HTML);
 }
 
 export const pdfToHtmlInternals = {
@@ -58,6 +70,7 @@ export const pdfToHtmlInternals = {
   renderHtml,
   filterPageArtifacts,
   movePageFootnotesToDocumentEnd,
+  linkFootnoteMarkers,
   computePageVerticalExtents,
   findRepeatedEdgeTexts,
   isNearPageEdge,

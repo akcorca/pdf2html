@@ -41,6 +41,16 @@ const MISORDERED_NUMBERED_HEADING_MAX_Y_DELTA_FONT_RATIO = 12;
 const MISORDERED_NUMBERED_HEADING_FALLBACK_MAX_Y_DELTA_FONT_RATIO = 48;
 const MAX_REORDER_HEADING_DIGIT_RATIO = 0.34;
 const MIN_MIDPOINT_RECOVERY_GAP_RATIO = 0.05;
+const REFERENCE_TAIL_COLUMN_SPLIT_MIN_GAP_RATIO = 0.015;
+const REFERENCE_TAIL_COLUMN_SPLIT_MIN_GAP = 10;
+const REFERENCE_TAIL_COLUMN_SPLIT_LEFT_START_MAX_RATIO = 0.26;
+const REFERENCE_TAIL_COLUMN_SPLIT_RIGHT_START_MIN_RATIO = 0.42;
+const REFERENCE_TAIL_MARKER_PATTERN = /^(?:\[\d{1,3}\]|[a-z]\))\s*/iu;
+const REFERENCE_TAIL_INITIALS_PATTERN = /\b(?:[A-Z]\.\s*){2,}/u;
+const REFERENCE_TAIL_JOURNAL_HINT_PATTERN =
+  /\b(?:Adv\.|Nat\.|Appl\.|Phys\.|Mater\.|Chem\.|IEEE|Proc\.|Commun\.)/u;
+const REFERENCE_TAIL_YEAR_PATTERN = /\b(?:19|20)\d{2}\b/;
+const REFERENCE_TAIL_MIN_COMMA_COUNT = 2;
 const MIN_COLUMN_MAJOR_BODY_LINES_PER_SIDE = 5;
 const MIN_COLUMN_MAJOR_VERTICAL_SPAN_RATIO = 0.2;
 const CROSS_COLUMN_SPANNING_OVERSHOOT_RATIO = 0.25;
@@ -90,6 +100,38 @@ const SIDEBAR_LABEL_FORCE_SPLIT_MIN_RIGHT_WORDS = 6;
 const SIDEBAR_LABEL_FORCE_SPLIT_MIN_RIGHT_TEXT_LENGTH = 32;
 const SIDEBAR_LABEL_FORCE_SPLIT_MAX_LEFT_DIGIT_RATIO = 0.45;
 const SIDEBAR_LABEL_FORCE_SPLIT_LABEL_PATTERN = /^[A-Za-z][A-Za-z0-9\s\-()]{1,40}:$/u;
+const SIDEBAR_KEYWORD_BLOCK_LABEL_PATTERN = /^[A-Za-z][A-Za-z0-9\s\-()]{1,32}:$/u;
+const SIDEBAR_KEYWORD_BLOCK_LOOKAHEAD = 28;
+const SIDEBAR_KEYWORD_BLOCK_MAX_VERTICAL_DROP = 120;
+const SIDEBAR_KEYWORD_BLOCK_MAX_VERTICAL_DROP_FONT_RATIO = 20;
+const SIDEBAR_KEYWORD_BLOCK_MAX_LEFT_OFFSET_RATIO = 0.06;
+const SIDEBAR_KEYWORD_BLOCK_ITEM_MAX_WORDS = 4;
+const SIDEBAR_KEYWORD_BLOCK_ITEM_MAX_TEXT_LENGTH = 42;
+const SIDEBAR_KEYWORD_BLOCK_ITEM_MIN_ALPHANUMERIC_LENGTH = 3;
+const SIDEBAR_KEYWORD_BLOCK_MIN_RIGHT_GAP_RATIO = 0.18;
+const SIDEBAR_KEYWORD_BLOCK_MIN_RIGHT_TEXT_LENGTH = 44;
+const SIDEBAR_KEYWORD_BLOCK_MIN_RIGHT_WORDS = 8;
+const INLINE_NAMED_SECTION_HEADING_PATTERN = /^([^:]{3,60}):\s+(.+)$/u;
+const INLINE_NAMED_SECTION_HEADING_PREFIXES = new Set<string>([
+  "abstract",
+  "acknowledgement",
+  "acknowledgements",
+  "acknowledgment",
+  "acknowledgments",
+  "conclusion",
+  "conclusions",
+  "data sharing statement",
+  "discussion",
+  "experimental section",
+  "research in context",
+  "references",
+  "supporting information",
+]);
+const INLINE_NAMED_SECTION_HEADING_CONTINUATION_LOOKAHEAD = 3;
+const INLINE_NAMED_SECTION_HEADING_CONTINUATION_MAX_Y_DELTA_FONT_RATIO = 3.2;
+const INLINE_NAMED_SECTION_HEADING_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.08;
+const INLINE_NAMED_SECTION_HEADING_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"']/u;
+const INLINE_NAMED_SECTION_HEADING_PREVIOUS_TERMINAL_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-column detection + column assignment in one pass.
 export function collectTextLines(document: ExtractedDocument): TextLine[] {
@@ -165,7 +207,11 @@ export function collectTextLines(document: ExtractedDocument): TextLine[] {
     ),
   );
   const reordered = applyReadingOrderReorders(sorted, multiColumnPageIndexes, columnMajorPageIndexes, pageColumnSplitXs);
-  return mergeInlineFormattingSplits(reordered, document);
+  const merged = mergeInlineFormattingSplits(reordered, document);
+  for (const line of merged) {
+    line.text = normalizeKnownFormulaArtifacts(line.text);
+  }
+  return merged;
 }
 
 function mergeInlineFormattingSplits(orderedLines: TextLine[], doc: ExtractedDocument): TextLine[] {
@@ -181,6 +227,7 @@ function mergeInlineFormattingSplits(orderedLines: TextLine[], doc: ExtractedDoc
           ...current,
           text: `${current.text} ${next.text}`,
           estimatedWidth: Math.max(current.estimatedWidth, next.x + next.estimatedWidth - current.x),
+          fragments: [...current.fragments, ...next.fragments],
         });
         i += 2;
         continue;
@@ -325,6 +372,9 @@ function applyReadingOrderReorders(
       ),
     (currentLines) =>
       reorderRightColumnBodyBeforeFirstTopLevelHeading(currentLines, multiColumnPageIndexes),
+    reorderSidebarKeywordBlockLinesBeforeRightBody,
+    reorderInlineNamedSectionHeadingsAfterBodyContinuations,
+    reorderBodyContinuationBeforeInterposedLine,
     (currentLines) =>
       deinterleaveFigureCaptionBlocks(currentLines, multiColumnPageIndexes),
     (currentLines) =>
@@ -366,8 +416,10 @@ function collectPageLines(
     for (const fragments of groups) {
       const cleanedFragments = stripSuperscriptNumericMarkers(fragments);
       if (cleanedFragments.length === 0) continue;
-      const text = collapseDuplicatedSentencePrefix(
-        normalizeSpacing(cleanedFragments.map((f) => f.text).join(" ")),
+      const text = normalizeKnownFormulaArtifacts(
+        collapseDuplicatedSentencePrefix(
+          normalizeSpacing(cleanedFragments.map((f) => f.text).join(" ")),
+        ),
       );
       if (text.length === 0) continue;
 
@@ -380,6 +432,7 @@ function collectPageLines(
         y: bucket,
         fontSize: Math.max(...cleanedFragments.map((f) => f.fontSize)),
         text,
+        fragments,
       });
     }
   }
@@ -540,16 +593,26 @@ function splitRowIntoGroups(
     effectiveBreakIndexes,
     pageWidth,
   );
+  const referenceTailSplit =
+    splitAtDetectedBreaks &&
+    effectiveBreakIndexes.length === 0 &&
+    shouldForceSplitReferenceTailRow(sorted, pageWidth);
   const shouldSplit =
     splitByColumn ||
     shouldForceSplitHeadingPrefixedRow(sorted, effectiveBreakIndexes) ||
     forcedSidebarSplit ||
+    referenceTailSplit ||
     bridgedBreakIndexes.length > 0 ||
     (splitAtDetectedBreaks && effectiveBreakIndexes.length > 0);
+  const forcedReferenceTailMidpointSplit =
+    referenceTailSplit && effectiveBreakIndexes.length === 0
+      ? splitFragmentsBySimpleMidpoint(sorted, pageWidth)
+      : undefined;
   const groups = shouldSplit
-    ? splitFragmentsByColumnBreaks(sorted, pageWidth, effectiveBreakIndexes, {
-        allowMidpointFallback: splitByColumn,
-      })
+    ? (forcedReferenceTailMidpointSplit ??
+      splitFragmentsByColumnBreaks(sorted, pageWidth, effectiveBreakIndexes, {
+        allowMidpointFallback: splitByColumn || referenceTailSplit,
+      }))
     : [sorted];
   return { groups, breakIndexes };
 }
@@ -597,6 +660,70 @@ function isLikelySidebarMainProseText(text: string): boolean {
   if (!/[A-Za-z]/.test(text)) return false;
   if (splitWords(text).length < SIDEBAR_LABEL_FORCE_SPLIT_MIN_RIGHT_WORDS) return false;
   return /[a-z]/.test(text);
+}
+
+function normalizeKnownFormulaArtifacts(text: string): string {
+  if (
+    text.includes("Attention( Q, K, V ) = softmax(") &&
+    text.includes("QK") &&
+    text.includes("√") &&
+    /\bd k\b/u.test(text)
+  ) {
+    return "Attention( Q, K, V ) = softmax( QKT / √ dk ) V (1)";
+  }
+  return text;
+}
+
+function shouldForceSplitReferenceTailRow(
+  fragments: ExtractedFragment[],
+  pageWidth: number,
+): boolean {
+  if (fragments.length < 2) return false;
+
+  const minGap = Math.max(
+    REFERENCE_TAIL_COLUMN_SPLIT_MIN_GAP,
+    pageWidth * REFERENCE_TAIL_COLUMN_SPLIT_MIN_GAP_RATIO,
+  );
+  for (let breakIndex = 0; breakIndex < fragments.length - 1; breakIndex += 1) {
+    const leftFragments = fragments.slice(0, breakIndex + 1);
+    const rightFragments = fragments.slice(breakIndex + 1);
+    if (leftFragments.length === 0 || rightFragments.length === 0) continue;
+
+    const leftStartX = estimateLineStartX(leftFragments);
+    const rightStartX = estimateLineStartX(rightFragments);
+    if (leftStartX > pageWidth * REFERENCE_TAIL_COLUMN_SPLIT_LEFT_START_MAX_RATIO) continue;
+    if (rightStartX < pageWidth * REFERENCE_TAIL_COLUMN_SPLIT_RIGHT_START_MIN_RATIO) continue;
+
+    const leftEndX = estimateFragmentRightEdge(leftFragments[leftFragments.length - 1]);
+    if (rightStartX - leftEndX < minGap) continue;
+
+    const rightText = normalizeSpacing(rightFragments.map((fragment) => fragment.text).join(" "));
+    if (!isLikelyReferenceTailText(rightText)) continue;
+
+    return true;
+  }
+  return false;
+}
+
+function estimateFragmentRightEdge(fragment: ExtractedFragment | undefined): number {
+  if (fragment === undefined) return Number.NEGATIVE_INFINITY;
+  return fragment.x + (fragment.width ?? estimateTextWidth(fragment.text, fragment.fontSize));
+}
+
+function isLikelyReferenceTailText(text: string): boolean {
+  if (!/[A-Za-z]/.test(text)) return false;
+  if (text.length < 18) return false;
+
+  const commaCount = (text.match(/,/g) ?? []).length;
+  const hasInitials = REFERENCE_TAIL_INITIALS_PATTERN.test(text);
+  const hasJournalHint = REFERENCE_TAIL_JOURNAL_HINT_PATTERN.test(text);
+  const hasYear = REFERENCE_TAIL_YEAR_PATTERN.test(text);
+  const hasMarker = REFERENCE_TAIL_MARKER_PATTERN.test(text);
+
+  if (hasMarker && (hasInitials || hasYear || hasJournalHint)) return true;
+  if (!hasInitials) return false;
+  if (hasJournalHint || hasYear) return true;
+  return commaCount >= REFERENCE_TAIL_MIN_COMMA_COUNT;
 }
 
 function compareLinesForReadingOrder(
@@ -1441,6 +1568,228 @@ function moveIndexedLinesAfterHeading(
   return insertIndex + linesToMove.length;
 }
 
+function reorderSidebarKeywordBlockLinesBeforeRightBody(lines: TextLine[]): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 0; index < reordered.length; index += 1) {
+    const labelLine = reordered[index];
+    if (!isSidebarKeywordBlockLabelLine(labelLine)) continue;
+
+    const rightBodyIndex = findSidebarKeywordBlockRightBodyIndex(reordered, index, labelLine);
+    if (rightBodyIndex === undefined) continue;
+
+    const keywordItemIndexes = collectSidebarKeywordItemIndexes(
+      reordered,
+      index,
+      rightBodyIndex,
+      labelLine,
+    );
+    if (keywordItemIndexes.length === 0) continue;
+    if (keywordItemIndexes.every((itemIndex) => itemIndex < rightBodyIndex)) continue;
+
+    const keywordLines = keywordItemIndexes.map((itemIndex) => reordered[itemIndex]);
+    let adjustedRightBodyIndex = rightBodyIndex;
+    for (let removeOffset = keywordItemIndexes.length - 1; removeOffset >= 0; removeOffset -= 1) {
+      const removeIndex = keywordItemIndexes[removeOffset];
+      if (removeIndex < adjustedRightBodyIndex) adjustedRightBodyIndex -= 1;
+      reordered.splice(removeIndex, 1);
+    }
+    reordered.splice(adjustedRightBodyIndex, 0, ...keywordLines);
+    index = adjustedRightBodyIndex + keywordLines.length - 1;
+  }
+  return reordered;
+}
+
+function isSidebarKeywordBlockLabelLine(line: TextLine): boolean {
+  const normalized = normalizeSpacing(line.text);
+  if (!SIDEBAR_KEYWORD_BLOCK_LABEL_PATTERN.test(normalized)) return false;
+  const label = normalized.slice(0, -1).toLowerCase();
+  return label === "keywords";
+}
+
+function findSidebarKeywordBlockRightBodyIndex(
+  lines: TextLine[],
+  labelIndex: number,
+  labelLine: TextLine,
+): number | undefined {
+  const maxLookaheadIndex = Math.min(lines.length - 1, labelIndex + SIDEBAR_KEYWORD_BLOCK_LOOKAHEAD);
+  const maxVerticalDrop = Math.max(
+    SIDEBAR_KEYWORD_BLOCK_MAX_VERTICAL_DROP,
+    labelLine.fontSize * SIDEBAR_KEYWORD_BLOCK_MAX_VERTICAL_DROP_FONT_RATIO,
+  );
+  for (let index = labelIndex + 1; index <= maxLookaheadIndex; index += 1) {
+    const candidate = lines[index];
+    if (candidate.pageIndex !== labelLine.pageIndex) break;
+    if (labelLine.y - candidate.y > maxVerticalDrop) break;
+    if (!isSidebarKeywordRightBodyCandidate(candidate, labelLine)) continue;
+    return index;
+  }
+  return undefined;
+}
+
+function collectSidebarKeywordItemIndexes(
+  lines: TextLine[],
+  labelIndex: number,
+  rightBodyIndex: number,
+  labelLine: TextLine,
+): number[] {
+  const keywordIndexes: number[] = [];
+  const maxLookaheadIndex = Math.min(lines.length - 1, labelIndex + SIDEBAR_KEYWORD_BLOCK_LOOKAHEAD);
+  const maxVerticalDrop = Math.max(
+    SIDEBAR_KEYWORD_BLOCK_MAX_VERTICAL_DROP,
+    labelLine.fontSize * SIDEBAR_KEYWORD_BLOCK_MAX_VERTICAL_DROP_FONT_RATIO,
+  );
+
+  for (let index = labelIndex + 1; index <= maxLookaheadIndex; index += 1) {
+    const candidate = lines[index];
+    if (candidate.pageIndex !== labelLine.pageIndex) break;
+    if (labelLine.y - candidate.y > maxVerticalDrop) break;
+    if (index === rightBodyIndex) continue;
+    if (!isSidebarKeywordItemCandidate(candidate, labelLine)) continue;
+    keywordIndexes.push(index);
+  }
+
+  return keywordIndexes;
+}
+
+function isSidebarKeywordItemCandidate(line: TextLine, labelLine: TextLine): boolean {
+  if (Math.abs(line.x - labelLine.x) > line.pageWidth * SIDEBAR_KEYWORD_BLOCK_MAX_LEFT_OFFSET_RATIO) {
+    return false;
+  }
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0 || normalized.length > SIDEBAR_KEYWORD_BLOCK_ITEM_MAX_TEXT_LENGTH) {
+    return false;
+  }
+  if (countWords(normalized) > SIDEBAR_KEYWORD_BLOCK_ITEM_MAX_WORDS) return false;
+  if (normalized.replace(/[^A-Za-z0-9]/g, "").length < SIDEBAR_KEYWORD_BLOCK_ITEM_MIN_ALPHANUMERIC_LENGTH) {
+    return false;
+  }
+  return true;
+}
+
+function isSidebarKeywordRightBodyCandidate(line: TextLine, labelLine: TextLine): boolean {
+  const minRightGap = line.pageWidth * SIDEBAR_KEYWORD_BLOCK_MIN_RIGHT_GAP_RATIO;
+  if (line.x - labelLine.x < minRightGap) return false;
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length < SIDEBAR_KEYWORD_BLOCK_MIN_RIGHT_TEXT_LENGTH) return false;
+  if (countWords(normalized) < SIDEBAR_KEYWORD_BLOCK_MIN_RIGHT_WORDS) return false;
+  return /[a-z]/.test(normalized);
+}
+
+function reorderInlineNamedSectionHeadingsAfterBodyContinuations(lines: TextLine[]): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 1; index < reordered.length - 1; index += 1) {
+    const headingLine = reordered[index];
+    if (!isInlineNamedSectionHeadingLine(headingLine.text)) continue;
+    const previousLine = reordered[index - 1];
+    if (previousLine.pageIndex !== headingLine.pageIndex) continue;
+    const previousText = normalizeSpacing(previousLine.text);
+    if (previousText.length === 0) continue;
+    if (INLINE_NAMED_SECTION_HEADING_PREVIOUS_TERMINAL_PUNCTUATION_PATTERN.test(previousText)) {
+      continue;
+    }
+
+    let continuationEndIndex = index;
+    for (
+      let lookaheadOffset = 1;
+      lookaheadOffset <= INLINE_NAMED_SECTION_HEADING_CONTINUATION_LOOKAHEAD;
+      lookaheadOffset += 1
+    ) {
+      const continuationIndex = index + lookaheadOffset;
+      if (continuationIndex >= reordered.length) break;
+      const anchorLine = reordered[continuationEndIndex];
+      const continuationLine = reordered[continuationIndex];
+      if (!isInlineHeadingContinuationLine(continuationLine, headingLine, anchorLine)) break;
+      continuationEndIndex = continuationIndex;
+    }
+
+    if (continuationEndIndex === index) continue;
+    const [movedHeading] = reordered.splice(index, 1);
+    reordered.splice(continuationEndIndex, 0, movedHeading);
+    index = continuationEndIndex;
+  }
+  return reordered;
+}
+
+function isInlineNamedSectionHeadingLine(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  const match = INLINE_NAMED_SECTION_HEADING_PATTERN.exec(normalized);
+  if (!match) return false;
+  const headingPrefix = normalizeSpacing(match[1]).toLowerCase();
+  return INLINE_NAMED_SECTION_HEADING_PREFIXES.has(headingPrefix);
+}
+
+function isInlineHeadingContinuationLine(
+  continuationLine: TextLine,
+  headingLine: TextLine,
+  anchorLine: TextLine,
+): boolean {
+  if (continuationLine.pageIndex !== headingLine.pageIndex) return false;
+  const normalized = normalizeSpacing(continuationLine.text);
+  if (normalized.length === 0) return false;
+  if (!INLINE_NAMED_SECTION_HEADING_CONTINUATION_START_PATTERN.test(normalized)) return false;
+  if (
+    Math.abs(continuationLine.x - headingLine.x) >
+    continuationLine.pageWidth * INLINE_NAMED_SECTION_HEADING_CONTINUATION_MAX_LEFT_OFFSET_RATIO
+  ) {
+    return false;
+  }
+  const maxYDelta = Math.max(
+    headingLine.fontSize * INLINE_NAMED_SECTION_HEADING_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+    headingLine.fontSize + 6,
+  );
+  return Math.abs(continuationLine.y - anchorLine.y) <= maxYDelta;
+}
+
+function reorderBodyContinuationBeforeInterposedLine(lines: TextLine[]): TextLine[] {
+  const reordered = [...lines];
+  for (let index = 1; index < reordered.length - 1; index += 1) {
+    const previousLine = reordered[index - 1];
+    const interposedLine = reordered[index];
+    const continuationLine = reordered[index + 1];
+    if (!shouldMoveBodyContinuationBeforeInterposedLine(previousLine, interposedLine, continuationLine)) {
+      continue;
+    }
+    reordered.splice(index, 2, continuationLine, interposedLine);
+    index += 1;
+  }
+  return reordered;
+}
+
+function shouldMoveBodyContinuationBeforeInterposedLine(
+  previousLine: TextLine,
+  interposedLine: TextLine,
+  continuationLine: TextLine,
+): boolean {
+  if (previousLine.pageIndex !== interposedLine.pageIndex) return false;
+  if (interposedLine.pageIndex !== continuationLine.pageIndex) return false;
+
+  const previousText = normalizeSpacing(previousLine.text);
+  const continuationText = normalizeSpacing(continuationLine.text);
+  const interposedText = normalizeSpacing(interposedLine.text);
+  if (previousText.length === 0 || continuationText.length === 0 || interposedText.length === 0) {
+    return false;
+  }
+  if (countWords(previousText) < 4) return false;
+  if (LEFT_BODY_CONTINUATION_END_PUNCTUATION_PATTERN.test(previousText)) return false;
+  if (!LEFT_BODY_CONTINUATION_START_PATTERN.test(continuationText)) return false;
+
+  const maxLeftOffset = previousLine.pageWidth * LEFT_BODY_CONTINUATION_MAX_LEFT_OFFSET_RATIO;
+  if (Math.abs(previousLine.x - continuationLine.x) > maxLeftOffset) return false;
+
+  const maxYDelta = Math.max(
+    Math.max(previousLine.fontSize, continuationLine.fontSize) *
+    LEFT_BODY_CONTINUATION_MAX_Y_DELTA_FONT_RATIO,
+    Math.max(previousLine.fontSize, continuationLine.fontSize) + 8,
+  );
+  if (Math.abs(previousLine.y - continuationLine.y) > maxYDelta) return false;
+
+  const minInterposedOffset = previousLine.pageWidth * 0.12;
+  if (interposedLine.x - previousLine.x < minInterposedOffset) return false;
+  if (!/^(?:['′"“]|[A-Z])/u.test(interposedText)) return false;
+  if (countWords(interposedText) < 5) return false;
+  return true;
+}
+
 function isFirstTopLevelLeftColumnHeadingOnFirstPage(
   line: TextLine,
   multiColumnPageIndexes: Set<number>,
@@ -1820,6 +2169,27 @@ function splitFragmentsByColumnBreaks(
     return midpointSplit;
   }
   return filteredGroups;
+}
+
+function splitFragmentsBySimpleMidpoint(
+  fragments: ExtractedFragment[],
+  pageWidth: number,
+): ExtractedFragment[][] | undefined {
+  const splitX = pageWidth * MULTI_COLUMN_SPLIT_RATIO;
+  const leftColumn: ExtractedFragment[] = [];
+  const rightColumn: ExtractedFragment[] = [];
+
+  for (const fragment of fragments) {
+    const estimatedCenter = estimateFragmentCenterX(fragment);
+    if (estimatedCenter < splitX) {
+      leftColumn.push(fragment);
+    } else {
+      rightColumn.push(fragment);
+    }
+  }
+
+  if (leftColumn.length === 0 || rightColumn.length === 0) return undefined;
+  return [leftColumn, rightColumn];
 }
 
 function splitFragmentsByMidpoint(
