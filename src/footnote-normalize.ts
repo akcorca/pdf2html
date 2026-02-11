@@ -26,19 +26,12 @@ const FOOTNOTE_TINY_MATH_CONTEXT_PATTERN = /[=+\-−*/√∑∏∞·]/u;
 
 export function normalizeFootnoteLines(footnoteLines: TextLine[], bodyFontSize: number): TextLine[] {
   return inferMissingNumericFootnoteMarkers(
-    mergeWrappedFootnoteLines(
-      mergeStandaloneFootnoteMarkerLines(footnoteLines, bodyFontSize),
-      bodyFontSize,
+    mergeAdjacentLines(
+      mergeAdjacentLines(footnoteLines, (markerLine, textLine) =>
+        mergeStandaloneMarkerLine(markerLine, textLine, bodyFontSize),
+      ),
+      (previousLine, line) => mergeFootnoteContinuationLine(previousLine, line, bodyFontSize),
     ),
-  );
-}
-
-function mergeStandaloneFootnoteMarkerLines(
-  footnoteLines: TextLine[],
-  bodyFontSize: number,
-): TextLine[] {
-  return mergeAdjacentLines(footnoteLines, (markerLine, textLine) =>
-    mergeStandaloneMarkerLine(markerLine, textLine, bodyFontSize),
   );
 }
 
@@ -67,12 +60,6 @@ function isFootnoteMarkerOnlyText(text: string): boolean {
   return (
     FOOTNOTE_SYMBOL_MARKER_ONLY_PATTERN.test(text) ||
     FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN.test(text)
-  );
-}
-
-function mergeWrappedFootnoteLines(footnoteLines: TextLine[], bodyFontSize: number): TextLine[] {
-  return mergeAdjacentLines(footnoteLines, (previousLine, line) =>
-    mergeFootnoteContinuationLine(previousLine, line, bodyFontSize),
   );
 }
 
@@ -110,25 +97,22 @@ function mergeFootnoteContinuationLine(
   const currentText = getFootnoteBlockText(line, bodyFontSize);
   if (!previousText || !currentText) return undefined;
   if (FOOTNOTE_MARKER_PREFIX_PATTERN.test(currentText)) return undefined;
-  if (FOOTNOTE_URL_START_PATTERN.test(currentText)) return undefined;
-  if (FOOTNOTE_URL_START_PATTERN.test(previousText)) return undefined;
+  if (FOOTNOTE_URL_START_PATTERN.test(currentText) || FOOTNOTE_URL_START_PATTERN.test(previousText)) {
+    return undefined;
+  }
   const detachedTinyMathContinuation = isDetachedTinyMathContinuationLine(
     previousLine,
     line,
     previousText,
     currentText,
   );
-  if (
-    Math.abs(line.fontSize - previousLine.fontSize) > FOOTNOTE_CONTINUATION_MAX_FONT_DELTA &&
-    !detachedTinyMathContinuation
-  ) {
-    return undefined;
-  }
-  if (
-    leftOffset > line.pageWidth * FOOTNOTE_CONTINUATION_MAX_LEFT_OFFSET_RATIO &&
-    !detachedTinyMathContinuation
-  ) {
-    return undefined;
+  if (!detachedTinyMathContinuation) {
+    if (Math.abs(line.fontSize - previousLine.fontSize) > FOOTNOTE_CONTINUATION_MAX_FONT_DELTA) {
+      return undefined;
+    }
+    if (leftOffset > line.pageWidth * FOOTNOTE_CONTINUATION_MAX_LEFT_OFFSET_RATIO) {
+      return undefined;
+    }
   }
 
   return {
