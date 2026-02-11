@@ -248,6 +248,9 @@ function mergeFootnoteContinuationLine(
 
   return {
     ...previousLine,
+    // Keep the merged line anchored to the latest physical line so
+    // subsequent continuation checks use adjacent-line gaps.
+    y: line.y,
     estimatedWidth: Math.max(previousLine.estimatedWidth, line.estimatedWidth),
     text: `${previousText} ${currentText}`,
   };
