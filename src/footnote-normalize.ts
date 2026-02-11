@@ -25,14 +25,13 @@ const FOOTNOTE_TINY_MATH_FRAGMENT_MULTI_LETTER_TOKEN_PATTERN = /[A-Za-z]{2,}/;
 const FOOTNOTE_TINY_MATH_CONTEXT_PATTERN = /[=+\-−*/√∑∏∞·]/u;
 
 export function normalizeFootnoteLines(footnoteLines: TextLine[], bodyFontSize: number): TextLine[] {
-  return inferMissingNumericFootnoteMarkers(
-    mergeAdjacentLines(
-      mergeAdjacentLines(footnoteLines, (markerLine, textLine) =>
-        mergeStandaloneMarkerLine(markerLine, textLine, bodyFontSize),
-      ),
-      (previousLine, line) => mergeFootnoteContinuationLine(previousLine, line, bodyFontSize),
-    ),
+  const markerMergedLines = mergeAdjacentLines(footnoteLines, (markerLine, textLine) =>
+    mergeStandaloneMarkerLine(markerLine, textLine, bodyFontSize),
   );
+  const continuationMergedLines = mergeAdjacentLines(markerMergedLines, (previousLine, line) =>
+    mergeFootnoteContinuationLine(previousLine, line, bodyFontSize),
+  );
+  return inferMissingNumericFootnoteMarkers(continuationMergedLines);
 }
 
 function mergeStandaloneMarkerLine(
@@ -91,28 +90,21 @@ function mergeFootnoteContinuationLine(
 ): TextLine | undefined {
   if (!isDescendingNearbyFootnoteLine(line, previousLine)) return undefined;
 
-  const leftOffset = Math.abs(line.x - previousLine.x);
-
   const previousText = getFootnoteBlockText(previousLine, bodyFontSize);
   const currentText = getFootnoteBlockText(line, bodyFontSize);
   if (!previousText || !currentText) return undefined;
-  if (FOOTNOTE_MARKER_PREFIX_PATTERN.test(currentText)) return undefined;
-  if (FOOTNOTE_URL_START_PATTERN.test(currentText) || FOOTNOTE_URL_START_PATTERN.test(previousText)) {
+  if (isBlockedFootnoteContinuationText(previousText, currentText)) {
     return undefined;
   }
+
   const detachedTinyMathContinuation = isDetachedTinyMathContinuationLine(
     previousLine,
     line,
     previousText,
     currentText,
   );
-  if (!detachedTinyMathContinuation) {
-    if (Math.abs(line.fontSize - previousLine.fontSize) > FOOTNOTE_CONTINUATION_MAX_FONT_DELTA) {
-      return undefined;
-    }
-    if (leftOffset > line.pageWidth * FOOTNOTE_CONTINUATION_MAX_LEFT_OFFSET_RATIO) {
-      return undefined;
-    }
+  if (!detachedTinyMathContinuation && !isWithinStandardContinuationBounds(previousLine, line)) {
+    return undefined;
   }
 
   return {
@@ -123,6 +115,23 @@ function mergeFootnoteContinuationLine(
     estimatedWidth: Math.max(previousLine.estimatedWidth, line.estimatedWidth),
     text: `${previousText} ${currentText}`,
   };
+}
+
+function isBlockedFootnoteContinuationText(previousText: string, currentText: string): boolean {
+  if (FOOTNOTE_MARKER_PREFIX_PATTERN.test(currentText)) return true;
+  return (
+    FOOTNOTE_URL_START_PATTERN.test(currentText) || FOOTNOTE_URL_START_PATTERN.test(previousText)
+  );
+}
+
+function isWithinStandardContinuationBounds(previousLine: TextLine, line: TextLine): boolean {
+  if (Math.abs(line.fontSize - previousLine.fontSize) > FOOTNOTE_CONTINUATION_MAX_FONT_DELTA) {
+    return false;
+  }
+  return (
+    Math.abs(line.x - previousLine.x) <=
+    line.pageWidth * FOOTNOTE_CONTINUATION_MAX_LEFT_OFFSET_RATIO
+  );
 }
 
 function isDetachedTinyMathContinuationLine(
