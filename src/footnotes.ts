@@ -153,28 +153,9 @@ function mergeStandaloneFootnoteMarkerLines(
   footnoteLines: TextLine[],
   bodyFontSize: number,
 ): TextLine[] {
-  if (footnoteLines.length < 2) return footnoteLines;
-  const merged: TextLine[] = [];
-  let index = 0;
-
-  while (index < footnoteLines.length) {
-    const markerLine = footnoteLines[index];
-    const mergedLine = mergeStandaloneMarkerLine(
-      markerLine,
-      footnoteLines[index + 1],
-      bodyFontSize,
-    );
-    if (mergedLine) {
-      merged.push(mergedLine);
-      index += 2;
-      continue;
-    }
-
-    merged.push(markerLine);
-    index += 1;
-  }
-
-  return merged;
+  return mergeAdjacentLines(footnoteLines, (markerLine, textLine) =>
+    mergeStandaloneMarkerLine(markerLine, textLine, bodyFontSize),
+  );
 }
 
 function mergeStandaloneMarkerLine(
@@ -209,18 +190,27 @@ function isFootnoteMarkerOnlyText(text: string): boolean {
 }
 
 function mergeWrappedFootnoteLines(footnoteLines: TextLine[], bodyFontSize: number): TextLine[] {
-  if (footnoteLines.length < 2) return footnoteLines;
-  const merged: TextLine[] = [footnoteLines[0]];
+  return mergeAdjacentLines(footnoteLines, (previousLine, line) =>
+    mergeFootnoteContinuationLine(previousLine, line, bodyFontSize),
+  );
+}
 
-  for (let index = 1; index < footnoteLines.length; index += 1) {
-    const currentLine = footnoteLines[index];
+function mergeAdjacentLines(
+  lines: TextLine[],
+  tryMerge: (previousLine: TextLine, line: TextLine) => TextLine | undefined,
+): TextLine[] {
+  if (lines.length < 2) return lines;
+  const merged: TextLine[] = [lines[0]];
+
+  for (let index = 1; index < lines.length; index += 1) {
+    const line = lines[index];
     const previousLine = merged[merged.length - 1];
-    const mergedLine = mergeFootnoteContinuationLine(previousLine, currentLine, bodyFontSize);
+    const mergedLine = tryMerge(previousLine, line);
     if (mergedLine) {
       merged[merged.length - 1] = mergedLine;
       continue;
     }
-    merged.push(currentLine);
+    merged.push(line);
   }
 
   return merged;
