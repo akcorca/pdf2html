@@ -708,6 +708,14 @@ describe("convertPdfToHtml", () => {
     expect(html).not.toContain("and Ruslan Salakhutdi-nov.");
   });
 
+  it("keeps reference continuation tails attached to the correct marker in attention.pdf", () => {
+    const reference7 = html.match(/<li>\[7\][\s\S]*?<\/li>/)?.[0] ?? "";
+    const reference8 = html.match(/<li>\[8\][\s\S]*?<\/li>/)?.[0] ?? "";
+    expect(reference7).toContain("CoRR , abs/1412.3555, 2014.");
+    expect(reference8).toContain("network grammars. In Proc. of NAACL , 2016.");
+    expect(reference8).not.toContain("CoRR , abs/1412.3555, 2014.");
+  });
+
   it("removes attention-visualization special-token artifact lines in attention.pdf", () => {
     expect(html).not.toContain("&lt;EOS&gt;");
     expect(html).not.toContain("&lt;pad&gt;");

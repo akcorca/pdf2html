@@ -149,7 +149,7 @@ const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_TOKEN_PATTERN = /^[A-Z]{1,3}$/;
 const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MIN_TOKEN_COUNT = 3;
 const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MAX_TOKEN_COUNT = 6;
 const RENDERED_TRAILING_URL_PREFIX_PATTERN =
-  /^(.*?)(https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*[./-])$/iu;
+  /^(.*?)(https?:\/\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]*[./-])$/iu;
 const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
 const CAPTION_CONTINUATION_MAX_FONT_DELTA = 0.8;
 const CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.05;
@@ -2647,6 +2647,7 @@ function renderReferenceList(
 
   const items: ReferenceListItem[] = [];
   let index = startIndex;
+  let previousStartLine: TextLine | undefined;
 
   while (index < lines.length) {
     const normalized = normalizeSpacing(lines[index].text);
@@ -2654,6 +2655,7 @@ function renderReferenceList(
 
     // Start a new reference entry — collect its text and continuation lines
     const parts = [normalized];
+    const startLine = lines[index];
     let nextIndex = index + 1;
 
     while (nextIndex < lines.length) {
@@ -2666,6 +2668,18 @@ function renderReferenceList(
       // Stop at the next reference entry
       if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(candidateNormalized))
         break;
+      if (
+        isAboveCurrentReferenceStart(candidate, startLine) &&
+        tryBackfillPreviousReferenceTail(
+          items[items.length - 1],
+          previousStartLine,
+          candidate,
+          candidateNormalized,
+        )
+      ) {
+        nextIndex += 1;
+        continue;
+      }
       // Stop at headings
       if (
         detectHeadingCandidate(
@@ -2685,7 +2699,7 @@ function renderReferenceList(
       if (FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN.test(candidateNormalized)) break;
       // Font size must be similar to the entry start
       if (
-        Math.abs(candidate.fontSize - lines[index].fontSize) >
+        Math.abs(candidate.fontSize - startLine.fontSize) >
         REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA
       )
         break;
@@ -2699,6 +2713,7 @@ function renderReferenceList(
       marker: parseReferenceListMarker(itemText),
       sourceOrder: items.length,
     });
+    previousStartLine = startLine;
     index = nextIndex;
   }
 
@@ -2715,6 +2730,50 @@ function renderReferenceList(
     ],
     nextIndex: index,
   };
+}
+
+function isAboveCurrentReferenceStart(
+  candidate: TextLine,
+  startLine: TextLine,
+): boolean {
+  return (
+    candidate.pageIndex === startLine.pageIndex &&
+    candidate.y > startLine.y + Math.max(0.5, startLine.fontSize * 0.25)
+  );
+}
+
+function tryBackfillPreviousReferenceTail(
+  previousItem: ReferenceListItem | undefined,
+  previousStartLine: TextLine | undefined,
+  candidate: TextLine,
+  candidateText: string,
+): boolean {
+  if (!previousItem || !previousStartLine) return false;
+  if (isCrossColumnPair(previousStartLine, candidate)) return false;
+  if (
+    candidate.y >
+    previousStartLine.y + Math.max(0.5, previousStartLine.fontSize * 0.25)
+  ) {
+    return false;
+  }
+  if (
+    previousStartLine.y - candidate.y >
+    Math.max(
+      12,
+      previousStartLine.fontSize * REFERENCE_ENTRY_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
+    )
+  ) {
+    return false;
+  }
+  if (
+    Math.abs(candidate.fontSize - previousStartLine.fontSize) >
+    REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA
+  ) {
+    return false;
+  }
+
+  previousItem.text = normalizeSpacing(`${previousItem.text} ${candidateText}`);
+  return true;
 }
 
 function normalizeReferenceListItemHtml(text: string): string {
