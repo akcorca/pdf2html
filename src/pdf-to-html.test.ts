@@ -693,6 +693,18 @@ describe("convertPdfToHtml", () => {
     );
   });
 
+  it("removes soft-wrap hyphen artifacts inside attention.pdf reference list items", () => {
+    expect(html).toContain("Convolutional sequence to sequence learning.");
+    expect(html).toContain("Deep residual learning for image recognition.");
+    expect(html).toContain("and Koray Kavukcuoglu.");
+    expect(html).toContain("and Ruslan Salakhutdinov.");
+
+    expect(html).not.toContain("Convolu-tional sequence to sequence learning.");
+    expect(html).not.toContain("for im-age recognition.");
+    expect(html).not.toContain("and Ko-ray Kavukcuoglu.");
+    expect(html).not.toContain("and Ruslan Salakhutdi-nov.");
+  });
+
   it("removes attention-visualization special-token artifact lines in attention.pdf", () => {
     expect(html).not.toContain("&lt;EOS&gt;");
     expect(html).not.toContain("&lt;pad&gt;");

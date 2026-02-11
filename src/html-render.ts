@@ -69,6 +69,38 @@ const HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN =
   /^(?:tion(?:al(?:ly)?|s)?|sion(?:al(?:ly)?|s)?|mation|nition|plicat(?:ion|ions|ive)|[a-z]{1,4}ingly)/u;
 const HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH = 3;
 const HYPHEN_WRAP_SOFT_SHORT_CONTINUATION_MAX_LENGTH = 3;
+const REFERENCE_IN_WORD_HYPHEN_PATTERN = /\b([A-Za-z]{1,30})-([A-Za-z]{2,30})\b/g;
+const REFERENCE_IN_WORD_HYPHEN_SHORT_LEFT_PREFIXES = new Set([
+  "a",
+  "co",
+  "de",
+  "e",
+  "in",
+  "of",
+  "on",
+  "re",
+  "to",
+  "x",
+]);
+const REFERENCE_IN_WORD_HYPHEN_RIGHT_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "as",
+  "at",
+  "by",
+  "for",
+  "in",
+  "of",
+  "off",
+  "on",
+  "or",
+  "the",
+  "to",
+  "up",
+  "via",
+]);
+const REFERENCE_IN_WORD_HYPHEN_SHORT_RIGHT_VOWEL_PATTERN = /[aeiouy]/i;
 const SAME_ROW_SENTENCE_SPLIT_END_PATTERN = /[.!?]["')\]]?$/;
 const SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN = /^[A-Z0-9(“‘"']/u;
 const SAME_ROW_SENTENCE_SPLIT_MAX_VERTICAL_DELTA_FONT_RATIO = 0.2;
@@ -1792,7 +1824,7 @@ function renderReferenceList(
 }
 
 function normalizeReferenceListItemHtml(text: string): string {
-  return escapeHtml(text)
+  return escapeHtml(normalizeReferenceListSoftHyphenArtifacts(text))
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
     .replaceAll(/[“”]/g, '"')
@@ -1809,6 +1841,42 @@ function normalizeReferenceListItemHtml(text: string): string {
     .replaceAll(/<em>\s+/giu, "<em>")
     .replaceAll(/\s+<\/em>/giu, "</em>")
     .replaceAll(/\s+<\/span>/giu, "</span>");
+}
+
+function normalizeReferenceListSoftHyphenArtifacts(text: string): string {
+  return text.replaceAll(REFERENCE_IN_WORD_HYPHEN_PATTERN, (match, leftRaw, rightRaw) => {
+    const left = String(leftRaw);
+    const right = String(rightRaw);
+    if (!shouldDropReferenceInWordHyphen(left, right)) return match;
+    return `${left}${right}`;
+  });
+}
+
+function shouldDropReferenceInWordHyphen(left: string, right: string): boolean {
+  const rightLower = right.toLowerCase();
+  if (right !== rightLower) return false;
+  if (REFERENCE_IN_WORD_HYPHEN_RIGHT_STOP_WORDS.has(rightLower)) return false;
+
+  const leftLower = left.toLowerCase();
+  const leftIsLowerOrTitleCase = left === leftLower || isTitleCaseWord(left);
+  if (
+    leftIsLowerOrTitleCase &&
+    HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN.test(rightLower)
+  ) {
+    return true;
+  }
+
+  if (right.length > 3) return false;
+  if (!REFERENCE_IN_WORD_HYPHEN_SHORT_RIGHT_VOWEL_PATTERN.test(right)) return false;
+  if (REFERENCE_IN_WORD_HYPHEN_SHORT_LEFT_PREFIXES.has(leftLower)) return false;
+  if (left.length >= 5) return true;
+  if (left.length === 2 && left === leftLower) return true;
+  if (left.length >= 2 && left.length <= 3 && isTitleCaseWord(left)) return true;
+  return false;
+}
+
+function isTitleCaseWord(value: string): boolean {
+  return /^[A-Z][a-z]+$/.test(value);
 }
 
 function parseReferenceListMarker(text: string): number | undefined {
