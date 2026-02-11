@@ -37,11 +37,9 @@ export function movePageFootnotesToDocumentEnd(
 
   if (moved.size === 0) return { bodyLines: lines, footnoteLines: [] };
   const { bodyLines, footnoteLines } = partitionFootnoteLines(lines, moved);
-  const mergedFootnoteLines = mergeStandaloneFootnoteMarkerLines(footnoteLines, bodyFontSize);
-  const mergedWrappedFootnoteLines = mergeWrappedFootnoteLines(mergedFootnoteLines, bodyFontSize);
   return {
     bodyLines,
-    footnoteLines: inferMissingNumericFootnoteMarkers(mergedWrappedFootnoteLines),
+    footnoteLines: normalizeFootnoteLines(footnoteLines, bodyFontSize),
   };
 }
 
@@ -57,6 +55,15 @@ function partitionFootnoteLines(
   }
 
   return { bodyLines, footnoteLines };
+}
+
+function normalizeFootnoteLines(footnoteLines: TextLine[], bodyFontSize: number): TextLine[] {
+  return inferMissingNumericFootnoteMarkers(
+    mergeWrappedFootnoteLines(
+      mergeStandaloneFootnoteMarkerLines(footnoteLines, bodyFontSize),
+      bodyFontSize,
+    ),
+  );
 }
 
 function collectFootnoteLines(lines: TextLine[], bodyFontSize: number): Set<TextLine> {
@@ -116,10 +123,14 @@ function isLikelyFootnoteContinuationLine(
   previousLine: TextLine,
   bodyFontSize: number,
 ): boolean {
+  if (!isDescendingNearbyLine(line, previousLine)) return false;
+  return getFootnoteBlockText(line, bodyFontSize) !== undefined;
+}
+
+function isDescendingNearbyLine(line: TextLine, previousLine: TextLine): boolean {
   if (line.pageIndex !== previousLine.pageIndex) return false;
   if (line.y >= previousLine.y) return false;
-  if (previousLine.y - line.y > FOOTNOTE_MAX_VERTICAL_GAP) return false;
-  return getFootnoteBlockText(line, bodyFontSize) !== undefined;
+  return previousLine.y - line.y <= FOOTNOTE_MAX_VERTICAL_GAP;
 }
 
 function getFootnoteBlockText(line: TextLine, bodyFontSize: number): string | undefined {
@@ -220,9 +231,7 @@ function mergeFootnoteContinuationLine(
   line: TextLine,
   bodyFontSize: number,
 ): TextLine | undefined {
-  if (line.pageIndex !== previousLine.pageIndex) return undefined;
-  if (line.y >= previousLine.y) return undefined;
-  if (previousLine.y - line.y > FOOTNOTE_MAX_VERTICAL_GAP) return undefined;
+  if (!isDescendingNearbyLine(line, previousLine)) return undefined;
   if (Math.abs(line.fontSize - previousLine.fontSize) > FOOTNOTE_CONTINUATION_MAX_FONT_DELTA) {
     return undefined;
   }
