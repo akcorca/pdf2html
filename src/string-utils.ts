@@ -1,4 +1,4 @@
-export function normalizeSpacing(text: string): string {
+function normalizeSpacing(text: string): string {
   return text.trim().replace(/\s+/g, " ");
 }
 

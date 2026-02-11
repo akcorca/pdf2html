@@ -131,7 +131,7 @@ const PUBLISHER_IMPRINT_FOOTER_LONG_NUMBER_PATTERN = /\b\d{4,8}\b/g;
 const SPECIAL_TOKEN_ARTIFACT_PATTERN = /<\s*(?:pad|eos|bos|unk)\s*>/giu;
 const SPECIAL_TOKEN_ARTIFACT_MAX_FONT_RATIO = 0.96;
 const SPECIAL_TOKEN_ARTIFACT_MAX_WORDS_WITH_SINGLE_TOKEN = 4;
-const DETACHED_MATH_FRAGMENT_ALLOWED_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}\[\],.;:√∞]+$/u;
+const DETACHED_MATH_FRAGMENT_ALLOWED_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}[\],.;:√∞]+$/u;
 const DETACHED_MATH_FRAGMENT_MAX_TEXT_LENGTH = 18;
 const DETACHED_MATH_FRAGMENT_MAX_TOKENS = 6;
 const DETACHED_MATH_FRAGMENT_MAX_ALPHA_TOKEN_LENGTH = 2;
@@ -1168,7 +1168,7 @@ function isLikelyDetachedMathFragmentCandidate(line: TextLine, bodyFontSize: num
 
 function hasMathLikeDetachedFragmentTokens(tokens: string[]): boolean {
   const hasNumericOrMathSymbol = tokens.some(
-    (token) => /\d/.test(token) || /[−\-+*/=(){}\[\],.;:√∞]/u.test(token),
+    (token) => /\d/.test(token) || /[−\-+*/=(){}[\],.;:√∞]/u.test(token),
   );
   if (hasNumericOrMathSymbol) return true;
   return tokens.every(
@@ -1179,7 +1179,7 @@ function hasMathLikeDetachedFragmentTokens(tokens: string[]): boolean {
 }
 
 function isPureNumericFragmentTokens(tokens: string[], normalized: string): boolean {
-  if (/[−\-+*/=(){}\[\]√∞]/u.test(normalized)) return false;
+  if (/[−\-+*/=(){}[\]√∞]/u.test(normalized)) return false;
   return tokens.every((token) => /^[-+]?\d+(?:[.,]\d+)?[.,;:]?$/.test(token));
 }
 

@@ -154,12 +154,13 @@ describe("attention abstract same-row merge", () => {
 
   it("moves unmarked bottom footnote prose out of section body and into footnotes", () => {
     const footnoteText = "To illustrate why the dot products get large";
-    const footnoteBlock = attentionHtml.match(/<div class=\"footnotes\">(.|\n)*<\/div>/);
+    const footnoteBlock = attentionHtml.match(/<div class="footnotes">(.|\n)*<\/div>/);
 
     expect(footnoteBlock).not.toBeNull();
-    expect(footnoteBlock![0]).toContain(footnoteText);
+    if (!footnoteBlock) throw new Error("Expected footnotes block to exist");
+    expect(footnoteBlock[0]).toContain(footnoteText);
 
-    const mainBody = attentionHtml.replace(footnoteBlock![0], "");
+    const mainBody = attentionHtml.replace(footnoteBlock[0], "");
     expect(mainBody).not.toContain(footnoteText);
   });
 });

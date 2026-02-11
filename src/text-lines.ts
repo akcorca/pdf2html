@@ -1682,29 +1682,8 @@ function isSidebarKeywordRightBodyCandidate(line: TextLine, labelLine: TextLine)
 function reorderInlineNamedSectionHeadingsAfterBodyContinuations(lines: TextLine[]): TextLine[] {
   const reordered = [...lines];
   for (let index = 1; index < reordered.length - 1; index += 1) {
-    const headingLine = reordered[index];
-    if (!isInlineNamedSectionHeadingLine(headingLine.text)) continue;
-    const previousLine = reordered[index - 1];
-    if (previousLine.pageIndex !== headingLine.pageIndex) continue;
-    const previousText = normalizeSpacing(previousLine.text);
-    if (previousText.length === 0) continue;
-    if (INLINE_NAMED_SECTION_HEADING_PREVIOUS_TERMINAL_PUNCTUATION_PATTERN.test(previousText)) {
-      continue;
-    }
-
-    let continuationEndIndex = index;
-    for (
-      let lookaheadOffset = 1;
-      lookaheadOffset <= INLINE_NAMED_SECTION_HEADING_CONTINUATION_LOOKAHEAD;
-      lookaheadOffset += 1
-    ) {
-      const continuationIndex = index + lookaheadOffset;
-      if (continuationIndex >= reordered.length) break;
-      const anchorLine = reordered[continuationEndIndex];
-      const continuationLine = reordered[continuationIndex];
-      if (!isInlineHeadingContinuationLine(continuationLine, headingLine, anchorLine)) break;
-      continuationEndIndex = continuationIndex;
-    }
+    if (!isInlineNamedSectionHeadingMoveCandidate(reordered, index)) continue;
+    const continuationEndIndex = findInlineNamedSectionHeadingContinuationEndIndex(reordered, index);
 
     if (continuationEndIndex === index) continue;
     const [movedHeading] = reordered.splice(index, 1);
@@ -1712,6 +1691,43 @@ function reorderInlineNamedSectionHeadingsAfterBodyContinuations(lines: TextLine
     index = continuationEndIndex;
   }
   return reordered;
+}
+
+function isInlineNamedSectionHeadingMoveCandidate(lines: TextLine[], headingIndex: number): boolean {
+  const headingLine = lines[headingIndex];
+  if (!isInlineNamedSectionHeadingLine(headingLine.text)) return false;
+
+  const previousLine = lines[headingIndex - 1];
+  if (previousLine.pageIndex !== headingLine.pageIndex) return false;
+
+  const previousText = normalizeSpacing(previousLine.text);
+  if (previousText.length === 0) return false;
+  if (INLINE_NAMED_SECTION_HEADING_PREVIOUS_TERMINAL_PUNCTUATION_PATTERN.test(previousText)) {
+    return false;
+  }
+  return true;
+}
+
+function findInlineNamedSectionHeadingContinuationEndIndex(
+  lines: TextLine[],
+  headingIndex: number,
+): number {
+  const headingLine = lines[headingIndex];
+  let continuationEndIndex = headingIndex;
+  for (
+    let lookaheadOffset = 1;
+    lookaheadOffset <= INLINE_NAMED_SECTION_HEADING_CONTINUATION_LOOKAHEAD;
+    lookaheadOffset += 1
+  ) {
+    const continuationIndex = headingIndex + lookaheadOffset;
+    if (continuationIndex >= lines.length) break;
+
+    const anchorLine = lines[continuationEndIndex];
+    const continuationLine = lines[continuationIndex];
+    if (!isInlineHeadingContinuationLine(continuationLine, headingLine, anchorLine)) break;
+    continuationEndIndex = continuationIndex;
+  }
+  return continuationEndIndex;
 }
 
 function isInlineNamedSectionHeadingLine(text: string): boolean {

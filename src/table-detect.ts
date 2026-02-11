@@ -157,20 +157,80 @@ function finalizeDetectedTable(input: {
   const allParsedRows = buildTableRows(deduped, bodyEntries, fragments, bodyFontSize);
   if (allParsedRows.length < MIN_TABLE_DATA_ROWS + 1) return undefined;
 
-  const [headerRow, ...dataRows] = allParsedRows;
-  if (!headerRow || dataRows.length === 0) return undefined;
-  const sanitizedHeaderRow = sanitizeHeaderCells(headerRow);
+  const [headerRow, ...parsedRows] = allParsedRows;
+  if (!headerRow || parsedRows.length === 0) return undefined;
 
-  normalizeColumnCount([sanitizedHeaderRow, ...dataRows]);
+  const { headerRows, dataRows } = splitHeaderAndDataRows(headerRow, parsedRows);
+  if (dataRows.length === 0) return undefined;
+
+  normalizeColumnCount([...headerRows, ...dataRows]);
 
   return {
     captionStartIndex: startIndex,
     captionText: captionText.trim(),
     captionLineIndexes,
-    headerRows: [sanitizedHeaderRow],
+    headerRows,
     dataRows,
     nextIndex,
   };
+}
+
+function splitHeaderAndDataRows(
+  headerRow: string[],
+  parsedRows: string[][],
+): { headerRows: string[][]; dataRows: string[][] } {
+  const headerRows: string[][] = [sanitizeHeaderCells(headerRow)];
+  const dataRows = [...parsedRows];
+
+  while (dataRows.length >= 2) {
+    const candidateHeaderRow = dataRows[0];
+    const nextRow = dataRows[1];
+    if (!isLikelySubHeaderRow(candidateHeaderRow, nextRow)) break;
+    headerRows.push(sanitizeHeaderCells(candidateHeaderRow));
+    dataRows.shift();
+  }
+
+  const headerRowKeys = new Set(headerRows.map(buildComparableRowKey));
+  const filteredDataRows = dataRows.filter((row) => {
+    if (isLikelyNumericDataRow(row)) return true;
+    return !headerRowKeys.has(buildComparableRowKey(sanitizeHeaderCells(row)));
+  });
+
+  return { headerRows, dataRows: filteredDataRows };
+}
+
+function isLikelySubHeaderRow(row: string[], nextRow: string[]): boolean {
+  const nonEmptyCells = row.filter((cell) => cell.trim().length > 0);
+  if (nonEmptyCells.length < 2) return false;
+
+  const textLikeCellCount = nonEmptyCells.filter(isHeaderTextLikeCell).length;
+  if (textLikeCellCount < 2) return false;
+
+  const numericLikeCellCount = nonEmptyCells.length - textLikeCellCount;
+  if (numericLikeCellCount > 1) return false;
+
+  return isLikelyNumericDataRow(nextRow);
+}
+
+function isLikelyNumericDataRow(row: string[]): boolean {
+  const nonEmptyCells = row.filter((cell) => cell.trim().length > 0);
+  if (nonEmptyCells.length < 2) return false;
+  const numericLikeCount = nonEmptyCells.filter(isNumericLikeDataCell).length;
+  return numericLikeCount >= Math.max(2, Math.floor(nonEmptyCells.length * 0.6));
+}
+
+function isHeaderTextLikeCell(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return false;
+  return /[A-Za-z]/u.test(trimmed) && !isNumericLikeDataCell(trimmed);
+}
+
+function isNumericLikeDataCell(value: string): boolean {
+  return /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)%?$/u.test(value.trim());
+}
+
+function buildComparableRowKey(row: string[]): string {
+  return row.map((cell) => cell.trim().toLowerCase()).join("\u241f");
 }
 
 function sanitizeHeaderCells(row: string[]): string[] {
@@ -497,6 +557,12 @@ interface FragmentGroup {
   fragments: ExtractedFragment[];
 }
 
+interface PendingFragmentGroup {
+  frags: ExtractedFragment[];
+  startX: number;
+  lastEndX: number;
+}
+
 /**
  * Find fragments on the page at a given y-bucket, group nearby fragments
  * into column groups separated by large horizontal gaps.
@@ -521,7 +587,7 @@ function getFragmentGroupsForRow(
   const sorted = [...rowFrags].sort((a, b) => a.x - b.x);
 
   const groups: FragmentGroup[] = [];
-  let currentGroup: { frags: ExtractedFragment[]; startX: number; lastEndX: number } = {
+  let currentGroup: PendingFragmentGroup = {
     frags: [sorted[0]],
     startX: sorted[0].x,
     lastEndX: estimateFragmentEndX(sorted[0]),
@@ -532,12 +598,7 @@ function getFragmentGroupsForRow(
     const gap = frag.x - currentGroup.lastEndX;
 
     if (gap > MIN_COLUMN_GAP) {
-      groups.push({
-        startX: currentGroup.startX,
-        endX: currentGroup.lastEndX,
-        text: currentGroup.frags.map((f) => f.text).join(" ").trim(),
-        fragments: currentGroup.frags,
-      });
+      groups.push(buildFragmentGroup(currentGroup));
       currentGroup = {
         frags: [frag],
         startX: frag.x,
@@ -549,14 +610,18 @@ function getFragmentGroupsForRow(
     }
   }
 
-  groups.push({
-    startX: currentGroup.startX,
-    endX: currentGroup.lastEndX,
-    text: currentGroup.frags.map((f) => f.text).join(" ").trim(),
-    fragments: currentGroup.frags,
-  });
+  groups.push(buildFragmentGroup(currentGroup));
 
   return groups;
+}
+
+function buildFragmentGroup(group: PendingFragmentGroup): FragmentGroup {
+  return {
+    startX: group.startX,
+    endX: group.lastEndX,
+    text: group.frags.map((fragment) => fragment.text).join(" ").trim(),
+    fragments: group.frags,
+  };
 }
 
 function estimateRowBounds(

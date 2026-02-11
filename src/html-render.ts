@@ -121,8 +121,8 @@ const BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO = 2.2;
 const BODY_PARAGRAPH_MAX_FONT_DELTA = 0.8;
 const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.2;
 const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.2;
-const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[\p{L}\p{N}<("''\[]/u;
-const BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN = /^[\p{Ll}\p{N}<(“‘"'\[]/u;
+const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[\p{L}\p{N}<("''[]/u;
+const BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN = /^[\p{Ll}\p{N}<(“‘"'[]/u;
 const BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO = 0.2;
 const BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO = 0.72;
 const BODY_PARAGRAPH_PAGE_WRAP_MAX_LEFT_OFFSET_RATIO = 0.06;
@@ -146,7 +146,7 @@ const BODY_PARAGRAPH_SHORT_LEAD_MIN_X_BACKSHIFT_RATIO = 0.08;
 const BODY_PARAGRAPH_SHORT_LEAD_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO = 0.25;
 const BODY_PARAGRAPH_INLINE_MATH_ARTIFACT_LEAD_MIN_WIDTH_RATIO = 0.8;
 // Same-row fragments can split after math operators or citation open brackets.
-const BODY_PARAGRAPH_OPERATOR_TRAILING_PATTERN = /[+\-−/=\[]$/u;
+const BODY_PARAGRAPH_OPERATOR_TRAILING_PATTERN = /[+\-−/=[]$/u;
 const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MIN_X_DELTA_RATIO = 0.18;
 const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO = 0.25;
 const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_PREVIOUS_WIDTH_RATIO = 0.7;
@@ -167,7 +167,7 @@ const INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH = 24;
 const INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT = 8;
 const INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO = 1.0;
 const INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO = 0.55;
-const INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}\[\],.;:√∞]+$/u;
+const INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN = /^[A-Za-z]$/;
 const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_PATTERN = /^[A-Za-z0-9]$/u;
 const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_FONT_RATIO = 0.82;
@@ -176,7 +176,7 @@ const INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN = /^[a-z]{1,6}$/u;
 const INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN = /^[a-z]{1,3}$/u;
 const INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN = /^\d{1,4}$/;
 const INLINE_MATH_BRIDGE_BRACKETED_NUMERIC_TOKEN_PATTERN = /^\[\d{1,4}\]$/;
-const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}\[\],.;:√∞]+$/u;
+const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_LEADING_NUMERIC_MARKER_PATTERN = /^\d{1,4}(?:\s+\d{1,4}){1,2}$/;
 const INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN = /[.!?]["')\]]?$/;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_TOKEN_COUNT = 3;
@@ -215,7 +215,7 @@ const DISPLAY_MATH_FRAGMENT_MAX_WIDTH_RATIO = 0.40;
 const DISPLAY_MATH_FRAGMENT_MAX_VERTICAL_GAP_RATIO = 2.5;
 // Matches math operators but not hyphens embedded in words (e.g., "pre-trained").
 // For - and −, require word boundary or surrounding space to distinguish from hyphenation.
-const DISPLAY_MATH_EQUATION_PATTERN = /[=+×·∑∏∫√∈∉⊂⊃≤≥≈≠∼≡]|(?:^|(?<=\s))[\-−]|\\[a-z]/u;
+const DISPLAY_MATH_EQUATION_PATTERN = /[=+×·∑∏∫√∈∉⊂⊃≤≥≈≠∼≡]|(?:^|(?<=\s))[-−]|\\[a-z]/u;
 const DISPLAY_MATH_SUPERSCRIPT_MAX_FONT_RATIO = 0.85;
 
 interface HeadingCandidate {
@@ -1067,14 +1067,12 @@ function consumeDisplayMathBlock(
 
 // Ignore figure-panel labels that leak out of embedded images (e.g. panel headers)
 // when they duplicate wording from a nearby figure caption.
-function shouldSkipStandaloneFigurePanelLabel(
-  lines: TextLine[],
-  startIndex: number,
+function isStandaloneFigurePanelLabelCandidate(
+  line: TextLine,
+  normalized: string,
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
-  const line = lines[startIndex];
-  const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return false;
   if (CAPTION_START_PATTERN.test(normalized) || STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) {
     return false;
@@ -1092,19 +1090,40 @@ function shouldSkipStandaloneFigurePanelLabel(
   if (words.length < FIGURE_PANEL_LABEL_MIN_WORDS || words.length > FIGURE_PANEL_LABEL_MAX_WORDS) {
     return false;
   }
-  if (!hasStrongTitleCaseSignal(words)) return false;
+  return hasStrongTitleCaseSignal(words);
+}
+
+function isFigurePanelLabelAboveCaptionWithGap(line: TextLine, captionLine: TextLine): boolean {
+  if (line.y <= captionLine.y) return false;
+  const minGap =
+    Math.max(line.fontSize, captionLine.fontSize) * FIGURE_PANEL_LABEL_MIN_CAPTION_GAP_FONT_RATIO;
+  return line.y - captionLine.y >= minGap;
+}
+
+function shouldSkipStandaloneFigurePanelLabel(
+  lines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const line = lines[startIndex];
+  const normalized = normalizeSpacing(line.text);
+  if (
+    !isStandaloneFigurePanelLabelCandidate(
+      line,
+      normalized,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
+    return false;
+  }
 
   const captionStartIndex = findNearbyFigureCaptionStartIndex(lines, startIndex + 1, line.pageIndex);
   if (captionStartIndex === undefined) return false;
 
   const captionLine = lines[captionStartIndex];
-  if (line.y <= captionLine.y) return false;
-  if (
-    line.y - captionLine.y <
-    Math.max(line.fontSize, captionLine.fontSize) * FIGURE_PANEL_LABEL_MIN_CAPTION_GAP_FONT_RATIO
-  ) {
-    return false;
-  }
+  if (!isFigurePanelLabelAboveCaptionWithGap(line, captionLine)) return false;
 
   const captionText = getComparableFigureCaptionText(lines, captionStartIndex);
   if (captionText.length === 0) return false;
@@ -1793,7 +1812,7 @@ function normalizeReferenceListItemHtml(text: string): string {
 }
 
 function parseReferenceListMarker(text: string): number | undefined {
-  const match = /^[\[](\d{1,4})[\]]/.exec(text);
+  const match = /^[[](\d{1,4})[\]]/.exec(text);
   if (!match) return undefined;
   const marker = Number.parseInt(match[1] ?? "", 10);
   return Number.isFinite(marker) ? marker : undefined;
@@ -2574,7 +2593,7 @@ function isLikelyCodeContinuationText(text: string): boolean {
   if (isLikelyCodeText(text)) return true;
   if (text.length < 2) return false;
   if (!/[A-Za-z]/.test(text)) return false;
-  if (!/[(){}\[\].,_]/.test(text)) return false;
+  if (!/[(){}[\].,_]/.test(text)) return false;
   return true;
 }
 

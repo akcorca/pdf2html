@@ -173,7 +173,7 @@ describe("convertPdfToHtml", () => {
 
   it("renders numbered code examples in clean.pdf as semantic pre/code blocks", () => {
     expect(cleanHtml).toMatch(
-      /<pre><code>1 def standardize_address \( addr \):[\s\S]*9 return f\"\{ street \}, \{ state \}, \{ zipcode \}\"<\/code><\/pre>/,
+      /<pre><code>1 def standardize_address \( addr \):[\s\S]*9 return f"\{ street \}, \{ state \}, \{ zipcode \}"<\/code><\/pre>/,
     );
     expect(cleanHtml).not.toContain("<p>1 def standardize_address ( addr ):</p>");
     expect(cleanHtml).not.toContain("<p>2 # Extract street number and street name</p>");
