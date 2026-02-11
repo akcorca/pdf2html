@@ -36,6 +36,15 @@ const NUMBERED_HEADING_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.6;
 const MIN_TOP_LEVEL_DOTTED_HEADING_FONT_RATIO = 1.05;
 const TOP_LEVEL_DOTTED_HEADING_PATTERN = /^\d+\.\s+/;
 const DOTTED_SUBSECTION_HEADING_PATTERN = /^\d+\.\d+(?:\.\d+){0,3}\.\s+/;
+const BACK_MATTER_NAMED_HEADING_LEVEL = 2;
+const BACK_MATTER_NAMED_HEADING_TEXTS = new Set([
+  "credit authorship contribution statement",
+  "declaration of competing interest",
+  "declaration of competing interests",
+  "ethical approval",
+]);
+const BACK_MATTER_APPENDIX_SECTION_HEADING_PATTERN =
+  /^appendix(?:es)?(?:\s+[A-Z0-9]+(?:\.[A-Z0-9]+)?)?(?:[.:]\s+(?:supplementary|additional|online)\s+(?:data|material|materials|information))?$/iu;
 const STANDALONE_URL_LINE_PATTERN = /^(?:(\d+)\s+)?(https?:\/\/[^\s]+?)([.,;:!?])?$/iu;
 const URL_CONTINUATION_LINE_PATTERN = /^([A-Za-z0-9._~!$&'()*+,;=:@%/-]+?)([.,;:!?])?$/u;
 const URL_NON_SLASH_CONTINUATION_FRAGMENT_PATTERN = /[-._~%=&]|\d/u;
@@ -1396,14 +1405,34 @@ function detectHeadingCandidate(
   }
 
   const namedHeading: NamedHeading | undefined = detectNamedSectionHeadingLevel(normalized);
-  if (namedHeading === undefined) return undefined;
-  return { kind: "named", level: namedHeading.level, text: namedHeading.text };
+  if (namedHeading !== undefined) {
+    return { kind: "named", level: namedHeading.level, text: namedHeading.text };
+  }
+
+  const backMatterHeadingLevel = detectBackMatterHeadingLevel(normalized);
+  if (backMatterHeadingLevel !== undefined) {
+    return { kind: "named", level: backMatterHeadingLevel, text: normalized };
+  }
+  return undefined;
+}
+
+function detectBackMatterHeadingLevel(text: string): number | undefined {
+  const normalizedLower = text.toLowerCase();
+  if (BACK_MATTER_NAMED_HEADING_TEXTS.has(normalizedLower)) {
+    return BACK_MATTER_NAMED_HEADING_LEVEL;
+  }
+  if (BACK_MATTER_APPENDIX_SECTION_HEADING_PATTERN.test(text)) {
+    return BACK_MATTER_NAMED_HEADING_LEVEL;
+  }
+  return undefined;
 }
 
 function isSemanticHeadingText(text: string): boolean {
+  const normalized = normalizeSpacing(text);
   return (
-    detectNumberedHeadingLevel(text) !== undefined ||
-    detectNamedSectionHeadingLevel(text) !== undefined
+    detectNumberedHeadingLevel(normalized) !== undefined ||
+    detectNamedSectionHeadingLevel(normalized) !== undefined ||
+    detectBackMatterHeadingLevel(normalized) !== undefined
   );
 }
 
