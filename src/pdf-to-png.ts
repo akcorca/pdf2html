@@ -48,15 +48,12 @@ export function collectGeneratedPngFiles(
   outputPrefix: string,
 ): string[] {
   const expression = new RegExp(`^${escapeRegExp(outputPrefix)}-(\\d+)\\.png$`);
-  const generatedFiles: GeneratedPngFileEntry[] = fileNames.reduce(
-    (entries, fileName) => {
-      const match = expression.exec(fileName);
-      if (!match) return entries;
-      entries.push({ fileName, pageNumber: Number.parseInt(match[1], 10) });
-      return entries;
-    },
-    [] as GeneratedPngFileEntry[],
-  );
+  const generatedFiles: GeneratedPngFileEntry[] = [];
+  for (const fileName of fileNames) {
+    const entry = parseGeneratedPngFileEntry(fileName, expression);
+    if (!entry) continue;
+    generatedFiles.push(entry);
+  }
 
   generatedFiles.sort(
     (left, right) => left.pageNumber - right.pageNumber || left.fileName.localeCompare(right.fileName),
@@ -69,9 +66,7 @@ export async function convertPdfToPng({
   outputDirPath,
   dpi = 300,
 }: ConvertPdfToPngInput, dependencies?: ConvertPdfToPngDependencies): Promise<ConvertPdfToPngResult> {
-  if (!Number.isInteger(dpi) || dpi <= 0) {
-    throw new Error("DPI must be a positive integer.");
-  }
+  assertValidDpi(dpi);
 
   const resolvedDependencies = dependencies ?? createDefaultDependencies();
 
@@ -83,13 +78,10 @@ export async function convertPdfToPng({
   await resolvedDependencies.assertReadableFile(resolvedInputPdfPath);
   await resolvedDependencies.ensureOutputDir(resolvedOutputDirPath);
 
-  try {
-    await resolvedDependencies.runPdftoppm(
-      buildPdftoppmArgs(resolvedInputPdfPath, outputPrefixPath, dpi),
-    );
-  } catch (error: unknown) {
-    throw createConversionError(error);
-  }
+  await runPdftoppmOrThrow(
+    resolvedDependencies.runPdftoppm,
+    buildPdftoppmArgs(resolvedInputPdfPath, outputPrefixPath, dpi),
+  );
 
   const generatedFileNames = collectGeneratedPngFiles(
     await resolvedDependencies.readOutputDir(resolvedOutputDirPath),
@@ -120,6 +112,31 @@ function createDefaultDependencies(): ConvertPdfToPngDependencies {
     },
     readOutputDir: (outputDirPath: string) => readdir(outputDirPath),
   };
+}
+
+function parseGeneratedPngFileEntry(
+  fileName: string,
+  expression: RegExp,
+): GeneratedPngFileEntry | undefined {
+  const match = expression.exec(fileName);
+  if (!match) return undefined;
+  return { fileName, pageNumber: Number.parseInt(match[1], 10) };
+}
+
+function assertValidDpi(dpi: number): void {
+  if (Number.isInteger(dpi) && dpi > 0) return;
+  throw new Error("DPI must be a positive integer.");
+}
+
+async function runPdftoppmOrThrow(
+  runPdftoppm: ConvertPdfToPngDependencies["runPdftoppm"],
+  args: string[],
+): Promise<void> {
+  try {
+    await runPdftoppm(args);
+  } catch (error: unknown) {
+    throw createConversionError(error);
+  }
 }
 
 function escapeRegExp(input: string): string {
