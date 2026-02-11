@@ -155,7 +155,9 @@ function finalizeDetectedTable(input: {
   const deduped = deduplicateByY(bodyEntries, dedupeFontSize);
   if (deduped.length < MIN_TABLE_DATA_ROWS) return undefined;
 
-  const allParsedRows = buildTableRows(deduped, bodyEntries, fragments, bodyFontSize);
+  const allParsedRows = removeCompletelyEmptyColumns(
+    buildTableRows(deduped, bodyEntries, fragments, bodyFontSize),
+  );
   if (allParsedRows.length < MIN_TABLE_DATA_ROWS + 1) return undefined;
 
   const [headerRow, ...parsedRows] = allParsedRows;
@@ -198,6 +200,23 @@ function splitHeaderAndDataRows(
   });
 
   return { headerRows, dataRows: filteredDataRows };
+}
+
+function removeCompletelyEmptyColumns(rows: string[][]): string[][] {
+  if (rows.length < 2) return rows;
+
+  const colCount = Math.max(...rows.map((row) => row.length));
+  if (colCount === 0) return rows;
+
+  const nonEmptyColumns = new Array(colCount).fill(false);
+  for (const row of rows) {
+    for (let columnIndex = 0; columnIndex < row.length; columnIndex += 1) {
+      if (row[columnIndex]?.trim()) nonEmptyColumns[columnIndex] = true;
+    }
+  }
+
+  if (nonEmptyColumns.every(Boolean)) return rows;
+  return rows.map((row) => row.filter((_, columnIndex) => nonEmptyColumns[columnIndex]));
 }
 
 function isLikelySubHeaderRow(row: string[], nextRow: string[]): boolean {
@@ -794,7 +813,7 @@ export function renderTableHtml(table: DetectedTable): string[] {
   if (table.headerRows.length > 0) {
     out.push("<thead>");
     for (const row of table.headerRows) {
-      out.push(`<tr>${row.map((c) => `<th>${esc(c)}</th>`).join("")}</tr>`);
+      out.push(`<tr>${row.map((c) => (c.trim() ? `<th>${esc(c)}</th>` : "")).join("")}</tr>`);
     }
     out.push("</thead>");
   }

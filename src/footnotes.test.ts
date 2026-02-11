@@ -71,6 +71,24 @@ describe("footnotes", () => {
     expect(mainBody).not.toContain(footnoteText);
   });
 
+  it("should keep numeric footnotes as separate paragraphs instead of merging them into prior unmarked footnotes", () => {
+    const footnoteBlock = expectMatch(attentionHtml, /<div class="footnotes">(.|\n)*<\/div>/);
+    const paragraphs = [...footnoteBlock[0].matchAll(/<p[^>]*>(.*?)<\/p>/gs)].map((match) => match[1]);
+    const explanatoryFootnote = paragraphs.find((paragraph) =>
+      paragraph.includes("To illustrate why the dot products get large")
+    );
+
+    expect(explanatoryFootnote).toBeDefined();
+    if (!explanatoryFootnote) {
+      throw new Error("Expected explanatory dot-product footnote paragraph to exist");
+    }
+
+    expect(explanatoryFootnote).not.toContain("5 We used values of 2.8");
+    expect(footnoteBlock[0]).toContain(
+      '<p id="fn5">5 We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.</p>',
+    );
+  });
+
   it("should merge detached tiny math-fragment footnote continuations into the preceding footnote paragraph", () => {
     const footnoteBlock = expectMatch(attentionHtml, /<div class="footnotes">(.|\n)*<\/div>/);
     const paragraphs = [...footnoteBlock[0].matchAll(/<p>(.*?)<\/p>/gs)].map((match) => match[1]);

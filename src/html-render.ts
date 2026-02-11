@@ -375,7 +375,7 @@ export function renderHtml(
   const renderedBodyLines = renderBodyLines(bodyLines, titleLine, document);
   const renderedFootnotes =
     footnoteLines.length > 0
-      ? renderFootnoteLines(footnoteLines, document)
+      ? renderFootnoteLines(footnoteLines)
       : [];
 
   return [
@@ -399,9 +399,19 @@ export function renderHtml(
 
 function renderFootnoteLines(
   footnoteLines: TextLine[],
-  document: ExtractedDocument,
 ): string[] {
-  const rendered = renderBodyLines(footnoteLines, undefined, document);
+  const rendered: string[] = [];
+  for (let index = 0; index < footnoteLines.length; index += 1) {
+    const standaloneLink = renderStandaloneLinkParagraph(footnoteLines, index);
+    if (standaloneLink !== undefined) {
+      rendered.push(standaloneLink.html);
+      index = standaloneLink.nextIndex - 1;
+      continue;
+    }
+
+    rendered.push(renderParagraph(footnoteLines[index].text));
+  }
+
   return rendered.map((line) => {
     const paragraphText = extractRenderedParagraphText(line);
     if (paragraphText === undefined) return line;
