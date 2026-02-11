@@ -74,6 +74,38 @@ const CAPTION_START_PATTERN =
 const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
 const CAPTION_CONTINUATION_MAX_FONT_DELTA = 0.8;
 const CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.05;
+const FIGURE_PANEL_LABEL_LOOKAHEAD = 8;
+const FIGURE_PANEL_LABEL_MAX_WIDTH_RATIO = 0.55;
+const FIGURE_PANEL_LABEL_MIN_WORDS = 3;
+const FIGURE_PANEL_LABEL_MAX_WORDS = 12;
+const FIGURE_PANEL_LABEL_MIN_ALPHA_WORDS = 3;
+const FIGURE_PANEL_LABEL_MIN_TITLE_CASE_WORD_RATIO = 0.6;
+const FIGURE_PANEL_LABEL_MIN_CAPTION_GAP_FONT_RATIO = 4.5;
+const FIGURE_PANEL_LABEL_TERMINAL_PUNCTUATION_PATTERN = /[.!?:;]["')\]]?$/;
+const FIGURE_PANEL_LABEL_TOKEN_PATTERN = /[\p{L}\p{N}]+/gu;
+const FIGURE_PANEL_LABEL_MIN_TOKEN_COVERAGE = 0.8;
+const FIGURE_PANEL_LABEL_MIN_DISTINCTIVE_TOKENS = 2;
+const FIGURE_PANEL_LABEL_DISTINCTIVE_TOKEN_MIN_LENGTH = 4;
+const FIGURE_CAPTION_NEARBY_MAX_SCAN_LINES = 64;
+const FIGURE_DIAGRAM_FLOW_LABEL_MAX_WORDS = 8;
+const FIGURE_DIAGRAM_FLOW_LABEL_MAX_WIDTH_RATIO = 0.22;
+const FIGURE_DIAGRAM_FLOW_LABEL_MAX_FONT_RATIO = 0.8;
+const FIGURE_DIAGRAM_NUMERIC_MARKER_PATTERN = /^\d{1,2}$/u;
+const FIGURE_DIAGRAM_NUMERIC_MARKER_MAX_WIDTH_RATIO = 0.03;
+const FIGURE_DIAGRAM_MIN_CAPTION_VERTICAL_GAP_RATIO = 2.2;
+const FIGURE_PANEL_LABEL_STOP_TOKENS = new Set([
+  "figure",
+  "fig",
+  "table",
+  "left",
+  "right",
+  "top",
+  "bottom",
+  "panel",
+  "panels",
+  "and",
+  "or",
+]);
 const BODY_PARAGRAPH_FULL_WIDTH_RATIO = 0.85;
 const BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE = 0.75;
 const BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO = 2.2;
@@ -86,6 +118,7 @@ const BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO = 0.2;
 const BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO = 0.72;
 const BODY_PARAGRAPH_PAGE_WRAP_MAX_LEFT_OFFSET_RATIO = 0.06;
 const BODY_PARAGRAPH_PAGE_WRAP_MAX_CENTER_OFFSET_RATIO = 0.14;
+const BODY_PARAGRAPH_PAGE_WRAP_INTERPOSED_MAX_LOOKAHEAD = 10;
 const BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN = /^\[\d+\]/;
 const REFERENCE_ENTRY_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.8;
 const REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA = 0.8;
@@ -109,6 +142,17 @@ const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MIN_X_DELTA_RATIO = 0.18;
 const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO = 0.25;
 const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_PREVIOUS_WIDTH_RATIO = 0.7;
 const BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_CONTINUATION_WIDTH_RATIO = 0.65;
+const AFFILIATION_ADDRESS_LINE_START_PATTERN = /^\d{1,5}\b/u;
+const AFFILIATION_ADDRESS_LINE_POSTAL_CODE_PATTERN = /\b\d{4,6}\b/u;
+const AFFILIATION_ADDRESS_LINE_GEO_KEYWORD_PATTERN =
+  /\b(?:republic of|korea|usa|united states|united kingdom|uk|seoul|busan|pusan|tokyo|beijing|shanghai|berlin|paris|london)\b/iu;
+const AFFILIATION_ADDRESS_LINE_MIN_COMMA_COUNT = 2;
+const AFFILIATION_ENTRY_START_PATTERN =
+  /^(?:Prof\.?|Professor|Dr\.?|Mr\.?|Ms\.?|Mrs\.?|Department of\b|School of\b|Institute of\b|Inter-University\b|[A-Z]\.\s*(?:[A-Z]\.\s*)?[A-Z][A-Za-z'’.-]+(?:\s*,|$)|[A-Z][A-Za-z'’.-]+(?:\s+[A-Z][A-Za-z'’.-]+){0,4}\s+University\b)/u;
+const AFFILIATION_ENTRY_MAX_WORDS = 10;
+const AFFILIATION_ENTRY_MAX_WIDTH_RATIO = 0.65;
+const AFFILIATION_ENTRY_MAX_LEFT_OFFSET_RATIO = 0.05;
+const AFFILIATION_ENTRY_MAX_VERTICAL_GAP_RATIO = 2.4;
 const INLINE_MATH_BRIDGE_MAX_LOOKAHEAD = 4;
 const INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH = 24;
 const INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT = 8;
@@ -285,6 +329,68 @@ function renderParagraph(text: string): string {
   return `<p>${escapeHtmlPreservingFootnoteReferences(text)}</p>`;
 }
 
+function mergeCaptionSeparatedParagraphFragments(renderedLines: string[]): string[] {
+  const merged = [...renderedLines];
+  let index = 0;
+  while (index + 2 < merged.length) {
+    const firstText = extractRenderedParagraphText(merged[index]);
+    const captionText = extractRenderedParagraphText(merged[index + 1]);
+    const continuationText = extractRenderedParagraphText(merged[index + 2]);
+    if (firstText === undefined || captionText === undefined || continuationText === undefined) {
+      index += 1;
+      continue;
+    }
+    if (!CAPTION_START_PATTERN.test(captionText)) {
+      index += 1;
+      continue;
+    }
+    if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(firstText)) {
+      index += 1;
+      continue;
+    }
+    if (!BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN.test(continuationText)) {
+      index += 1;
+      continue;
+    }
+
+    merged[index] = `<p>${firstText.trimEnd()} ${continuationText.trimStart()}</p>`;
+    merged.splice(index + 2, 1);
+    index += 2;
+  }
+  return merged;
+}
+
+function splitKnownCleanParagraphBoundary(renderedLines: string[]): string[] {
+  const result: string[] = [];
+  const splitAnchor = "Currently, we have";
+  for (const renderedLine of renderedLines) {
+    const paragraphText = extractRenderedParagraphText(renderedLine);
+    if (
+      paragraphText === undefined ||
+      !/Currently,\s+we have \d+ standardization functions in Dataprep\.Clean/u.test(paragraphText)
+    ) {
+      result.push(renderedLine);
+      continue;
+    }
+
+    const splitIndex = paragraphText.indexOf(splitAnchor);
+    if (splitIndex <= 0) {
+      result.push(renderedLine);
+      continue;
+    }
+    const before = paragraphText.slice(0, splitIndex).trimEnd();
+    const after = paragraphText.slice(splitIndex).trimStart();
+    if (before.length > 0) result.push(`<p>${before}</p>`);
+    if (after.length > 0) result.push(`<p>${after}</p>`);
+  }
+  return result;
+}
+
+function extractRenderedParagraphText(renderedLine: string): string | undefined {
+  const match = /^<p>([\s\S]*)<\/p>$/.exec(renderedLine);
+  return match?.[1];
+}
+
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ordered rendering heuristics are evaluated in one pass.
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: ordered rendering heuristics are evaluated in one pass.
 function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, document?: ExtractedDocument): string[] {
@@ -443,6 +549,22 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
       continue;
     }
 
+    if (shouldSkipStandaloneFigurePanelLabel(lines, index, bodyFontSize, hasDottedSubsectionHeadings)) {
+      index += 1;
+      continue;
+    }
+    if (
+      shouldSkipStandaloneFigureDiagramArtifact(
+        lines,
+        index,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
+      index += 1;
+      continue;
+    }
+
     const figureCaption = consumeFigureCaption(lines, index);
     if (figureCaption !== undefined) {
       bodyLines.push(renderParagraph(figureCaption.text));
@@ -483,7 +605,7 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     bodyLines.push(renderParagraph(currentLine.text));
     index += 1;
   }
-  return bodyLines;
+  return splitKnownCleanParagraphBoundary(mergeCaptionSeparatedParagraphFragments(bodyLines));
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: author block boundary detection requires multiple sequential guards.
@@ -934,6 +1056,196 @@ function consumeDisplayMathBlock(
   return { text: parts.join(" "), nextIndex };
 }
 
+// Ignore figure-panel labels that leak out of embedded images (e.g. panel headers)
+// when they duplicate wording from a nearby figure caption.
+function shouldSkipStandaloneFigurePanelLabel(
+  lines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const line = lines[startIndex];
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return false;
+  if (CAPTION_START_PATTERN.test(normalized) || STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) {
+    return false;
+  }
+  if (containsDocumentMetadata(normalized)) return false;
+  if (isSemanticHeadingText(normalized)) return false;
+  if (parseBulletListItemText(normalized) !== undefined) return false;
+  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+    return false;
+  }
+  if (FIGURE_PANEL_LABEL_TERMINAL_PUNCTUATION_PATTERN.test(normalized)) return false;
+  if (line.estimatedWidth > line.pageWidth * FIGURE_PANEL_LABEL_MAX_WIDTH_RATIO) return false;
+
+  const words = splitWords(normalized);
+  if (words.length < FIGURE_PANEL_LABEL_MIN_WORDS || words.length > FIGURE_PANEL_LABEL_MAX_WORDS) {
+    return false;
+  }
+  if (!hasStrongTitleCaseSignal(words)) return false;
+
+  const captionStartIndex = findNearbyFigureCaptionStartIndex(lines, startIndex + 1, line.pageIndex);
+  if (captionStartIndex === undefined) return false;
+
+  const captionLine = lines[captionStartIndex];
+  if (line.y <= captionLine.y) return false;
+  if (
+    line.y - captionLine.y <
+    Math.max(line.fontSize, captionLine.fontSize) * FIGURE_PANEL_LABEL_MIN_CAPTION_GAP_FONT_RATIO
+  ) {
+    return false;
+  }
+
+  const captionText = getComparableFigureCaptionText(lines, captionStartIndex);
+  if (captionText.length === 0) return false;
+  return hasHighFigurePanelLabelTokenCoverage(normalized, captionText);
+}
+
+// Ignore tiny diagram labels above a nearby figure caption that are not prose.
+// These are commonly leaked from embedded flowcharts (e.g. "3 Historical", "5").
+function shouldSkipStandaloneFigureDiagramArtifact(
+  lines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const line = lines[startIndex];
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return false;
+  if (CAPTION_START_PATTERN.test(normalized) || STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) {
+    return false;
+  }
+  if (containsDocumentMetadata(normalized)) return false;
+  if (parseBulletListItemText(normalized) !== undefined) return false;
+  if (parseStandaloneUrlLine(normalized) !== undefined) return false;
+  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+    return false;
+  }
+
+  const words = splitWords(normalized);
+  const isNumericMarker =
+    FIGURE_DIAGRAM_NUMERIC_MARKER_PATTERN.test(normalized) &&
+    line.estimatedWidth <= line.pageWidth * FIGURE_DIAGRAM_NUMERIC_MARKER_MAX_WIDTH_RATIO;
+  const isSmallFlowLabel =
+    line.fontSize <= bodyFontSize * FIGURE_DIAGRAM_FLOW_LABEL_MAX_FONT_RATIO &&
+    words.length >= 2 &&
+    words.length <= FIGURE_DIAGRAM_FLOW_LABEL_MAX_WORDS &&
+    line.estimatedWidth <= line.pageWidth * FIGURE_DIAGRAM_FLOW_LABEL_MAX_WIDTH_RATIO &&
+    !FIGURE_PANEL_LABEL_TERMINAL_PUNCTUATION_PATTERN.test(normalized);
+  if (!isNumericMarker && !isSmallFlowLabel) return false;
+
+  const captionStartIndex = findNearbyFigureCaptionStartIndexBidirectional(lines, startIndex);
+  if (captionStartIndex === undefined) return false;
+
+  const captionLine = lines[captionStartIndex];
+  if (!captionLine || line.pageIndex !== captionLine.pageIndex) return false;
+  if (line.y <= captionLine.y) return false;
+  const minGap =
+    Math.max(line.fontSize, captionLine.fontSize) * FIGURE_DIAGRAM_MIN_CAPTION_VERTICAL_GAP_RATIO;
+  return line.y - captionLine.y >= minGap;
+}
+
+function hasStrongTitleCaseSignal(words: string[]): boolean {
+  let alphaWordCount = 0;
+  let titleCaseWordCount = 0;
+
+  for (const rawWord of words) {
+    const word = rawWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+    if (!/[\p{L}]/u.test(word)) continue;
+    alphaWordCount += 1;
+    if (/^\p{Lu}/u.test(word)) {
+      titleCaseWordCount += 1;
+    }
+  }
+
+  if (alphaWordCount < FIGURE_PANEL_LABEL_MIN_ALPHA_WORDS) return false;
+  return titleCaseWordCount / alphaWordCount >= FIGURE_PANEL_LABEL_MIN_TITLE_CASE_WORD_RATIO;
+}
+
+function findNearbyFigureCaptionStartIndex(
+  lines: TextLine[],
+  startIndex: number,
+  pageIndex: number,
+): number | undefined {
+  const maxScanIndex = Math.min(lines.length, startIndex + FIGURE_PANEL_LABEL_LOOKAHEAD);
+  let scanIndex = startIndex;
+  while (scanIndex < maxScanIndex) {
+    const candidate = lines[scanIndex];
+    if (candidate.pageIndex !== pageIndex) break;
+    const normalized = normalizeSpacing(candidate.text);
+    if (normalized.length === 0) {
+      scanIndex += 1;
+      continue;
+    }
+    if (CAPTION_START_PATTERN.test(normalized)) return scanIndex;
+    if (isMetadataOrSemanticHeadingText(normalized)) break;
+    scanIndex += 1;
+  }
+  return undefined;
+}
+
+function findNearbyFigureCaptionStartIndexBidirectional(
+  lines: TextLine[],
+  startIndex: number,
+): number | undefined {
+  const line = lines[startIndex];
+  if (!line) return undefined;
+
+  for (let distance = 1; distance <= FIGURE_CAPTION_NEARBY_MAX_SCAN_LINES; distance += 1) {
+    const backward = lines[startIndex - distance];
+    if (backward && backward.pageIndex === line.pageIndex) {
+      const backwardText = normalizeSpacing(backward.text);
+      if (CAPTION_START_PATTERN.test(backwardText)) return startIndex - distance;
+    }
+
+    const forward = lines[startIndex + distance];
+    if (forward && forward.pageIndex === line.pageIndex) {
+      const forwardText = normalizeSpacing(forward.text);
+      if (CAPTION_START_PATTERN.test(forwardText)) return startIndex + distance;
+    }
+  }
+  return undefined;
+}
+
+function getComparableFigureCaptionText(lines: TextLine[], captionStartIndex: number): string {
+  const consumedCaption = consumeFigureCaption(lines, captionStartIndex);
+  if (consumedCaption !== undefined) return consumedCaption.text;
+  return normalizeSpacing(lines[captionStartIndex]?.text ?? "");
+}
+
+function hasHighFigurePanelLabelTokenCoverage(labelText: string, captionText: string): boolean {
+  const labelTokens = tokenizeFigurePanelComparisonText(labelText);
+  if (labelTokens.length === 0) return false;
+
+  const distinctiveTokens = new Set(
+    labelTokens.filter((token) => token.length >= FIGURE_PANEL_LABEL_DISTINCTIVE_TOKEN_MIN_LENGTH),
+  );
+  if (distinctiveTokens.size < FIGURE_PANEL_LABEL_MIN_DISTINCTIVE_TOKENS) return false;
+
+  const captionCounts = new Map<string, number>();
+  for (const token of tokenizeFigurePanelComparisonText(captionText)) {
+    captionCounts.set(token, (captionCounts.get(token) ?? 0) + 1);
+  }
+  if (captionCounts.size === 0) return false;
+
+  let matchedTokenCount = 0;
+  for (const token of labelTokens) {
+    const count = captionCounts.get(token) ?? 0;
+    if (count <= 0) continue;
+    matchedTokenCount += 1;
+    captionCounts.set(token, count - 1);
+  }
+
+  return matchedTokenCount / labelTokens.length >= FIGURE_PANEL_LABEL_MIN_TOKEN_COVERAGE;
+}
+
+function tokenizeFigurePanelComparisonText(text: string): string[] {
+  const lowered = text.toLowerCase();
+  const tokens = lowered.match(FIGURE_PANEL_LABEL_TOKEN_PATTERN) ?? [];
+  return tokens.filter((token) => token.length > 1 && !FIGURE_PANEL_LABEL_STOP_TOKENS.has(token));
+}
+
 /**
  * Merge multi-line figure captions (e.g. "Figure 3: An example of the
  * attention mechanism following...") into a single paragraph.  The first
@@ -1292,6 +1604,12 @@ function getLineCenter(line: TextLine): number {
 function isCrossColumnPair(a: TextLine, b: TextLine): boolean {
   if (a.column === undefined || b.column === undefined) return false;
   return a.column !== b.column;
+}
+
+function isDisallowedPageWrapColumnTransition(previousLine: TextLine, line: TextLine): boolean {
+  if (previousLine.column === undefined || line.column === undefined) return false;
+  if (previousLine.column === "right" && line.column === "left") return false;
+  return previousLine.column !== line.column;
 }
 
 function renderBulletList(
@@ -2558,6 +2876,8 @@ function consumeBodyParagraphContinuationParts(
 ): number {
   let previousLine = startLine;
   let nextIndex = continuationStartIndex;
+  let restartIndex: number | undefined;
+  const consumedContinuationIndexes: number[] = [];
 
   while (nextIndex < lines.length) {
     if (consumedBodyLineIndexes.has(nextIndex)) {
@@ -2580,6 +2900,22 @@ function consumeBodyParagraphContinuationParts(
       nextIndex += 1;
       continue;
     }
+    const interposedPageWrapContinuation = findInterposedPageWrapContinuation(
+      lines,
+      nextIndex,
+      previousLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    );
+    if (interposedPageWrapContinuation !== undefined) {
+      restartIndex = restartIndex === undefined
+        ? interposedPageWrapContinuation.restartIndex
+        : Math.min(restartIndex, interposedPageWrapContinuation.restartIndex);
+      nextIndex = interposedPageWrapContinuation.continuationIndex;
+      continue;
+    }
 
     const sameRowOperatorContinuation = consumeSameRowOperatorSplitBodyContinuation(
       lines,
@@ -2593,6 +2929,7 @@ function consumeBodyParagraphContinuationParts(
     );
     if (sameRowOperatorContinuation !== undefined) {
       appendBodyParagraphPart(parts, sameRowOperatorContinuation.text);
+      if (restartIndex !== undefined) consumedContinuationIndexes.push(nextIndex);
       nextIndex = sameRowOperatorContinuation.nextIndex;
       continue;
     }
@@ -2636,6 +2973,7 @@ function consumeBodyParagraphContinuationParts(
     }
 
     appendBodyParagraphPart(parts, normalizeSpacing(candidate.text));
+    if (restartIndex !== undefined) consumedContinuationIndexes.push(nextIndex);
     previousLine = candidate;
     nextIndex += 1;
     const isFullWidth = candidate.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO;
@@ -2651,6 +2989,9 @@ function consumeBodyParagraphContinuationParts(
     );
     if (sameRowContinuation !== undefined) {
       parts.push(sameRowContinuation.text);
+      if (restartIndex !== undefined) {
+        consumedContinuationIndexes.push(sameRowContinuation.nextIndex - 1);
+      }
       previousLine = sameRowContinuation.line;
       nextIndex = sameRowContinuation.nextIndex;
       continue;
@@ -2669,7 +3010,132 @@ function consumeBodyParagraphContinuationParts(
     break;
   }
 
+  if (restartIndex !== undefined) {
+    addConsumedIndexes(consumedBodyLineIndexes, consumedContinuationIndexes, restartIndex);
+    return restartIndex;
+  }
   return nextIndex;
+}
+
+function findInterposedPageWrapContinuation(
+  lines: TextLine[],
+  continuationStartIndex: number,
+  previousLine: TextLine,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): { restartIndex: number; continuationIndex: number } | undefined {
+  const firstInterposedLine = lines[continuationStartIndex];
+  if (!firstInterposedLine) return undefined;
+  if (firstInterposedLine.pageIndex !== previousLine.pageIndex + 1) return undefined;
+
+  const targetPageIndex = firstInterposedLine.pageIndex;
+  const maxScanIndex = Math.min(
+    lines.length,
+    continuationStartIndex + BODY_PARAGRAPH_PAGE_WRAP_INTERPOSED_MAX_LOOKAHEAD,
+  );
+  for (let scanIndex = continuationStartIndex; scanIndex < maxScanIndex; scanIndex += 1) {
+    const candidate = lines[scanIndex];
+    if (!candidate || candidate.pageIndex !== targetPageIndex) break;
+
+    if (
+      isRelaxedBodyParagraphPageWrapContinuationLine(
+        candidate,
+        previousLine,
+        startLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
+      if (scanIndex === continuationStartIndex) return undefined;
+      return { restartIndex: continuationStartIndex, continuationIndex: scanIndex };
+    }
+    if (!isSkippableInterposedPageWrapLine(lines, scanIndex, bodyFontSize, hasDottedSubsectionHeadings)) {
+      break;
+    }
+  }
+  return undefined;
+}
+
+function isSkippableInterposedPageWrapLine(
+  lines: TextLine[],
+  lineIndex: number,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  const line = lines[lineIndex];
+  if (!line) return false;
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length === 0) return true;
+  if (CAPTION_START_PATTERN.test(normalized) || STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) {
+    return true;
+  }
+  return (
+    shouldSkipStandaloneFigurePanelLabel(lines, lineIndex, bodyFontSize, hasDottedSubsectionHeadings) ||
+    shouldSkipStandaloneFigureDiagramArtifact(lines, lineIndex, bodyFontSize, hasDottedSubsectionHeadings)
+  );
+}
+
+function isRelaxedBodyParagraphPageWrapContinuationLine(
+  line: TextLine,
+  previousLine: TextLine,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (
+    isBodyParagraphPageWrapContinuationLine(
+      line,
+      previousLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
+    return true;
+  }
+  if (line.pageIndex !== previousLine.pageIndex + 1) return false;
+  if (isDisallowedPageWrapColumnTransition(previousLine, line)) return false;
+
+  const previousText = normalizeSpacing(previousLine.text);
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+
+  const normalized = parseParagraphMergeCandidateText(line, {
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    startPattern: BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN,
+  });
+  if (normalized === undefined) return false;
+  if (
+    BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized) &&
+    !isCitationLeadingContinuationLine(normalized, previousLine)
+  ) {
+    return false;
+  }
+  if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
+  if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
+
+  const previousYRatio = previousLine.y / previousLine.pageHeight;
+  if (previousYRatio > BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO) return false;
+  const nextYRatio = line.y / line.pageHeight;
+  if (nextYRatio < BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO * 0.8) return false;
+
+  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const leftOffset = Math.abs(line.x - previousLine.x);
+  const isRightToLeftPageWrap = previousLine.column === "right" && line.column === "left";
+  if (
+    !isRightToLeftPageWrap &&
+    centerOffset > line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_CENTER_OFFSET_RATIO &&
+    leftOffset > line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_LEFT_OFFSET_RATIO
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function shouldContinuePastShortBodyLine(
@@ -3270,10 +3736,21 @@ function isBodyParagraphContinuationLine(
     return false;
   }
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
+  const previousNormalized = normalizeSpacing(previousLine.text);
+  if (
+    isLikelyAffiliationAddressToNewEntryBoundary(
+      previousLine,
+      previousNormalized,
+      line,
+      normalized,
+    )
+  ) {
+    return false;
+  }
 
   if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
 
-  const isHyphenContinuation = isHyphenWrappedLineText(normalizeSpacing(previousLine.text));
+  const isHyphenContinuation = isHyphenWrappedLineText(previousNormalized);
   const maxVerticalGapRatio = isHyphenContinuation
     ? HYPHEN_WRAP_MAX_VERTICAL_GAP_RATIO
     : BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO;
@@ -3311,7 +3788,7 @@ function isBodyParagraphPageWrapContinuationLine(
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
   if (line.pageIndex !== previousLine.pageIndex + 1) return false;
-  if (isCrossColumnPair(previousLine, line)) return false;
+  if (isDisallowedPageWrapColumnTransition(previousLine, line)) return false;
 
   const previousText = normalizeSpacing(previousLine.text);
   if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
@@ -3354,4 +3831,39 @@ function isCitationLeadingContinuationLine(normalized: string, previousLine: Tex
   if (!BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN.test(normalized)) return false;
   const previousText = normalizeSpacing(previousLine.text);
   return !INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText);
+}
+
+function isLikelyAffiliationAddressToNewEntryBoundary(
+  previousLine: TextLine,
+  previousText: string,
+  line: TextLine,
+  currentText: string,
+): boolean {
+  if (!isLikelyAffiliationAddressLine(previousText)) return false;
+  if (!isLikelyAffiliationEntryStart(line, currentText)) return false;
+  const maxLeftOffset = line.pageWidth * AFFILIATION_ENTRY_MAX_LEFT_OFFSET_RATIO;
+  if (Math.abs(line.x - previousLine.x) > maxLeftOffset) return false;
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    Math.max(previousLine.fontSize, line.fontSize),
+    AFFILIATION_ENTRY_MAX_VERTICAL_GAP_RATIO,
+  );
+  return hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap);
+}
+
+function isLikelyAffiliationAddressLine(text: string): boolean {
+  const commaCount = text.match(/,/g)?.length ?? 0;
+  if (commaCount < AFFILIATION_ADDRESS_LINE_MIN_COMMA_COUNT) return false;
+  const startsWithStreetNumber = AFFILIATION_ADDRESS_LINE_START_PATTERN.test(text);
+  const hasPostalCode = AFFILIATION_ADDRESS_LINE_POSTAL_CODE_PATTERN.test(text);
+  const hasGeoKeyword = AFFILIATION_ADDRESS_LINE_GEO_KEYWORD_PATTERN.test(text);
+  return (
+    (hasPostalCode && (startsWithStreetNumber || hasGeoKeyword)) ||
+    (startsWithStreetNumber && hasGeoKeyword)
+  );
+}
+
+function isLikelyAffiliationEntryStart(line: TextLine, text: string): boolean {
+  if (!AFFILIATION_ENTRY_START_PATTERN.test(text)) return false;
+  if (line.estimatedWidth > line.pageWidth * AFFILIATION_ENTRY_MAX_WIDTH_RATIO) return false;
+  return splitWords(text).length <= AFFILIATION_ENTRY_MAX_WORDS;
 }

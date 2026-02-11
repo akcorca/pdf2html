@@ -52,7 +52,9 @@ export async function pdfToHtml(pdfBuffer: Uint8Array): Promise<string> {
   return renderExtractedDocumentAsHtml(extracted);
 }
 
-async function renderExtractedDocumentAsHtml(extracted: ExtractedDocument): Promise<string> {
+async function renderExtractedDocumentAsHtml(
+  extracted: ExtractedDocument,
+): Promise<string> {
   const allLines = await collectTextLines(extracted);
   const filteredLines = filterPageArtifacts(allLines);
   let { bodyLines, footnoteLines } = movePageFootnotesToDocumentEnd(filteredLines);

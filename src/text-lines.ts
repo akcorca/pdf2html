@@ -134,7 +134,9 @@ const INLINE_NAMED_SECTION_HEADING_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘
 const INLINE_NAMED_SECTION_HEADING_PREVIOUS_TERMINAL_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-column detection + column assignment in one pass.
-export function collectTextLines(document: ExtractedDocument): TextLine[] {
+export async function collectTextLines(
+  document: ExtractedDocument,
+): Promise<TextLine[]> {
   const lines: TextLine[] = [];
   const multiColumnPageIndexes = new Set<number>();
   const columnMajorPageIndexes = new Set<number>();
@@ -935,7 +937,9 @@ function deinterleaveFigureCaptionBlocks(
     // Only reorder if lines are truly interleaved (caption and body lines
     // alternate in the current sort order). If all caption lines already
     // precede or follow all body lines, there's no interleaving to fix.
-    if (captionLines.length >= 2 && bodyLines.length >= 2 && isInterleaved(block, isCaption)) {
+    // Single-line captions can still split a body paragraph (`body -> caption -> body`),
+    // so accept at least one caption line when the block is truly interleaved.
+    if (captionLines.length >= 1 && bodyLines.length >= 2 && isInterleaved(block, isCaption)) {
       result.splice(blockStart, blockEnd - blockStart, ...bodyLines, ...captionLines);
     }
 
