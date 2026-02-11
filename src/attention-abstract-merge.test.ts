@@ -132,6 +132,15 @@ describe("attention abstract same-row merge", () => {
     );
   });
 
+  it("keeps page-wrap paragraph continuity when a detached tiny math token is interposed", () => {
+    expect(attentionHtml).toContain(
+      "queries, keys and values we then perform the attention function in parallel, yielding d -dimensional output values. These are concatenated",
+    );
+    expect(attentionHtml).not.toMatch(
+      /yielding d -dimensional<\/p>\s*<p>output values\. These are concatenated/u,
+    );
+  });
+
   it("drops dense figure-embedded word-label artifacts in the appendix while keeping figure captions", () => {
     expect(attentionHtml).toContain("Figure 3: An example of the attention mechanism");
     expect(attentionHtml).toContain("Figure 4: Two attention heads, also in layer 5 of 6");

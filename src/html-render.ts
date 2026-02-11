@@ -3472,13 +3472,16 @@ function findBodyParagraphContinuationAfterInlineMathArtifacts(
     if (artifactBridge.artifactText !== undefined) artifactTexts.push(artifactBridge.artifactText);
 
     const continuationIndex = scanIndex + 1;
-    const continuationLine = lines[continuationIndex];
-    if (!continuationLine) return undefined;
-    if (continuationLine.pageIndex !== previousLine.pageIndex) return undefined;
+    const continuation = resolveInlineMathArtifactContinuationCandidate(
+      lines,
+      continuationIndex,
+      previousLine,
+    );
+    if (!continuation) return undefined;
 
     if (
       isBodyParagraphContinuationLine(
-        continuationLine,
+        continuation.line,
         previousLine,
         startLine,
         titleLine,
@@ -3486,12 +3489,41 @@ function findBodyParagraphContinuationAfterInlineMathArtifacts(
         hasDottedSubsectionHeadings,
       )
     ) {
-      return { continuationIndex, artifactTexts };
+      return buildInlineMathArtifactBridgeResult(
+        continuationIndex,
+        artifactTexts,
+        continuation.isCrossPage,
+      );
     }
+    if (continuation.isCrossPage) return undefined;
     scanIndex += 1;
   }
 
   return undefined;
+}
+
+function resolveInlineMathArtifactContinuationCandidate(
+  lines: TextLine[],
+  continuationIndex: number,
+  previousLine: TextLine,
+): { line: TextLine; isCrossPage: boolean } | undefined {
+  const continuationLine = lines[continuationIndex];
+  if (!continuationLine) return undefined;
+
+  const isCrossPage = continuationLine.pageIndex !== previousLine.pageIndex;
+  if (isCrossPage && continuationLine.pageIndex !== previousLine.pageIndex + 1) return undefined;
+  return { line: continuationLine, isCrossPage };
+}
+
+function buildInlineMathArtifactBridgeResult(
+  continuationIndex: number,
+  artifactTexts: string[],
+  isCrossPageContinuation: boolean,
+): { continuationIndex: number; artifactTexts: string[] } {
+  return {
+    continuationIndex,
+    artifactTexts: isCrossPageContinuation ? [] : artifactTexts,
+  };
 }
 
 function shouldSkipDetachedLowercaseMathSubscriptLine(
