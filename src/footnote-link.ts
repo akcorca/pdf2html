@@ -25,18 +25,18 @@ export function linkFootnoteMarkers(bodyLines: TextLine[], footnoteLines: TextLi
   return bodyLines;
 }
 
-function buildFootnoteMarkerMap(footnoteLines: TextLine[]): Map<number, true> {
-  const footnoteMap = new Map<number, true>();
+function buildFootnoteMarkerMap(footnoteLines: TextLine[]): Set<number> {
+  const footnoteMap = new Set<number>();
   for (const line of footnoteLines) {
     const marker = parseLeadingNumericMarker(line.text);
     if (marker !== undefined) {
-      footnoteMap.set(marker, true);
+      footnoteMap.add(marker);
     }
   }
   return footnoteMap;
 }
 
-function buildLinkedLineText(line: TextLine, footnoteMap: Map<number, true>): string | undefined {
+function buildLinkedLineText(line: TextLine, footnoteMap: Set<number>): string | undefined {
   const fragments = line.fragments;
   if (fragments.length <= 1) return undefined;
 
@@ -67,7 +67,7 @@ function getReferenceBodyFont(
 function rewriteFragmentsWithFootnoteAnchors(
   fragments: ExtractedFragment[],
   normalizedTexts: string[],
-  footnoteMap: Map<number, true>,
+  footnoteMap: Set<number>,
   referenceFont: number,
 ): { fragments: string[]; hasMarker: boolean } {
   const rewrittenFragments: string[] = [];

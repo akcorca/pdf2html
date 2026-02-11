@@ -508,10 +508,10 @@ describe("convertPdfToHtml", () => {
 
   it("keeps numeric footnote markers attached to URL footnotes in respect.pdf", () => {
     expect(respectHtml).toContain(
-      '<p>1 <a href="https://openai.com/product">https://openai.com/product</a></p>',
+      '<p id="fn1">1 <a href="https://openai.com/product">https://openai.com/product</a></p>',
     );
     expect(respectHtml).toContain(
-      '<p>2 <a href="https://huggingface.co/meta-llama/Llama-2-70b-chat">https://huggingface.co/meta-llama/Llama-2-70b-chat</a></p>',
+      '<p id="fn2">2 <a href="https://huggingface.co/meta-llama/Llama-2-70b-chat">https://huggingface.co/meta-llama/Llama-2-70b-chat</a></p>',
     );
   });
 

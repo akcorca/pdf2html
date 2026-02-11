@@ -7,6 +7,7 @@ import {
   detectNumberedHeadingLevel,
   type NamedHeading,
 } from "./heading-detect.ts";
+import { parseLeadingNumericMarker } from "./string-utils.ts";
 import { detectTable, renderTableHtml } from "./table-detect.ts";
 
 const INLINE_ACKNOWLEDGEMENTS_HEADING_PATTERN =
@@ -323,7 +324,7 @@ export function renderHtml(
 ): string {
   const titleLine = findTitleLine(bodyLines);
   const renderedBodyLines = renderBodyLines(bodyLines, titleLine, document);
-  const renderedFootnotes = footnoteLines.length > 0 ? renderBodyLines(footnoteLines, undefined, document) : [];
+  const renderedFootnotes = footnoteLines.length > 0 ? renderFootnoteLines(footnoteLines, document) : [];
 
   return [
     "<!DOCTYPE html>",
@@ -342,6 +343,21 @@ export function renderHtml(
     "</html>",
     "",
   ].join("\n");
+}
+
+function renderFootnoteLines(
+  footnoteLines: TextLine[],
+  document: ExtractedDocument | undefined,
+): string[] {
+  const rendered = renderBodyLines(footnoteLines, undefined, document);
+  return rendered.map((line) => {
+    const paragraphText = extractRenderedParagraphText(line);
+    if (paragraphText === undefined) return line;
+
+    const marker = parseLeadingNumericMarker(paragraphText);
+    if (marker === undefined) return line;
+    return `<p id="fn${marker}">${paragraphText}</p>`;
+  });
 }
 
 
