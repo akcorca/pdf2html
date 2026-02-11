@@ -126,6 +126,14 @@ const RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT = 2;
 const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
 const CAPTION_CONTINUATION_MAX_FONT_DELTA = 0.8;
 const CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.05;
+const CAPTION_SAME_ROW_CONTINUATION_MAX_VERTICAL_DELTA_FONT_RATIO = 0.25;
+const CAPTION_SAME_ROW_CONTINUATION_MAX_HORIZONTAL_GAP_RATIO = 0.08;
+const CAPTION_SAME_ROW_CONTINUATION_MAX_OVERLAP_RATIO = 0.05;
+const CAPTION_DETACHED_INLINE_MARKER_MAX_FONT_RATIO = 0.82;
+const CAPTION_DETACHED_INLINE_MARKER_MAX_WIDTH_RATIO = 0.12;
+const CAPTION_DETACHED_INLINE_MARKER_MAX_TOKEN_COUNT = 3;
+const CAPTION_DETACHED_INLINE_MARKER_MAX_TOKEN_LENGTH = 2;
+const CAPTION_DETACHED_INLINE_MARKER_TOKEN_PATTERN = /^[A-Za-z0-9]+$/u;
 const FIGURE_PANEL_LABEL_LOOKAHEAD = 8;
 const FIGURE_PANEL_LABEL_MAX_WIDTH_RATIO = 0.55;
 const FIGURE_PANEL_LABEL_MIN_WORDS = 3;
@@ -1400,6 +1408,62 @@ function tokenizeFigurePanelComparisonText(text: string): string[] {
   return tokens.filter((token) => token.length > 1 && !FIGURE_PANEL_LABEL_STOP_TOKENS.has(token));
 }
 
+function isSameRowCaptionContinuationLine(
+  line: TextLine,
+  previousLine: TextLine,
+  startLine: TextLine,
+): boolean {
+  if (isCrossColumnPair(previousLine, line)) return false;
+  if (Math.abs(line.fontSize - startLine.fontSize) > CAPTION_CONTINUATION_MAX_FONT_DELTA) {
+    return false;
+  }
+
+  const maxVerticalDelta = Math.max(
+    Math.max(previousLine.fontSize, line.fontSize) *
+      CAPTION_SAME_ROW_CONTINUATION_MAX_VERTICAL_DELTA_FONT_RATIO,
+    1.5,
+  );
+  if (Math.abs(previousLine.y - line.y) > maxVerticalDelta) return false;
+
+  const previousRight = previousLine.x + previousLine.estimatedWidth;
+  const horizontalGap = line.x - previousRight;
+  const maxGap = line.pageWidth * CAPTION_SAME_ROW_CONTINUATION_MAX_HORIZONTAL_GAP_RATIO;
+  const maxOverlap = line.pageWidth * CAPTION_SAME_ROW_CONTINUATION_MAX_OVERLAP_RATIO;
+  return horizontalGap <= maxGap && horizontalGap >= -maxOverlap;
+}
+
+function shouldSkipDetachedCaptionInlineMarkerLine(
+  line: TextLine,
+  previousLine: TextLine,
+  startLine: TextLine,
+  normalized: string,
+): boolean {
+  if (line.pageIndex !== previousLine.pageIndex) return false;
+  if (line.fontSize > startLine.fontSize * CAPTION_DETACHED_INLINE_MARKER_MAX_FONT_RATIO) {
+    return false;
+  }
+  if (line.estimatedWidth > line.pageWidth * CAPTION_DETACHED_INLINE_MARKER_MAX_WIDTH_RATIO) {
+    return false;
+  }
+
+  const maxVerticalDelta = Math.max(
+    Math.max(previousLine.fontSize, line.fontSize) *
+      CAPTION_SAME_ROW_CONTINUATION_MAX_VERTICAL_DELTA_FONT_RATIO,
+    3,
+  );
+  if (Math.abs(previousLine.y - line.y) > maxVerticalDelta) return false;
+
+  const tokens = splitWords(normalized);
+  if (tokens.length === 0 || tokens.length > CAPTION_DETACHED_INLINE_MARKER_MAX_TOKEN_COUNT) {
+    return false;
+  }
+  return tokens.every(
+    (token) =>
+      token.length <= CAPTION_DETACHED_INLINE_MARKER_MAX_TOKEN_LENGTH &&
+      CAPTION_DETACHED_INLINE_MARKER_TOKEN_PATTERN.test(token),
+  );
+}
+
 /**
  * Merge multi-line figure captions (e.g. "Figure 3: An example of the
  * attention mechanism following...") into a single paragraph.  The first
@@ -1423,6 +1487,30 @@ function consumeFigureCaption(
   while (scanIndex < lines.length) {
     const line = lines[scanIndex];
     if (line.pageIndex !== startLine.pageIndex) break;
+    const normalized = normalizeSpacing(line.text);
+    if (normalized.length === 0) break;
+    if (isMetadataOrSemanticHeadingText(normalized)) break;
+    if (CAPTION_START_PATTERN.test(normalized)) break;
+
+    if (
+      shouldSkipDetachedCaptionInlineMarkerLine(
+        line,
+        previousLine,
+        startLine,
+        normalized,
+      )
+    ) {
+      scanIndex++;
+      continue;
+    }
+
+    if (isSameRowCaptionContinuationLine(line, previousLine, startLine)) {
+      parts.push(normalized);
+      previousLine = line;
+      scanIndex++;
+      continue;
+    }
+
     if (isCrossColumnPair(previousLine, line)) break;
     if (Math.abs(line.fontSize - startLine.fontSize) > CAPTION_CONTINUATION_MAX_FONT_DELTA) break;
 
@@ -1434,11 +1522,6 @@ function consumeFigureCaption(
 
     const maxLeftOffset = line.pageWidth * CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO;
     if (Math.abs(line.x - startLine.x) > maxLeftOffset) break;
-
-    const normalized = normalizeSpacing(line.text);
-    if (normalized.length === 0) break;
-    if (isMetadataOrSemanticHeadingText(normalized)) break;
-    if (CAPTION_START_PATTERN.test(normalized)) break;
 
     parts.push(normalized);
     previousLine = line;

@@ -55,6 +55,15 @@ describe("tft-reading-order", () => {
     );
   });
 
+  it("keeps Figure 3 caption text out of the preceding body paragraph", () => {
+    expect(tftHtml).not.toContain(
+      "the reduced bulk resistance of the PCBM and transfer characteristics of a-IGZO TFTs",
+    );
+    expect(tftHtml).toMatch(
+      /<p>Figure 3\.[^<]*?transfer characteristics of a-IGZO TFTs with N-DMBI-doped PCBM IFL[^<]*?positive gate bias stress \( V = 25 V, V = 50 V\)\.<\/p>/u,
+    );
+  });
+
   it("merges same-row right-column text fragments before hyphen-wrap continuation", () => {
     // On page 3 in tft.pdf, two right-column same-row fragments should be
     // merged first, then wrapped-word continuation should follow naturally.
