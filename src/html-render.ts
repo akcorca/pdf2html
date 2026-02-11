@@ -36,7 +36,7 @@ const NUMBERED_HEADING_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.6;
 const MIN_TOP_LEVEL_DOTTED_HEADING_FONT_RATIO = 1.05;
 const TOP_LEVEL_DOTTED_HEADING_PATTERN = /^\d+\.\s+/;
 const DOTTED_SUBSECTION_HEADING_PATTERN = /^\d+\.\d+(?:\.\d+){0,3}\.\s+/;
-const STANDALONE_URL_LINE_PATTERN = /^(https?:\/\/[^\s]+?)([.,;:!?])?$/iu;
+const STANDALONE_URL_LINE_PATTERN = /^(?:(\d+)\s+)?(https?:\/\/[^\s]+?)([.,;:!?])?$/iu;
 const URL_CONTINUATION_LINE_PATTERN = /^([A-Za-z0-9._~!$&'()*+,;=:@%/-]+?)([.,;:!?])?$/u;
 const URL_NON_SLASH_CONTINUATION_FRAGMENT_PATTERN = /[-._~%=&]|\d/u;
 const STANDALONE_URL_CONTINUATION_MAX_LOOKAHEAD = 4;
@@ -53,7 +53,7 @@ const HYPHEN_WRAP_CONTINUATION_START_PATTERN = /^[A-Za-z]/;
 const HYPHEN_WRAP_MAX_VERTICAL_GAP_RATIO = 2.8;
 const HYPHEN_WRAP_MAX_LEFT_OFFSET_RATIO = 0.08;
 const HYPHEN_WRAP_MAX_CENTER_OFFSET_RATIO = 0.12;
-const HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO = 0.45;
+const HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO = 0.4;
 const HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO = 0.45;
 // Common soft-wrap continuations split before derivational endings.
 const HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN =
@@ -75,11 +75,16 @@ const CAPTION_CONTINUATION_MAX_FONT_DELTA = 0.8;
 const CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.05;
 const BODY_PARAGRAPH_FULL_WIDTH_RATIO = 0.85;
 const BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE = 0.75;
-const BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO = 2.0;
+const BODY_PARAGRAPH_MAX_VERTICAL_GAP_RATIO = 2.2;
 const BODY_PARAGRAPH_MAX_FONT_DELTA = 0.8;
 const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.05;
 const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.12;
-const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[A-Za-z0-9("'"'[]/u;
+const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[A-Za-z0-9("''\[]/u;
+const BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"'\[]/u;
+const BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO = 0.2;
+const BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO = 0.72;
+const BODY_PARAGRAPH_PAGE_WRAP_MAX_LEFT_OFFSET_RATIO = 0.06;
+const BODY_PARAGRAPH_PAGE_WRAP_MAX_CENTER_OFFSET_RATIO = 0.14;
 const BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN = /^\[\d+\]/;
 const REFERENCE_ENTRY_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.8;
 const REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA = 0.8;
@@ -211,9 +216,14 @@ interface AuthorRow {
   cells: Array<{ x: number; text: string }>;
 }
 
-export function renderHtml(lines: TextLine[], document?: ExtractedDocument): string {
-  const titleLine = findTitleLine(lines);
-  const bodyLines = renderBodyLines(lines, titleLine, document);
+export function renderHtml(
+  bodyLines: TextLine[],
+  document: ExtractedDocument | undefined,
+  footnoteLines: TextLine[],
+): string {
+  const titleLine = findTitleLine(bodyLines);
+  const renderedBodyLines = renderBodyLines(bodyLines, titleLine, document);
+  const renderedFootnotes = footnoteLines.length > 0 ? renderBodyLines(footnoteLines, undefined, document) : [];
 
   return [
     "<!DOCTYPE html>",
@@ -224,12 +234,16 @@ export function renderHtml(lines: TextLine[], document?: ExtractedDocument): str
     "  <title>Converted PDF</title>",
     "</head>",
     "<body>",
-    ...bodyLines,
+    ...renderedBodyLines,
+    ...(renderedFootnotes.length > 0
+      ? ['<div class="footnotes">', ...renderedFootnotes, "</div>"]
+      : []),
     "</body>",
     "</html>",
     "",
   ].join("\n");
 }
+
 
 export function escapeHtml(value: string): string {
   return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -489,7 +503,9 @@ function consumeAuthorBlock(
   const parsedAuthors = parseAuthors(authorBlockLines);
   if (parsedAuthors.length === 0) {
     const fallbackLines = authorBlockLines.map((line) => escapeHtml(line.text));
-    const html = `<div class="authors">\n${fallbackLines.join("<br>\n")}\n</div>`;
+    const html = `<div class="authors">
+${fallbackLines.join("<br>\n")}
+</div>`;
     return { html, nextIndex };
   }
 
@@ -645,11 +661,15 @@ function renderAuthorBlockHtml(authors: Author[]): string {
       ]
         .filter((line) => line.length > 0)
         .join("\n");
-      return `  <div class="author">\n${details}\n  </div>`;
+      return `  <div class="author">
+${details}
+  </div>`;
     })
     .join("\n");
 
-  return `<div class="authors">\n${authorHtml}\n</div>`;
+  return `<div class="authors">
+${authorHtml}
+</div>`;
 }
 
 
@@ -1367,7 +1387,7 @@ function renderReferenceList(
 }
 
 function parseReferenceListMarker(text: string): number | undefined {
-  const match = /^\[(\d{1,4})\]/.exec(text);
+  const match = /^[\[](\d{1,4})[\]]/.exec(text);
   if (!match) return undefined;
   const marker = Number.parseInt(match[1] ?? "", 10);
   return Number.isFinite(marker) ? marker : undefined;
@@ -1788,19 +1808,21 @@ function renderStandaloneLinkParagraph(
   lines: TextLine[],
   startIndex: number,
 ): { html: string; nextIndex: number; consumedIndexes: number[] } | undefined {
-  const footnoteMarker = parseStandaloneNumericFootnoteMarker(lines[startIndex].text);
-  const linkStartIndex = footnoteMarker ? startIndex + 1 : startIndex;
+  const firstLineMarker = parseStandaloneNumericFootnoteMarker(lines[startIndex].text);
+  const linkStartIndex = firstLineMarker ? startIndex + 1 : startIndex;
   const standaloneLink = consumeStandaloneUrl(
     lines,
     linkStartIndex,
-    footnoteMarker ? lines[startIndex] : undefined,
+    firstLineMarker ? lines[startIndex] : undefined,
   );
   if (standaloneLink === undefined) return undefined;
 
+  const marker = firstLineMarker ?? standaloneLink.marker;
+
   return {
-    html: renderStandaloneLinkHtml(standaloneLink, footnoteMarker),
-    nextIndex: startIndex + 1,
-    consumedIndexes: footnoteMarker
+    html: renderStandaloneLinkHtml(standaloneLink, marker),
+    nextIndex: standaloneLink.consumedIndexes.length > 0 ? standaloneLink.consumedIndexes[standaloneLink.consumedIndexes.length - 1] + 1 : linkStartIndex + 1,
+    consumedIndexes: firstLineMarker
       ? [linkStartIndex, ...standaloneLink.consumedIndexes]
       : standaloneLink.consumedIndexes,
   };
@@ -1819,7 +1841,7 @@ function consumeStandaloneUrl(
   lines: TextLine[],
   startIndex: number,
   expectedPageLine?: TextLine,
-): { url: string; trailingPunctuation: string; consumedIndexes: number[] } | undefined {
+): { url: string; trailingPunctuation: string; consumedIndexes: number[], marker?: string } | undefined {
   const urlLine = lines[startIndex];
   if (!urlLine || !isSamePage(urlLine, expectedPageLine)) return undefined;
   const baseUrl = parseStandaloneUrlLine(urlLine.text);
@@ -1837,7 +1859,7 @@ function consumeStandaloneUrl(
     trailingPunctuation: baseUrl.trailingPunctuation,
     consumedIndexes: [],
   };
-  return resolved;
+  return { ...resolved, marker: baseUrl.marker };
 }
 
 function isSamePage(line: TextLine, referenceLine: TextLine | undefined): boolean {
@@ -1917,13 +1939,14 @@ function parseStandaloneNumericFootnoteMarker(text: string): string | undefined 
 
 function parseStandaloneUrlLine(
   text: string,
-): { url: string; trailingPunctuation: string } | undefined {
+): { url: string; trailingPunctuation: string; marker: string | undefined } | undefined {
   const normalized = normalizeTrailingPunctuationSpacing(normalizeSpacing(text));
   const match = STANDALONE_URL_LINE_PATTERN.exec(normalized);
   if (!match) return undefined;
-  const candidate = match[1];
-  if (!isValidHttpUrl(candidate)) return undefined;
-  return { url: candidate, trailingPunctuation: match[2] ?? "" };
+  const marker = match[1];
+  const url = match[2];
+  if (!isValidHttpUrl(url)) return undefined;
+  return { url, trailingPunctuation: match[3] ?? "", marker };
 }
 
 function parseUrlContinuationLine(
@@ -3119,7 +3142,19 @@ function isBodyParagraphContinuationLine(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
-  // Prevent merging lines from different columns on multi-column pages
+  const isPageWrap = line.pageIndex !== previousLine.pageIndex;
+  if (isPageWrap) {
+    return isBodyParagraphPageWrapContinuationLine(
+      line,
+      previousLine,
+      startLine,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    );
+  }
+
+  // Prevent merging lines from different columns on multi-column pages.
   if (isCrossColumnPair(previousLine, line)) return false;
 
   const normalized = parseParagraphMergeCandidateText(line, {
@@ -3151,6 +3186,54 @@ function isBodyParagraphContinuationLine(
   if (
     centerOffset > line.pageWidth * BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO &&
     leftOffset > line.pageWidth * BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function isBodyParagraphPageWrapContinuationLine(
+  line: TextLine,
+  previousLine: TextLine,
+  startLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (line.pageIndex !== previousLine.pageIndex + 1) return false;
+  if (isCrossColumnPair(previousLine, line)) return false;
+
+  const previousText = normalizeSpacing(previousLine.text);
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+
+  const normalized = parseParagraphMergeCandidateText(line, {
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+    startPattern: BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN,
+  });
+  if (normalized === undefined) return false;
+  if (
+    BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized) &&
+    !isCitationLeadingContinuationLine(normalized, previousLine)
+  ) {
+    return false;
+  }
+  if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
+
+  if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
+
+  const previousYRatio = previousLine.y / previousLine.pageHeight;
+  if (previousYRatio > BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO) return false;
+  const nextYRatio = line.y / line.pageHeight;
+  if (nextYRatio < BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO) return false;
+
+  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const leftOffset = Math.abs(line.x - previousLine.x);
+  if (
+    centerOffset > line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_CENTER_OFFSET_RATIO &&
+    leftOffset > line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_LEFT_OFFSET_RATIO
   ) {
     return false;
   }
