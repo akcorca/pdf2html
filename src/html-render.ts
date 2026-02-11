@@ -1,6 +1,10 @@
 // biome-ignore lint/nursery/noExcessiveLinesPerFile: HTML rendering heuristics are intentionally grouped.
 import type { ExtractedDocument, TextLine } from "./pdf-types.ts";
-import { estimateBodyFontSize, normalizeSpacing, splitWords } from "./text-lines.ts";
+import {
+  estimateBodyFontSize,
+  normalizeSpacing,
+  splitWords,
+} from "./text-lines.ts";
 import { containsDocumentMetadata, findTitleLine } from "./title-detect.ts";
 import {
   detectNamedSectionHeadingLevel,
@@ -46,14 +50,32 @@ const BACK_MATTER_NAMED_HEADING_TEXTS = new Set([
 ]);
 const BACK_MATTER_APPENDIX_SECTION_HEADING_PATTERN =
   /^appendix(?:es)?(?:\s+[A-Z0-9]+(?:\.[A-Z0-9]+)?)?(?:[.:]\s+(?:supplementary|additional|online)\s+(?:data|material|materials|information))?$/iu;
-const STANDALONE_URL_LINE_PATTERN = /^(?:(\d+)\s+)?(https?:\/\/[^\s]+?)([.,;:!?])?$/iu;
-const URL_CONTINUATION_LINE_PATTERN = /^([A-Za-z0-9._~!$&'()*+,;=:@%/-]+?)([.,;:!?])?$/u;
+const REFERENCES_HEADING_TEXT = "references";
+const POST_REFERENCES_UNNUMBERED_HEADING_LEVEL = 2;
+const POST_REFERENCES_UNNUMBERED_HEADING_MIN_FONT_RATIO = 1.08;
+const POST_REFERENCES_UNNUMBERED_HEADING_MAX_FONT_RATIO = 1.45;
+const POST_REFERENCES_UNNUMBERED_HEADING_MIN_TOP_RATIO = 0.78;
+const POST_REFERENCES_UNNUMBERED_HEADING_MAX_WIDTH_RATIO = 0.62;
+const POST_REFERENCES_UNNUMBERED_HEADING_MIN_WORDS = 2;
+const POST_REFERENCES_UNNUMBERED_HEADING_MAX_WORDS = 8;
+const POST_REFERENCES_UNNUMBERED_HEADING_MIN_ALPHA_WORDS = 2;
+const POST_REFERENCES_UNNUMBERED_HEADING_MIN_TITLE_CASE_RATIO = 0.75;
+const POST_REFERENCES_UNNUMBERED_HEADING_MIN_ALPHA_CHAR_RATIO = 0.8;
+const POST_REFERENCES_UNNUMBERED_HEADING_DISALLOWED_PUNCTUATION_PATTERN =
+  /[,;:()[\]{}<>]/u;
+const POST_REFERENCES_UNNUMBERED_HEADING_TERMINAL_PUNCTUATION_PATTERN =
+  /[.!?]["')\]]?$/;
+const STANDALONE_URL_LINE_PATTERN =
+  /^(?:(\d+)\s+)?(https?:\/\/[^\s]+?)([.,;:!?])?$/iu;
+const URL_CONTINUATION_LINE_PATTERN =
+  /^([A-Za-z0-9._~!$&'()*+,;=:@%/-]+?)([.,;:!?])?$/u;
 const URL_NON_SLASH_CONTINUATION_FRAGMENT_PATTERN = /[-._~%=&]|\d/u;
 const STANDALONE_URL_CONTINUATION_MAX_LOOKAHEAD = 4;
 const STANDALONE_URL_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.08;
 const STANDALONE_URL_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 3.2;
 const FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN = /^\(?\d{1,2}\)?[.)]?$/u;
-const STANDALONE_ACKNOWLEDGEMENTS_HEADING_PATTERN = /^acknowledg(?:e)?ments?$/iu;
+const STANDALONE_ACKNOWLEDGEMENTS_HEADING_PATTERN =
+  /^acknowledg(?:e)?ments?$/iu;
 const ACKNOWLEDGEMENTS_CONTINUATION_START_PATTERN = /^[a-z(“‘"']/u;
 const ACKNOWLEDGEMENTS_MAX_FONT_DELTA = 0.8;
 const ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO = 0.06;
@@ -70,7 +92,8 @@ const HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN =
   /^(?:tion(?:al(?:ly)?|s)?|sion(?:al(?:ly)?|s)?|mation|nition|plicat(?:ion|ions|ive)|[a-z]{1,4}ingly)/u;
 const HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH = 3;
 const HYPHEN_WRAP_SOFT_SHORT_CONTINUATION_MAX_LENGTH = 3;
-const REFERENCE_IN_WORD_HYPHEN_PATTERN = /\b([A-Za-z]{1,30})-([A-Za-z]{2,30})\b/g;
+const REFERENCE_IN_WORD_HYPHEN_PATTERN =
+  /\b([A-Za-z]{1,30})-([A-Za-z]{2,30})\b/g;
 const REFERENCE_IN_WORD_HYPHEN_SHORT_LEFT_PREFIXES = new Set([
   "a",
   "co",
@@ -111,8 +134,7 @@ const SAME_ROW_SENTENCE_SPLIT_MAX_OVERLAP_FONT_RATIO = 6.0;
 const SAME_ROW_SENTENCE_SPLIT_MAX_START_WIDTH_RATIO = 0.45;
 const STANDALONE_CAPTION_LABEL_PATTERN =
   /^(?:Figure|Fig\.?|Table|Algorithm|Eq(?:uation)?\.?)\s+\d+[A-Za-z]?[.:]?$/iu;
-const CAPTION_START_PATTERN =
-  /^(?:Figure|Fig\.?)\s+\d+[A-Za-z]?\s*[.:]\s+\S/iu;
+const CAPTION_START_PATTERN = /^(?:Figure|Fig\.?)\s+\d+[A-Za-z]?\s*[.:]\s+\S/iu;
 const RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN = /[:;]["')\]]?$/u;
 const RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN = /[.!?]["')\]]?$/u;
 const RENDERED_PARAGRAPH_SOFT_CONNECTOR_END_PATTERN =
@@ -173,7 +195,8 @@ const BODY_PARAGRAPH_MAX_FONT_DELTA = 0.8;
 const BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO = 0.2;
 const BODY_PARAGRAPH_MAX_CENTER_OFFSET_RATIO = 0.2;
 const BODY_PARAGRAPH_CONTINUATION_START_PATTERN = /^[\p{L}\p{N}<("''[]/u;
-const BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN = /^[\p{Ll}\p{N}<(“‘"'[]/u;
+const BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN =
+  /^[\p{Ll}\p{N}<(“‘"'[]/u;
 const BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO = 0.2;
 const BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO = 0.72;
 const BODY_PARAGRAPH_PAGE_WRAP_MAX_LEFT_OFFSET_RATIO = 0.06;
@@ -218,7 +241,8 @@ const INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH = 24;
 const INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT = 8;
 const INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO = 1.0;
 const INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO = 0.55;
-const INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}[\],.;:√∞]+$/u;
+const INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN =
+  /^[A-Za-z0-9\s−\-+*/=(){}[\],.;:√∞]+$/u;
 const INLINE_MATH_BRIDGE_VARIABLE_TOKEN_PATTERN = /^[A-Za-z]$/;
 const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_PATTERN = /^[A-Za-z0-9]$/u;
 const INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_FONT_RATIO = 0.82;
@@ -228,7 +252,8 @@ const INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN = /^[a-z]{1,3}$/u;
 const INLINE_MATH_BRIDGE_NUMERIC_TOKEN_PATTERN = /^\d{1,4}$/;
 const INLINE_MATH_BRIDGE_BRACKETED_NUMERIC_TOKEN_PATTERN = /^\[\d{1,4}\]$/;
 const INLINE_MATH_BRIDGE_SYMBOL_TOKEN_PATTERN = /^[−\-+*/=(){}[\],.;:√∞]+$/u;
-const INLINE_MATH_BRIDGE_LEADING_NUMERIC_MARKER_PATTERN = /^\d{1,4}(?:\s+\d{1,4}){1,2}$/;
+const INLINE_MATH_BRIDGE_LEADING_NUMERIC_MARKER_PATTERN =
+  /^\d{1,4}(?:\s+\d{1,4}){1,2}$/;
 const INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN = /[.!?]["')\]]?$/;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_TOKEN_COUNT = 3;
 const INLINE_MATH_BRIDGE_SUBSCRIPT_MIN_TOKEN_LENGTH = 3;
@@ -236,10 +261,13 @@ const INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO = 0.88;
 const INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_TOKEN_COUNT = 4;
 const INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_TOKEN_LENGTH = 4;
 const INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_FONT_RATIO = 0.82;
-const DETACHED_LOWERCASE_MATH_SUBSCRIPT_PATTERN = /^[a-z]{3,6}(?:\s+[a-z]{3,6}){0,2}$/u;
+const DETACHED_LOWERCASE_MATH_SUBSCRIPT_PATTERN =
+  /^[a-z]{3,6}(?:\s+[a-z]{3,6}){0,2}$/u;
 const DETACHED_LOWERCASE_MATH_SUBSCRIPT_MAX_WIDTH_RATIO = 0.1;
-const DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN = /=\s*(?:[A-Za-z]\b|[-−]?\d)/u;
-const DETACHED_MATH_SUBSCRIPT_TRAILING_VARIABLE_PATTERN = /\b[A-Za-z]\s*[.)]?$/u;
+const DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN =
+  /=\s*(?:[A-Za-z]\b|[-−]?\d)/u;
+const DETACHED_MATH_SUBSCRIPT_TRAILING_VARIABLE_PATTERN =
+  /\b[A-Za-z]\s*[.)]?$/u;
 const DETACHED_NUMERIC_FOOTNOTE_MARKER_PATTERN = /^[1-9]$/u;
 const DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_WIDTH_RATIO = 0.04;
 const DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_FONT_RATIO = 0.82;
@@ -262,11 +290,12 @@ const STRONG_CODE_START_TEXT_PATTERN =
   /[#=]|\b(?:def|class|import|from|return|const|let|var|function|try|except)\b/u;
 const CODE_STYLE_TEXT_PATTERN =
   /[#=]|\b(?:def|class|return|import|from|try|except|const|let|var|function)\b|^[A-Za-z_][\w.]*\s*\([^)]*\)$/u;
-const DISPLAY_MATH_FRAGMENT_MAX_WIDTH_RATIO = 0.40;
+const DISPLAY_MATH_FRAGMENT_MAX_WIDTH_RATIO = 0.4;
 const DISPLAY_MATH_FRAGMENT_MAX_VERTICAL_GAP_RATIO = 2.5;
 // Matches math operators but not hyphens embedded in words (e.g., "pre-trained").
 // For - and −, require word boundary or surrounding space to distinguish from hyphenation.
-const DISPLAY_MATH_EQUATION_PATTERN = /[=+×·∑∏∫√∈∉⊂⊃≤≥≈≠∼≡]|(?:^|(?<=\s))[-−]|\\[a-z]/u;
+const DISPLAY_MATH_EQUATION_PATTERN =
+  /[=+×·∑∏∫√∈∉⊂⊃≤≥≈≠∼≡]|(?:^|(?<=\s))[-−]|\\[a-z]/u;
 const DISPLAY_MATH_SUPERSCRIPT_MAX_FONT_RATIO = 0.85;
 
 interface HeadingCandidate {
@@ -332,7 +361,10 @@ export function renderHtml(
 ): string {
   const titleLine = findTitleLine(bodyLines);
   const renderedBodyLines = renderBodyLines(bodyLines, titleLine, document);
-  const renderedFootnotes = footnoteLines.length > 0 ? renderFootnoteLines(footnoteLines, document) : [];
+  const renderedFootnotes =
+    footnoteLines.length > 0
+      ? renderFootnoteLines(footnoteLines, document)
+      : [];
 
   return [
     "<!DOCTYPE html>",
@@ -368,9 +400,11 @@ function renderFootnoteLines(
   });
 }
 
-
 export function escapeHtml(value: string): string {
-  return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }
 
 const FOOTNOTE_REFERENCE_HTML_PATTERN =
@@ -404,14 +438,20 @@ function renderParagraph(text: string): string {
   return `<p>${escapeHtmlPreservingFootnoteReferences(text)}</p>`;
 }
 
-function mergeCaptionSeparatedParagraphFragments(renderedLines: string[]): string[] {
+function mergeCaptionSeparatedParagraphFragments(
+  renderedLines: string[],
+): string[] {
   const merged = [...renderedLines];
   let index = 0;
   while (index + 2 < merged.length) {
     const firstText = extractRenderedParagraphText(merged[index]);
     const captionText = extractRenderedParagraphText(merged[index + 1]);
     const continuationText = extractRenderedParagraphText(merged[index + 2]);
-    if (firstText === undefined || captionText === undefined || continuationText === undefined) {
+    if (
+      firstText === undefined ||
+      captionText === undefined ||
+      continuationText === undefined
+    ) {
       index += 1;
       continue;
     }
@@ -423,19 +463,26 @@ function mergeCaptionSeparatedParagraphFragments(renderedLines: string[]): strin
       index += 1;
       continue;
     }
-    if (!BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN.test(continuationText)) {
+    if (
+      !BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN.test(
+        continuationText,
+      )
+    ) {
       index += 1;
       continue;
     }
 
-    merged[index] = `<p>${firstText.trimEnd()} ${continuationText.trimStart()}</p>`;
+    merged[index] =
+      `<p>${firstText.trimEnd()} ${continuationText.trimStart()}</p>`;
     merged.splice(index + 2, 1);
     index += 2;
   }
   return merged;
 }
 
-function mergeSplitRenderedParagraphContinuations(renderedLines: string[]): string[] {
+function mergeSplitRenderedParagraphContinuations(
+  renderedLines: string[],
+): string[] {
   const merged = [...renderedLines];
   let index = 0;
   while (index + 1 < merged.length) {
@@ -452,7 +499,9 @@ function mergeSplitRenderedParagraphContinuations(renderedLines: string[]): stri
 
     const mergedText = isHyphenWrappedLineText(firstText)
       ? mergeHyphenWrappedTexts(firstText, continuationText)
-      : normalizeSpacing(`${firstText.trimEnd()} ${continuationText.trimStart()}`);
+      : normalizeSpacing(
+          `${firstText.trimEnd()} ${continuationText.trimStart()}`,
+        );
     merged[index] = `<p>${mergedText}</p>`;
     merged.splice(index + 1, 1);
   }
@@ -463,11 +512,13 @@ function shouldMergeSplitRenderedParagraphPair(
   firstText: string,
   continuationText: string,
 ): boolean {
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(firstText)) return false;
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(firstText))
+    return false;
   if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(firstText)) return false;
-  const startsWithConnector = RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN.test(
-    continuationText,
-  );
+  const startsWithConnector =
+    RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN.test(
+      continuationText,
+    );
   if (
     !isLikelySplitParagraphEnd(firstText) &&
     !startsWithConnector &&
@@ -475,16 +526,35 @@ function shouldMergeSplitRenderedParagraphPair(
   ) {
     return false;
   }
-  if (containsDocumentMetadata(firstText) || containsDocumentMetadata(continuationText)) return false;
-  if (CAPTION_START_PATTERN.test(firstText) || CAPTION_START_PATTERN.test(continuationText)) return false;
+  if (
+    containsDocumentMetadata(firstText) ||
+    containsDocumentMetadata(continuationText)
+  )
+    return false;
+  if (
+    CAPTION_START_PATTERN.test(firstText) ||
+    CAPTION_START_PATTERN.test(continuationText)
+  )
+    return false;
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(firstText)) return false;
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(continuationText)) return false;
   if (isLikelyAffiliationAddressLine(firstText)) return false;
-  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(continuationText)) return false;
-  if (!BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN.test(continuationText)) return false;
+  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(continuationText))
+    return false;
+  if (
+    !BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN.test(continuationText)
+  )
+    return false;
   if (parseBulletListItemText(continuationText) !== undefined) return false;
-  if (splitWords(firstText).length < RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT) return false;
-  return splitWords(continuationText).length >= RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT;
+  if (
+    splitWords(firstText).length <
+    RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT
+  )
+    return false;
+  return (
+    splitWords(continuationText).length >=
+    RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT
+  );
 }
 
 function isLikelySplitParagraphEnd(text: string): boolean {
@@ -503,7 +573,9 @@ function splitKnownCleanParagraphBoundary(renderedLines: string[]): string[] {
     const paragraphText = extractRenderedParagraphText(renderedLine);
     if (
       paragraphText === undefined ||
-      !/Currently,\s+we have \d+ standardization functions in Dataprep\.Clean/u.test(paragraphText)
+      !/Currently,\s+we have \d+ standardization functions in Dataprep\.Clean/u.test(
+        paragraphText,
+      )
     ) {
       result.push(renderedLine);
       continue;
@@ -524,18 +596,25 @@ function splitKnownCleanParagraphBoundary(renderedLines: string[]): string[] {
 
 function isLikelySentenceWrappedSplitParagraphEnd(text: string): boolean {
   const trimmed = text.trimEnd();
-  if (RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN.test(trimmed)) return false;
+  if (RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN.test(trimmed))
+    return false;
   return /[\p{L}\p{N}][”"')\]]?$/u.test(trimmed);
 }
 
-function extractRenderedParagraphText(renderedLine: string): string | undefined {
+function extractRenderedParagraphText(
+  renderedLine: string,
+): string | undefined {
   const match = /^<p>([\s\S]*)<\/p>$/.exec(renderedLine);
   return match?.[1];
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: ordered rendering heuristics are evaluated in one pass.
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: ordered rendering heuristics are evaluated in one pass.
-function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, document?: ExtractedDocument): string[] {
+function renderBodyLines(
+  lines: TextLine[],
+  titleLine: TextLine | undefined,
+  document?: ExtractedDocument,
+): string[] {
   const bodyLines: string[] = [];
   const bodyFontSize = estimateBodyFontSize(lines);
   const pageTypicalWidths = computePageTypicalBodyWidths(lines, bodyFontSize);
@@ -547,11 +626,20 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     ? consumeTitleLines(lines, titleLine)
     : undefined;
   const consumedBodyLineIndexes = new Set<number>();
+  let hasSeenReferencesHeading = false;
   let index = consumedTitle?.startIndex ?? 0;
   while (index < lines.length) {
     if (consumedTitle && index === consumedTitle.startIndex) {
       bodyLines.push(`<h1>${escapeHtml(consumedTitle.text)}</h1>`);
-      const authorBlock = titleLine ? consumeAuthorBlock(lines, consumedTitle.nextIndex, titleLine, pageTypicalWidths, bodyFontSize) : undefined;
+      const authorBlock = titleLine
+        ? consumeAuthorBlock(
+            lines,
+            consumedTitle.nextIndex,
+            titleLine,
+            pageTypicalWidths,
+            bodyFontSize,
+          )
+        : undefined;
       if (authorBlock) {
         bodyLines.push(authorBlock.html);
         index = authorBlock.nextIndex;
@@ -560,7 +648,13 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
       }
       continue;
     }
-    if (shouldSkipConsumedBodyLineIndex(index, consumedTitle, consumedBodyLineIndexes)) {
+    if (
+      shouldSkipConsumedBodyLineIndex(
+        index,
+        consumedTitle,
+        consumedBodyLineIndexes,
+      )
+    ) {
       index += 1;
       continue;
     }
@@ -605,25 +699,37 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
           index,
           currentLine,
         );
-        addConsumedIndexes(consumedBodyLineIndexes, wrapped.continuationIndexes, index);
+        addConsumedIndexes(
+          consumedBodyLineIndexes,
+          wrapped.continuationIndexes,
+          index,
+        );
         if (wrapped.continuationIndexes.length > 0) {
           headingText = wrapped.text;
         }
       }
-      bodyLines.push(`<h${heading.level}>${escapeHtml(headingText)}</h${heading.level}>`);
+      bodyLines.push(
+        `<h${heading.level}>${escapeHtml(headingText)}</h${heading.level}>`,
+      );
+      if (isReferencesHeadingText(headingText)) {
+        hasSeenReferencesHeading = true;
+      }
       if (
         heading.kind === "numbered" &&
         numberedHeadingSectionInfo !== undefined &&
         numberedHeadingSectionInfo.depth === 1
       ) {
-        seenTopLevelNumberedSections.add(numberedHeadingSectionInfo.topLevelNumber);
+        seenTopLevelNumberedSections.add(
+          numberedHeadingSectionInfo.topLevelNumber,
+        );
       }
       if (isStandaloneAcknowledgementsHeading(headingText)) {
-        const acknowledgementsParagraph = consumeAcknowledgementsParagraphAfterHeading(
-          lines,
-          index + 1,
-          currentLine,
-        );
+        const acknowledgementsParagraph =
+          consumeAcknowledgementsParagraphAfterHeading(
+            lines,
+            index + 1,
+            currentLine,
+          );
         if (acknowledgementsParagraph !== undefined) {
           bodyLines.push(renderParagraph(acknowledgementsParagraph.text));
           index = acknowledgementsParagraph.nextIndex;
@@ -634,10 +740,30 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
       continue;
     }
 
+    const postReferencesHeading = detectPostReferencesUnnumberedHeading(
+      lines,
+      index,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+      hasSeenReferencesHeading,
+    );
+    if (postReferencesHeading !== undefined) {
+      bodyLines.push(
+        `<h${postReferencesHeading.level}>${escapeHtml(postReferencesHeading.text)}</h${postReferencesHeading.level}>`,
+      );
+      index += 1;
+      continue;
+    }
+
     const inlineHeading = parseInlineHeadingParagraph(currentLine.text);
     if (inlineHeading !== undefined) {
-      bodyLines.push(`<h${inlineHeading.level}>${escapeHtml(inlineHeading.heading)}</h${inlineHeading.level}>`);
+      bodyLines.push(
+        `<h${inlineHeading.level}>${escapeHtml(inlineHeading.heading)}</h${inlineHeading.level}>`,
+      );
       bodyLines.push(renderParagraph(inlineHeading.body));
+      if (isReferencesHeadingText(inlineHeading.heading)) {
+        hasSeenReferencesHeading = true;
+      }
       index += 1;
       continue;
     }
@@ -665,7 +791,11 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     const renderedStandaloneLink = renderStandaloneLinkParagraph(lines, index);
     if (renderedStandaloneLink !== undefined) {
       bodyLines.push(renderedStandaloneLink.html);
-      addConsumedIndexes(consumedBodyLineIndexes, renderedStandaloneLink.consumedIndexes, index);
+      addConsumedIndexes(
+        consumedBodyLineIndexes,
+        renderedStandaloneLink.consumedIndexes,
+        index,
+      );
       index = renderedStandaloneLink.nextIndex;
       continue;
     }
@@ -686,12 +816,23 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     );
     if (renderedNumberedCodeBlock !== undefined) {
       bodyLines.push(renderedNumberedCodeBlock.html);
-      addConsumedIndexes(consumedBodyLineIndexes, renderedNumberedCodeBlock.consumedIndexes, index);
+      addConsumedIndexes(
+        consumedBodyLineIndexes,
+        renderedNumberedCodeBlock.consumedIndexes,
+        index,
+      );
       index += 1;
       continue;
     }
 
-    if (shouldSkipStandaloneFigurePanelLabel(lines, index, bodyFontSize, hasDottedSubsectionHeadings)) {
+    if (
+      shouldSkipStandaloneFigurePanelLabel(
+        lines,
+        index,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
       index += 1;
       continue;
     }
@@ -747,8 +888,11 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     bodyLines.push(renderParagraph(currentLine.text));
     index += 1;
   }
-  const mergedCaptionFragments = mergeCaptionSeparatedParagraphFragments(bodyLines);
-  const mergedSplitParagraphs = mergeSplitRenderedParagraphContinuations(mergedCaptionFragments);
+  const mergedCaptionFragments =
+    mergeCaptionSeparatedParagraphFragments(bodyLines);
+  const mergedSplitParagraphs = mergeSplitRenderedParagraphContinuations(
+    mergedCaptionFragments,
+  );
   return splitKnownCleanParagraphBoundary(mergedSplitParagraphs);
 }
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: author block boundary detection requires multiple sequential guards.
@@ -763,11 +907,18 @@ function consumeAuthorBlock(
   let nextIndex = startIndex;
   let firstAuthorLine: TextLine | undefined;
 
-  while (nextIndex < lines.length && authorBlockLines.length < AUTHOR_BLOCK_MAX_LINES) {
+  while (
+    nextIndex < lines.length &&
+    authorBlockLines.length < AUTHOR_BLOCK_MAX_LINES
+  ) {
     const line = lines[nextIndex];
     if (line.pageIndex !== titleLine.pageIndex) break;
 
-    if (firstAuthorLine && Math.abs(line.fontSize - firstAuthorLine.fontSize) > AUTHOR_BLOCK_MAX_FONT_DELTA) {
+    if (
+      firstAuthorLine &&
+      Math.abs(line.fontSize - firstAuthorLine.fontSize) >
+        AUTHOR_BLOCK_MAX_FONT_DELTA
+    ) {
       break;
     }
 
@@ -786,9 +937,19 @@ function consumeAuthorBlock(
     // Author blocks appear in the title area (often full-width), so always use
     // page-wide typical width to avoid false paragraph-lead detection from
     // column-specific widths.
-    const typicalWidth = pageTypicalWidths.get(typicalWidthKey(line.pageIndex)) ?? line.pageWidth;
+    const typicalWidth =
+      pageTypicalWidths.get(typicalWidthKey(line.pageIndex)) ?? line.pageWidth;
     if (
-      isBodyParagraphLead(lines, nextIndex, line, normalized, titleLine, bodyFontSize, false, typicalWidth)
+      isBodyParagraphLead(
+        lines,
+        nextIndex,
+        line,
+        normalized,
+        titleLine,
+        bodyFontSize,
+        false,
+        typicalWidth,
+      )
     ) {
       break;
     }
@@ -839,7 +1000,10 @@ function parseAuthors(lines: TextLine[]): Author[] {
   return authors;
 }
 
-function parseAuthorBlockRows(pendingRows: AuthorRow[], row: AuthorRow): Author[] | undefined {
+function parseAuthorBlockRows(
+  pendingRows: AuthorRow[],
+  row: AuthorRow,
+): Author[] | undefined {
   const emailsByCell = row.cells.map((cell) => extractEmails(cell.text));
   const flattenedEmails = emailsByCell.flat();
   if (flattenedEmails.length === 0) return undefined;
@@ -851,11 +1015,13 @@ function parseAuthorBlockRows(pendingRows: AuthorRow[], row: AuthorRow): Author[
   const names = splitRowIntoEntries(nameRow, entriesPerCell);
   if (names.length !== flattenedEmails.length) return undefined;
 
-  const blockAuthors = names.map((name, index): Author => ({
-    name,
-    affiliations: [],
-    email: flattenedEmails[index],
-  }));
+  const blockAuthors = names.map(
+    (name, index): Author => ({
+      name,
+      affiliations: [],
+      email: flattenedEmails[index],
+    }),
+  );
   appendAuthorAffiliations(blockAuthors, pendingRows.slice(1), entriesPerCell);
   return blockAuthors;
 }
@@ -867,7 +1033,11 @@ function appendAuthorAffiliations(
 ): void {
   for (const row of affiliationRows) {
     const affiliations = splitRowIntoEntries(row, entriesPerCell);
-    for (let index = 0; index < authors.length && index < affiliations.length; index += 1) {
+    for (
+      let index = 0;
+      index < authors.length && index < affiliations.length;
+      index += 1
+    ) {
       const affiliation = affiliations[index];
       if (affiliation) authors[index].affiliations.push(affiliation);
     }
@@ -883,7 +1053,10 @@ function groupAuthorRows(lines: TextLine[]): AuthorRow[] {
     if (text.length === 0) continue;
 
     const currentRow = rows[rows.length - 1];
-    if (!currentRow || Math.abs(currentRow.y - line.y) > AUTHOR_ROW_MERGE_MAX_Y_DELTA) {
+    if (
+      !currentRow ||
+      Math.abs(currentRow.y - line.y) > AUTHOR_ROW_MERGE_MAX_Y_DELTA
+    ) {
       rows.push({ y: line.y, cells: [{ x: line.x, text }] });
       continue;
     }
@@ -897,7 +1070,10 @@ function groupAuthorRows(lines: TextLine[]): AuthorRow[] {
   return rows;
 }
 
-function deriveEntriesPerCell(row: AuthorRow, emailsByCell: string[][]): number[] {
+function deriveEntriesPerCell(
+  row: AuthorRow,
+  emailsByCell: string[][],
+): number[] {
   return row.cells.map((cell, index) => {
     const emailCount = emailsByCell[index]?.length ?? 0;
     if (emailCount > 0) return emailCount;
@@ -905,7 +1081,10 @@ function deriveEntriesPerCell(row: AuthorRow, emailsByCell: string[][]): number[
   });
 }
 
-function splitRowIntoEntries(row: AuthorRow, entriesPerCell: number[]): string[] {
+function splitRowIntoEntries(
+  row: AuthorRow,
+  entriesPerCell: number[],
+): string[] {
   const entries: string[] = [];
   const maxCellCount = Math.max(row.cells.length, entriesPerCell.length);
   for (let index = 0; index < maxCellCount; index += 1) {
@@ -941,7 +1120,9 @@ function splitCellIntoEntries(text: string, expectedCount: number): string[] {
 
   if (tokenIndex < tokens.length && entries.length > 0) {
     const tail = tokens.slice(tokenIndex).join(" ");
-    entries[entries.length - 1] = normalizeSpacing(`${entries[entries.length - 1]} ${tail}`);
+    entries[entries.length - 1] = normalizeSpacing(
+      `${entries[entries.length - 1]} ${tail}`,
+    );
   }
 
   return entries.filter((entry) => entry.length > 0);
@@ -957,9 +1138,12 @@ function renderAuthorBlockHtml(authors: Author[]): string {
       const details = [
         `    <div class="name">${escapeHtml(author.name)}</div>`,
         ...author.affiliations.map(
-          (affiliation) => `    <div class="affiliation">${escapeHtml(affiliation)}</div>`,
+          (affiliation) =>
+            `    <div class="affiliation">${escapeHtml(affiliation)}</div>`,
         ),
-        author.email ? `    <div class="email">${escapeHtml(author.email)}</div>` : "",
+        author.email
+          ? `    <div class="email">${escapeHtml(author.email)}</div>`
+          : "",
       ]
         .filter((line) => line.length > 0)
         .join("\n");
@@ -974,14 +1158,17 @@ ${authorHtml}
 </div>`;
 }
 
-
 function shouldSkipConsumedBodyLineIndex(
   index: number,
-  consumedTitle: Pick<ConsumedTitleLineBlock, "startIndex" | "nextIndex"> | undefined,
+  consumedTitle:
+    | Pick<ConsumedTitleLineBlock, "startIndex" | "nextIndex">
+    | undefined,
   consumedBodyLineIndexes: Set<number>,
 ): boolean {
   return (
-    (consumedTitle && index > consumedTitle.startIndex && index < consumedTitle.nextIndex) ||
+    (consumedTitle &&
+      index > consumedTitle.startIndex &&
+      index < consumedTitle.nextIndex) ||
     consumedBodyLineIndexes.has(index)
   );
 }
@@ -1010,7 +1197,8 @@ function consumeReferenceEntryParagraph(
     hasDottedSubsectionHeadings,
   });
   if (startNormalized === undefined) return undefined;
-  if (!BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
+  if (!BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized))
+    return undefined;
 
   const parts = [startNormalized];
   let previousLine = startLine;
@@ -1018,14 +1206,16 @@ function consumeReferenceEntryParagraph(
 
   while (nextIndex < lines.length) {
     const candidate = lines[nextIndex];
-    if (!isReferenceEntryContinuationLine(
-      candidate,
-      previousLine,
-      startLine,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-    )) {
+    if (
+      !isReferenceEntryContinuationLine(
+        candidate,
+        previousLine,
+        startLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
       break;
     }
     const candidateText = normalizeSpacing(candidate.text);
@@ -1054,12 +1244,18 @@ function isReferenceEntryContinuationLine(
   // Stop at the next reference entry
   if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized)) return false;
   // Stop at headings
-  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+    undefined
+  ) {
     return false;
   }
   if (containsDocumentMetadata(normalized)) return false;
   // Font size must be similar
-  if (Math.abs(line.fontSize - startLine.fontSize) > REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA) {
+  if (
+    Math.abs(line.fontSize - startLine.fontSize) >
+    REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA
+  ) {
     return false;
   }
   // Vertical gap check
@@ -1067,13 +1263,18 @@ function isReferenceEntryContinuationLine(
     previousLine.fontSize,
     REFERENCE_ENTRY_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
   );
-  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
+  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap))
+    return false;
   // Horizontal alignment check
-  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const centerOffset = Math.abs(
+    getLineCenter(line) - getLineCenter(previousLine),
+  );
   const leftOffset = Math.abs(line.x - startLine.x);
   if (
-    centerOffset > line.pageWidth * REFERENCE_ENTRY_CONTINUATION_MAX_CENTER_OFFSET_RATIO &&
-    leftOffset > line.pageWidth * REFERENCE_ENTRY_CONTINUATION_MAX_LEFT_OFFSET_RATIO
+    centerOffset >
+      line.pageWidth * REFERENCE_ENTRY_CONTINUATION_MAX_CENTER_OFFSET_RATIO &&
+    leftOffset >
+      line.pageWidth * REFERENCE_ENTRY_CONTINUATION_MAX_LEFT_OFFSET_RATIO
   ) {
     return false;
   }
@@ -1093,13 +1294,20 @@ function isDisplayMathFragmentLine(
   if (containsDocumentMetadata(normalized)) return false;
   if (parseBulletListItemText(normalized) !== undefined) return false;
   if (parseStandaloneUrlLine(normalized) !== undefined) return false;
-  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+    undefined
+  ) {
     return false;
   }
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
   if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized)) return false;
   // Must be short relative to page width
-  if (line.estimatedWidth > line.pageWidth * DISPLAY_MATH_FRAGMENT_MAX_WIDTH_RATIO) return false;
+  if (
+    line.estimatedWidth >
+    line.pageWidth * DISPLAY_MATH_FRAGMENT_MAX_WIDTH_RATIO
+  )
+    return false;
   // Check that content looks math-like rather than natural language.
   // First reject lines containing natural-language words (4+ consecutive letters)
   // — these are prose, code, or captions, not math fragments.
@@ -1131,7 +1339,10 @@ function isDisplayMathEquationLine(
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return false;
   if (containsDocumentMetadata(normalized)) return false;
-  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+    undefined
+  ) {
     return false;
   }
   // Display equations often contain = and math notation, may be wider than fragments
@@ -1151,7 +1362,14 @@ function consumeDisplayMathBlock(
   // Only a display math fragment (short, no long words) can START a block.
   // Display math equation lines (which may contain function names) can only
   // continue an existing block — they can't start one to avoid false positives.
-  if (!isDisplayMathFragmentLine(startLine, bodyFontSize, titleLine, hasDottedSubsectionHeadings)) {
+  if (
+    !isDisplayMathFragmentLine(
+      startLine,
+      bodyFontSize,
+      titleLine,
+      hasDottedSubsectionHeadings,
+    )
+  ) {
     return undefined;
   }
 
@@ -1172,8 +1390,20 @@ function consumeDisplayMathBlock(
     );
     if (verticalGap <= 0 || verticalGap > maxGap) break;
 
-    const candidateIsFragment = isDisplayMathFragmentLine(candidate, bodyFontSize, titleLine, hasDottedSubsectionHeadings);
-    const candidateIsEquation = !candidateIsFragment && isDisplayMathEquationLine(candidate, bodyFontSize, titleLine, hasDottedSubsectionHeadings);
+    const candidateIsFragment = isDisplayMathFragmentLine(
+      candidate,
+      bodyFontSize,
+      titleLine,
+      hasDottedSubsectionHeadings,
+    );
+    const candidateIsEquation =
+      !candidateIsFragment &&
+      isDisplayMathEquationLine(
+        candidate,
+        bodyFontSize,
+        titleLine,
+        hasDottedSubsectionHeadings,
+      );
     if (!candidateIsFragment && !candidateIsEquation) break;
 
     parts.push(normalizeSpacing(candidate.text));
@@ -1185,7 +1415,9 @@ function consumeDisplayMathBlock(
   // For multi-line blocks: merge into a single paragraph.
   if (parts.length < 2) {
     const normalized = normalizeSpacing(startLine.text);
-    const isSmallFont = startLine.fontSize < bodyFontSize * DISPLAY_MATH_SUPERSCRIPT_MAX_FONT_RATIO;
+    const isSmallFont =
+      startLine.fontSize <
+      bodyFontSize * DISPLAY_MATH_SUPERSCRIPT_MAX_FONT_RATIO;
     const isNarrow = startLine.estimatedWidth < startLine.pageWidth * 0.12;
     const isShortText = normalized.length <= 12;
     // A single detached math artifact (subscript/superscript) that is small, narrow,
@@ -1208,29 +1440,44 @@ function isStandaloneFigurePanelLabelCandidate(
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
   if (normalized.length === 0) return false;
-  if (CAPTION_START_PATTERN.test(normalized) || STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) {
+  if (
+    CAPTION_START_PATTERN.test(normalized) ||
+    STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)
+  ) {
     return false;
   }
   if (containsDocumentMetadata(normalized)) return false;
   if (isSemanticHeadingText(normalized)) return false;
   if (parseBulletListItemText(normalized) !== undefined) return false;
-  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+    undefined
+  ) {
     return false;
   }
-  if (FIGURE_PANEL_LABEL_TERMINAL_PUNCTUATION_PATTERN.test(normalized)) return false;
-  if (line.estimatedWidth > line.pageWidth * FIGURE_PANEL_LABEL_MAX_WIDTH_RATIO) return false;
+  if (FIGURE_PANEL_LABEL_TERMINAL_PUNCTUATION_PATTERN.test(normalized))
+    return false;
+  if (line.estimatedWidth > line.pageWidth * FIGURE_PANEL_LABEL_MAX_WIDTH_RATIO)
+    return false;
 
   const words = splitWords(normalized);
-  if (words.length < FIGURE_PANEL_LABEL_MIN_WORDS || words.length > FIGURE_PANEL_LABEL_MAX_WORDS) {
+  if (
+    words.length < FIGURE_PANEL_LABEL_MIN_WORDS ||
+    words.length > FIGURE_PANEL_LABEL_MAX_WORDS
+  ) {
     return false;
   }
   return hasStrongTitleCaseSignal(words);
 }
 
-function isFigurePanelLabelAboveCaptionWithGap(line: TextLine, captionLine: TextLine): boolean {
+function isFigurePanelLabelAboveCaptionWithGap(
+  line: TextLine,
+  captionLine: TextLine,
+): boolean {
   if (line.y <= captionLine.y) return false;
   const minGap =
-    Math.max(line.fontSize, captionLine.fontSize) * FIGURE_PANEL_LABEL_MIN_CAPTION_GAP_FONT_RATIO;
+    Math.max(line.fontSize, captionLine.fontSize) *
+    FIGURE_PANEL_LABEL_MIN_CAPTION_GAP_FONT_RATIO;
   return line.y - captionLine.y >= minGap;
 }
 
@@ -1253,7 +1500,11 @@ function shouldSkipStandaloneFigurePanelLabel(
     return false;
   }
 
-  const captionStartIndex = findNearbyFigureCaptionStartIndex(lines, startIndex + 1, line.pageIndex);
+  const captionStartIndex = findNearbyFigureCaptionStartIndex(
+    lines,
+    startIndex + 1,
+    line.pageIndex,
+  );
   if (captionStartIndex === undefined) return false;
 
   const captionLine = lines[captionStartIndex];
@@ -1275,40 +1526,64 @@ function shouldSkipStandaloneFigureDiagramArtifact(
   const line = lines[startIndex];
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return false;
-  if (CAPTION_START_PATTERN.test(normalized) || STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) {
+  if (
+    CAPTION_START_PATTERN.test(normalized) ||
+    STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)
+  ) {
     return false;
   }
   if (containsDocumentMetadata(normalized)) return false;
   if (parseBulletListItemText(normalized) !== undefined) return false;
   if (parseStandaloneUrlLine(normalized) !== undefined) return false;
-  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+    undefined
+  ) {
     return false;
   }
 
   const words = splitWords(normalized);
   const isNumericMarker =
     FIGURE_DIAGRAM_NUMERIC_MARKER_PATTERN.test(normalized) &&
-    line.estimatedWidth <= line.pageWidth * FIGURE_DIAGRAM_NUMERIC_MARKER_MAX_WIDTH_RATIO;
+    line.estimatedWidth <=
+      line.pageWidth * FIGURE_DIAGRAM_NUMERIC_MARKER_MAX_WIDTH_RATIO;
   const isSmallFlowLabel =
     line.fontSize <= bodyFontSize * FIGURE_DIAGRAM_FLOW_LABEL_MAX_FONT_RATIO &&
     words.length >= 2 &&
     words.length <= FIGURE_DIAGRAM_FLOW_LABEL_MAX_WORDS &&
-    line.estimatedWidth <= line.pageWidth * FIGURE_DIAGRAM_FLOW_LABEL_MAX_WIDTH_RATIO &&
+    line.estimatedWidth <=
+      line.pageWidth * FIGURE_DIAGRAM_FLOW_LABEL_MAX_WIDTH_RATIO &&
     !FIGURE_PANEL_LABEL_TERMINAL_PUNCTUATION_PATTERN.test(normalized);
   if (!isNumericMarker && !isSmallFlowLabel) return false;
 
-  const captionStartIndex = findNearbyFigureCaptionStartIndexBidirectional(lines, startIndex);
+  const captionStartIndex = findNearbyFigureCaptionStartIndexBidirectional(
+    lines,
+    startIndex,
+  );
   if (captionStartIndex === undefined) return false;
 
   const captionLine = lines[captionStartIndex];
   if (!captionLine || line.pageIndex !== captionLine.pageIndex) return false;
   if (line.y <= captionLine.y) return false;
   const minGap =
-    Math.max(line.fontSize, captionLine.fontSize) * FIGURE_DIAGRAM_MIN_CAPTION_VERTICAL_GAP_RATIO;
+    Math.max(line.fontSize, captionLine.fontSize) *
+    FIGURE_DIAGRAM_MIN_CAPTION_VERTICAL_GAP_RATIO;
   return line.y - captionLine.y >= minGap;
 }
 
 function hasStrongTitleCaseSignal(words: string[]): boolean {
+  const { alphaWordCount, titleCaseWordCount } = countTitleCaseWords(words);
+  if (alphaWordCount < FIGURE_PANEL_LABEL_MIN_ALPHA_WORDS) return false;
+  return (
+    titleCaseWordCount / alphaWordCount >=
+    FIGURE_PANEL_LABEL_MIN_TITLE_CASE_WORD_RATIO
+  );
+}
+
+function countTitleCaseWords(words: string[]): {
+  alphaWordCount: number;
+  titleCaseWordCount: number;
+} {
   let alphaWordCount = 0;
   let titleCaseWordCount = 0;
 
@@ -1320,9 +1595,7 @@ function hasStrongTitleCaseSignal(words: string[]): boolean {
       titleCaseWordCount += 1;
     }
   }
-
-  if (alphaWordCount < FIGURE_PANEL_LABEL_MIN_ALPHA_WORDS) return false;
-  return titleCaseWordCount / alphaWordCount >= FIGURE_PANEL_LABEL_MIN_TITLE_CASE_WORD_RATIO;
+  return { alphaWordCount, titleCaseWordCount };
 }
 
 function findNearbyFigureCaptionStartIndex(
@@ -1330,7 +1603,10 @@ function findNearbyFigureCaptionStartIndex(
   startIndex: number,
   pageIndex: number,
 ): number | undefined {
-  const maxScanIndex = Math.min(lines.length, startIndex + FIGURE_PANEL_LABEL_LOOKAHEAD);
+  const maxScanIndex = Math.min(
+    lines.length,
+    startIndex + FIGURE_PANEL_LABEL_LOOKAHEAD,
+  );
   let scanIndex = startIndex;
   while (scanIndex < maxScanIndex) {
     const candidate = lines[scanIndex];
@@ -1354,11 +1630,16 @@ function findNearbyFigureCaptionStartIndexBidirectional(
   const line = lines[startIndex];
   if (!line) return undefined;
 
-  for (let distance = 1; distance <= FIGURE_CAPTION_NEARBY_MAX_SCAN_LINES; distance += 1) {
+  for (
+    let distance = 1;
+    distance <= FIGURE_CAPTION_NEARBY_MAX_SCAN_LINES;
+    distance += 1
+  ) {
     const backward = lines[startIndex - distance];
     if (backward && backward.pageIndex === line.pageIndex) {
       const backwardText = normalizeSpacing(backward.text);
-      if (CAPTION_START_PATTERN.test(backwardText)) return startIndex - distance;
+      if (CAPTION_START_PATTERN.test(backwardText))
+        return startIndex - distance;
     }
 
     const forward = lines[startIndex + distance];
@@ -1370,20 +1651,30 @@ function findNearbyFigureCaptionStartIndexBidirectional(
   return undefined;
 }
 
-function getComparableFigureCaptionText(lines: TextLine[], captionStartIndex: number): string {
+function getComparableFigureCaptionText(
+  lines: TextLine[],
+  captionStartIndex: number,
+): string {
   const consumedCaption = consumeFigureCaption(lines, captionStartIndex);
   if (consumedCaption !== undefined) return consumedCaption.text;
   return normalizeSpacing(lines[captionStartIndex]?.text ?? "");
 }
 
-function hasHighFigurePanelLabelTokenCoverage(labelText: string, captionText: string): boolean {
+function hasHighFigurePanelLabelTokenCoverage(
+  labelText: string,
+  captionText: string,
+): boolean {
   const labelTokens = tokenizeFigurePanelComparisonText(labelText);
   if (labelTokens.length === 0) return false;
 
   const distinctiveTokens = new Set(
-    labelTokens.filter((token) => token.length >= FIGURE_PANEL_LABEL_DISTINCTIVE_TOKEN_MIN_LENGTH),
+    labelTokens.filter(
+      (token) =>
+        token.length >= FIGURE_PANEL_LABEL_DISTINCTIVE_TOKEN_MIN_LENGTH,
+    ),
   );
-  if (distinctiveTokens.size < FIGURE_PANEL_LABEL_MIN_DISTINCTIVE_TOKENS) return false;
+  if (distinctiveTokens.size < FIGURE_PANEL_LABEL_MIN_DISTINCTIVE_TOKENS)
+    return false;
 
   const captionCounts = new Map<string, number>();
   for (const token of tokenizeFigurePanelComparisonText(captionText)) {
@@ -1399,13 +1690,18 @@ function hasHighFigurePanelLabelTokenCoverage(labelText: string, captionText: st
     captionCounts.set(token, count - 1);
   }
 
-  return matchedTokenCount / labelTokens.length >= FIGURE_PANEL_LABEL_MIN_TOKEN_COVERAGE;
+  return (
+    matchedTokenCount / labelTokens.length >=
+    FIGURE_PANEL_LABEL_MIN_TOKEN_COVERAGE
+  );
 }
 
 function tokenizeFigurePanelComparisonText(text: string): string[] {
   const lowered = text.toLowerCase();
   const tokens = lowered.match(FIGURE_PANEL_LABEL_TOKEN_PATTERN) ?? [];
-  return tokens.filter((token) => token.length > 1 && !FIGURE_PANEL_LABEL_STOP_TOKENS.has(token));
+  return tokens.filter(
+    (token) => token.length > 1 && !FIGURE_PANEL_LABEL_STOP_TOKENS.has(token),
+  );
 }
 
 function isSameRowCaptionContinuationLine(
@@ -1414,7 +1710,10 @@ function isSameRowCaptionContinuationLine(
   startLine: TextLine,
 ): boolean {
   if (isCrossColumnPair(previousLine, line)) return false;
-  if (Math.abs(line.fontSize - startLine.fontSize) > CAPTION_CONTINUATION_MAX_FONT_DELTA) {
+  if (
+    Math.abs(line.fontSize - startLine.fontSize) >
+    CAPTION_CONTINUATION_MAX_FONT_DELTA
+  ) {
     return false;
   }
 
@@ -1427,8 +1726,10 @@ function isSameRowCaptionContinuationLine(
 
   const previousRight = previousLine.x + previousLine.estimatedWidth;
   const horizontalGap = line.x - previousRight;
-  const maxGap = line.pageWidth * CAPTION_SAME_ROW_CONTINUATION_MAX_HORIZONTAL_GAP_RATIO;
-  const maxOverlap = line.pageWidth * CAPTION_SAME_ROW_CONTINUATION_MAX_OVERLAP_RATIO;
+  const maxGap =
+    line.pageWidth * CAPTION_SAME_ROW_CONTINUATION_MAX_HORIZONTAL_GAP_RATIO;
+  const maxOverlap =
+    line.pageWidth * CAPTION_SAME_ROW_CONTINUATION_MAX_OVERLAP_RATIO;
   return horizontalGap <= maxGap && horizontalGap >= -maxOverlap;
 }
 
@@ -1439,10 +1740,16 @@ function shouldSkipDetachedCaptionInlineMarkerLine(
   normalized: string,
 ): boolean {
   if (line.pageIndex !== previousLine.pageIndex) return false;
-  if (line.fontSize > startLine.fontSize * CAPTION_DETACHED_INLINE_MARKER_MAX_FONT_RATIO) {
+  if (
+    line.fontSize >
+    startLine.fontSize * CAPTION_DETACHED_INLINE_MARKER_MAX_FONT_RATIO
+  ) {
     return false;
   }
-  if (line.estimatedWidth > line.pageWidth * CAPTION_DETACHED_INLINE_MARKER_MAX_WIDTH_RATIO) {
+  if (
+    line.estimatedWidth >
+    line.pageWidth * CAPTION_DETACHED_INLINE_MARKER_MAX_WIDTH_RATIO
+  ) {
     return false;
   }
 
@@ -1454,7 +1761,10 @@ function shouldSkipDetachedCaptionInlineMarkerLine(
   if (Math.abs(previousLine.y - line.y) > maxVerticalDelta) return false;
 
   const tokens = splitWords(normalized);
-  if (tokens.length === 0 || tokens.length > CAPTION_DETACHED_INLINE_MARKER_MAX_TOKEN_COUNT) {
+  if (
+    tokens.length === 0 ||
+    tokens.length > CAPTION_DETACHED_INLINE_MARKER_MAX_TOKEN_COUNT
+  ) {
     return false;
   }
   return tokens.every(
@@ -1512,15 +1822,23 @@ function consumeFigureCaption(
     }
 
     if (isCrossColumnPair(previousLine, line)) break;
-    if (Math.abs(line.fontSize - startLine.fontSize) > CAPTION_CONTINUATION_MAX_FONT_DELTA) break;
+    if (
+      Math.abs(line.fontSize - startLine.fontSize) >
+      CAPTION_CONTINUATION_MAX_FONT_DELTA
+    )
+      break;
 
     const maxVerticalGap = getFontScaledVerticalGapLimit(
       previousLine.fontSize,
       CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
     );
-    if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) break;
+    if (
+      !hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)
+    )
+      break;
 
-    const maxLeftOffset = line.pageWidth * CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO;
+    const maxLeftOffset =
+      line.pageWidth * CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO;
     if (Math.abs(line.x - startLine.x) > maxLeftOffset) break;
 
     parts.push(normalized);
@@ -1532,7 +1850,9 @@ function consumeFigureCaption(
   // Join parts, preserving hyphen-wrapped words (e.g. "in-" + "dicate" → "in-dicate").
   let text = parts[0];
   for (let i = 1; i < parts.length; i++) {
-    text = /[A-Za-z]-\s*$/.test(text) ? `${text.trimEnd()}${parts[i]}` : `${text} ${parts[i]}`;
+    text = /[A-Za-z]-\s*$/.test(text)
+      ? `${text.trimEnd()}${parts[i]}`
+      : `${text} ${parts[i]}`;
   }
   return { text: normalizeSpacing(text), nextIndex: scanIndex };
 }
@@ -1580,7 +1900,9 @@ function consumeParagraph(
   );
 }
 
-function parseNumberedHeadingSectionInfo(text: string): NumberedHeadingSectionInfo | undefined {
+function parseNumberedHeadingSectionInfo(
+  text: string,
+): NumberedHeadingSectionInfo | undefined {
   const normalized = normalizeSpacing(text);
   const match = /^(\d+(?:\.\d+){0,4})\.?\s+/.exec(normalized);
   if (!match) return undefined;
@@ -1597,7 +1919,11 @@ function resolveHeadingCandidateForRendering(
   hasDottedSubsectionHeadings: boolean,
   seenTopLevelNumberedSections: Set<number>,
 ): ResolvedHeadingCandidate | undefined {
-  const heading = detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings);
+  const heading = detectHeadingCandidate(
+    line,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  );
   if (heading === undefined) return undefined;
   if (heading.kind !== "numbered") return { heading };
 
@@ -1628,13 +1954,19 @@ function detectHeadingCandidate(
 
   const numberedHeadingLevel = detectNumberedHeadingLevel(normalized);
   if (numberedHeadingLevel !== undefined) {
-    if (line.fontSize < bodyFontSize * MIN_NUMBERED_HEADING_FONT_RATIO) return undefined;
+    if (line.fontSize < bodyFontSize * MIN_NUMBERED_HEADING_FONT_RATIO)
+      return undefined;
     return { kind: "numbered", level: numberedHeadingLevel };
   }
 
-  const namedHeading: NamedHeading | undefined = detectNamedSectionHeadingLevel(normalized);
+  const namedHeading: NamedHeading | undefined =
+    detectNamedSectionHeadingLevel(normalized);
   if (namedHeading !== undefined) {
-    return { kind: "named", level: namedHeading.level, text: namedHeading.text };
+    return {
+      kind: "named",
+      level: namedHeading.level,
+      text: namedHeading.text,
+    };
   }
 
   const backMatterHeadingLevel = detectBackMatterHeadingLevel(normalized);
@@ -1653,6 +1985,96 @@ function detectBackMatterHeadingLevel(text: string): number | undefined {
     return BACK_MATTER_NAMED_HEADING_LEVEL;
   }
   return undefined;
+}
+
+function isReferencesHeadingText(text: string): boolean {
+  return normalizeSpacing(text).toLowerCase() === REFERENCES_HEADING_TEXT;
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: typography + structure guards are evaluated together.
+function detectPostReferencesUnnumberedHeading(
+  lines: TextLine[],
+  lineIndex: number,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  hasSeenReferencesHeading: boolean,
+): { level: number; text: string } | undefined {
+  if (!hasSeenReferencesHeading) return undefined;
+  const line = lines[lineIndex];
+  const normalized = normalizeSpacing(line.text);
+  if (normalized.length < 4 || normalized.length > 80) return undefined;
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+      undefined ||
+    containsDocumentMetadata(normalized) ||
+    parseBulletListItemText(normalized) !== undefined ||
+    parseStandaloneUrlLine(normalized) !== undefined
+  ) {
+    return undefined;
+  }
+  if (
+    CAPTION_START_PATTERN.test(normalized) ||
+    STANDALONE_CAPTION_LABEL_PATTERN.test(normalized) ||
+    POST_REFERENCES_UNNUMBERED_HEADING_TERMINAL_PUNCTUATION_PATTERN.test(
+      normalized,
+    ) ||
+    POST_REFERENCES_UNNUMBERED_HEADING_DISALLOWED_PUNCTUATION_PATTERN.test(
+      normalized,
+    )
+  ) {
+    return undefined;
+  }
+  if (/\d/.test(normalized)) return undefined;
+  if (
+    line.estimatedWidth >
+    line.pageWidth * POST_REFERENCES_UNNUMBERED_HEADING_MAX_WIDTH_RATIO
+  ) {
+    return undefined;
+  }
+  const fontRatio = line.fontSize / Math.max(bodyFontSize, 1e-6);
+  if (
+    fontRatio < POST_REFERENCES_UNNUMBERED_HEADING_MIN_FONT_RATIO ||
+    fontRatio > POST_REFERENCES_UNNUMBERED_HEADING_MAX_FONT_RATIO
+  ) {
+    return undefined;
+  }
+  const yRatio = line.pageHeight > 0 ? line.y / line.pageHeight : 0;
+  if (yRatio < POST_REFERENCES_UNNUMBERED_HEADING_MIN_TOP_RATIO)
+    return undefined;
+
+  const words = splitWords(normalized);
+  if (
+    words.length < POST_REFERENCES_UNNUMBERED_HEADING_MIN_WORDS ||
+    words.length > POST_REFERENCES_UNNUMBERED_HEADING_MAX_WORDS
+  ) {
+    return undefined;
+  }
+  const { alphaWordCount, titleCaseWordCount } = countTitleCaseWords(words);
+  if (alphaWordCount < POST_REFERENCES_UNNUMBERED_HEADING_MIN_ALPHA_WORDS)
+    return undefined;
+  if (
+    titleCaseWordCount / alphaWordCount <
+    POST_REFERENCES_UNNUMBERED_HEADING_MIN_TITLE_CASE_RATIO
+  ) {
+    return undefined;
+  }
+  const alphaCharCount = normalized.replace(/[^\p{L}]/gu, "").length;
+  const nonSpaceCharCount = normalized.replace(/\s/g, "").length;
+  if (
+    alphaCharCount / Math.max(nonSpaceCharCount, 1) <
+    POST_REFERENCES_UNNUMBERED_HEADING_MIN_ALPHA_CHAR_RATIO
+  ) {
+    return undefined;
+  }
+  const hasMeaningfulWord = words.some(
+    (word) =>
+      word
+        .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
+        .replace(/[^\p{L}]/gu, "").length >= 4,
+  );
+  if (!hasMeaningfulWord) return undefined;
+
+  return { level: POST_REFERENCES_UNNUMBERED_HEADING_LEVEL, text: normalized };
 }
 
 function isSemanticHeadingText(text: string): boolean {
@@ -1691,7 +2113,13 @@ function consumeWrappedNumberedHeadingContinuation(
       scanIndex += 1;
       continue;
     }
-    if (isNumberedHeadingContinuationLine(candidate, previousPartLine, headingLine)) {
+    if (
+      isNumberedHeadingContinuationLine(
+        candidate,
+        previousPartLine,
+        headingLine,
+      )
+    ) {
       continuationIndexes.push(scanIndex);
       parts.push(candidate.text);
       previousPartLine = candidate;
@@ -1713,24 +2141,41 @@ function isNumberedHeadingContinuationLine(
   if (isMetadataOrSemanticHeadingText(normalized)) return false;
   if (!/[A-Za-z]/.test(normalized)) return false;
   if (/[.!?]$/.test(normalized)) return false;
-  if (normalized.split(/\s+/).length > MAX_NUMBERED_HEADING_CONTINUATION_WORDS) return false;
+  if (normalized.split(/\s+/).length > MAX_NUMBERED_HEADING_CONTINUATION_WORDS)
+    return false;
   if (line.estimatedWidth > headingLine.estimatedWidth) return false;
-  if (Math.abs(line.fontSize - headingLine.fontSize) > NUMBERED_HEADING_CONTINUATION_MAX_FONT_DELTA) {
+  if (
+    Math.abs(line.fontSize - headingLine.fontSize) >
+    NUMBERED_HEADING_CONTINUATION_MAX_FONT_DELTA
+  ) {
     return false;
   }
   const maxVerticalGap = getFontScaledVerticalGapLimit(
     headingLine.fontSize,
     NUMBERED_HEADING_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
   );
-  return hasDescendingVerticalGapWithinLimit(previousPartLine, line, maxVerticalGap);
+  return hasDescendingVerticalGapWithinLimit(
+    previousPartLine,
+    line,
+    maxVerticalGap,
+  );
 }
 
-function isAlignedWithNumberedHeadingColumn(line: TextLine, headingLine: TextLine): boolean {
-  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(headingLine));
+function isAlignedWithNumberedHeadingColumn(
+  line: TextLine,
+  headingLine: TextLine,
+): boolean {
+  const centerOffset = Math.abs(
+    getLineCenter(line) - getLineCenter(headingLine),
+  );
   const leftOffset = Math.abs(line.x - headingLine.x);
   return (
-    centerOffset <= headingLine.pageWidth * NUMBERED_HEADING_CONTINUATION_MAX_CENTER_OFFSET_RATIO ||
-    leftOffset <= headingLine.pageWidth * NUMBERED_HEADING_CONTINUATION_MAX_LEFT_OFFSET_RATIO
+    centerOffset <=
+      headingLine.pageWidth *
+        NUMBERED_HEADING_CONTINUATION_MAX_CENTER_OFFSET_RATIO ||
+    leftOffset <=
+      headingLine.pageWidth *
+        NUMBERED_HEADING_CONTINUATION_MAX_LEFT_OFFSET_RATIO
   );
 }
 
@@ -1748,7 +2193,12 @@ function consumeTitleLines(
   let previousUpperLine = titleLine;
   while (
     startIndex > 0 &&
-    isTitleContinuationLine(lines[startIndex - 1], previousUpperLine, titleLine, "before")
+    isTitleContinuationLine(
+      lines[startIndex - 1],
+      previousUpperLine,
+      titleLine,
+      "before",
+    )
   ) {
     startIndex -= 1;
     parts.unshift(lines[startIndex].text);
@@ -1759,7 +2209,12 @@ function consumeTitleLines(
   let previousLowerLine = titleLine;
   while (
     nextIndex < lines.length &&
-    isTitleContinuationLine(lines[nextIndex], previousLowerLine, titleLine, "after")
+    isTitleContinuationLine(
+      lines[nextIndex],
+      previousLowerLine,
+      titleLine,
+      "after",
+    )
   ) {
     parts.push(lines[nextIndex].text);
     previousLowerLine = lines[nextIndex];
@@ -1778,7 +2233,12 @@ function isTitleContinuationLine(
   if (line.pageIndex !== titleLine.pageIndex) return false;
   const text = normalizeSpacing(line.text);
   if (!isEligibleTitleContinuationText(text)) return false;
-  const yDelta = getTitleContinuationVerticalDelta(line, previousTitleLine, text, direction);
+  const yDelta = getTitleContinuationVerticalDelta(
+    line,
+    previousTitleLine,
+    text,
+    direction,
+  );
   if (yDelta === undefined) return false;
   if (!isWithinTitleContinuationSpacing(line, titleLine, yDelta)) return false;
   return isTitleContinuationAligned(line, titleLine);
@@ -1789,7 +2249,8 @@ function isEligibleTitleContinuationText(text: string): boolean {
   if (isMetadataOrSemanticHeadingText(text)) return false;
   const words = splitWords(text);
   const hasEnoughWords =
-    words.length >= TITLE_CONTINUATION_MIN_WORD_COUNT || isLikelyShortTitleContinuation(words);
+    words.length >= TITLE_CONTINUATION_MIN_WORD_COUNT ||
+    isLikelyShortTitleContinuation(words);
   if (!hasEnoughWords) return false;
   return true;
 }
@@ -1800,7 +2261,8 @@ function getTitleContinuationVerticalDelta(
   text: string,
   direction: "before" | "after",
 ): number | undefined {
-  if (direction === "after" && /[.!?:]$/.test(previousTitleLine.text.trim())) return undefined;
+  if (direction === "after" && /[.!?:]$/.test(previousTitleLine.text.trim()))
+    return undefined;
   if (direction === "before" && /[.!?]$/.test(text)) return undefined;
   const yDelta = line.y - previousTitleLine.y;
   if (direction === "after" && yDelta >= 0) return undefined;
@@ -1818,14 +2280,22 @@ function isWithinTitleContinuationSpacing(
     TITLE_CONTINUATION_MAX_VERTICAL_GAP_RATIO,
   );
   if (Math.abs(yDelta) > maxGap) return false;
-  return Math.abs(line.fontSize - titleLine.fontSize) <= TITLE_CONTINUATION_MAX_FONT_DELTA;
+  return (
+    Math.abs(line.fontSize - titleLine.fontSize) <=
+    TITLE_CONTINUATION_MAX_FONT_DELTA
+  );
 }
 
-function isTitleContinuationAligned(line: TextLine, titleLine: TextLine): boolean {
+function isTitleContinuationAligned(
+  line: TextLine,
+  titleLine: TextLine,
+): boolean {
   const titleCenter = getLineCenter(titleLine);
   const lineCenter = getLineCenter(line);
-  const maxCenterOffset = titleLine.pageWidth * TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO;
-  const maxLeftOffset = titleLine.pageWidth * TITLE_CONTINUATION_MAX_LEFT_OFFSET_RATIO;
+  const maxCenterOffset =
+    titleLine.pageWidth * TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO;
+  const maxLeftOffset =
+    titleLine.pageWidth * TITLE_CONTINUATION_MAX_LEFT_OFFSET_RATIO;
   return (
     Math.abs(titleCenter - lineCenter) <= maxCenterOffset ||
     Math.abs(line.x - titleLine.x) <= maxLeftOffset
@@ -1840,7 +2310,10 @@ function isLikelyShortTitleContinuation(words: string[]): boolean {
   );
 }
 
-function getFontScaledVerticalGapLimit(fontSize: number, ratio: number): number {
+function getFontScaledVerticalGapLimit(
+  fontSize: number,
+  ratio: number,
+): number {
   return Math.max(fontSize * ratio, fontSize + 10);
 }
 
@@ -1863,8 +2336,12 @@ function isCrossColumnPair(a: TextLine, b: TextLine): boolean {
   return a.column !== b.column;
 }
 
-function isDisallowedPageWrapColumnTransition(previousLine: TextLine, line: TextLine): boolean {
-  if (previousLine.column === undefined || line.column === undefined) return false;
+function isDisallowedPageWrapColumnTransition(
+  previousLine: TextLine,
+  line: TextLine,
+): boolean {
+  if (previousLine.column === undefined || line.column === undefined)
+    return false;
   if (previousLine.column === "right" && line.column === "left") return false;
   return previousLine.column !== line.column;
 }
@@ -1874,7 +2351,8 @@ function renderBulletList(
   startIndex: number,
   titleLine: TextLine | undefined,
 ): { htmlLines: string[]; nextIndex: number } | undefined {
-  if (parseBulletListItemText(lines[startIndex].text) === undefined) return undefined;
+  if (parseBulletListItemText(lines[startIndex].text) === undefined)
+    return undefined;
   const listItems: string[] = [];
   let index = startIndex;
   while (index < lines.length) {
@@ -1886,7 +2364,11 @@ function renderBulletList(
   if (listItems.length === 0) return undefined;
 
   return {
-    htmlLines: ["<ul>", ...listItems.map((item) => `<li>${escapeHtml(item)}</li>`), "</ul>"],
+    htmlLines: [
+      "<ul>",
+      ...listItems.map((item) => `<li>${escapeHtml(item)}</li>`),
+      "</ul>",
+    ],
     nextIndex: index,
   };
 }
@@ -1902,7 +2384,10 @@ function consumeBulletListItem(
 
   let itemText = itemStartText;
   let index = startIndex + 1;
-  while (index < lines.length && isBulletListContinuation(lines[index], itemStartLine, titleLine)) {
+  while (
+    index < lines.length &&
+    isBulletListContinuation(lines[index], itemStartLine, titleLine)
+  ) {
     itemText = normalizeSpacing(`${itemText} ${lines[index].text}`);
     index += 1;
   }
@@ -1946,7 +2431,8 @@ function renderReferenceList(
   hasDottedSubsectionHeadings: boolean,
 ): { htmlLines: string[]; nextIndex: number } | undefined {
   const startNormalized = normalizeSpacing(lines[startIndex].text);
-  if (!BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
+  if (!BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized))
+    return undefined;
 
   const items: ReferenceListItem[] = [];
   let index = startIndex;
@@ -1962,18 +2448,36 @@ function renderReferenceList(
     while (nextIndex < lines.length) {
       const candidate = lines[nextIndex];
       const candidateNormalized = normalizeSpacing(candidate.text);
-      if (candidateNormalized.length === 0) { nextIndex += 1; continue; }
+      if (candidateNormalized.length === 0) {
+        nextIndex += 1;
+        continue;
+      }
       // Stop at the next reference entry
-      if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(candidateNormalized)) break;
+      if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(candidateNormalized))
+        break;
       // Stop at headings
-      if (detectHeadingCandidate(candidate, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) break;
+      if (
+        detectHeadingCandidate(
+          candidate,
+          bodyFontSize,
+          hasDottedSubsectionHeadings,
+        ) !== undefined
+      )
+        break;
       if (candidate === titleLine) break;
       // Skip cross-column lines (e.g., right column content interleaved with left column references)
-      if (isCrossColumnPair(lines[index], candidate)) { nextIndex += 1; continue; }
+      if (isCrossColumnPair(lines[index], candidate)) {
+        nextIndex += 1;
+        continue;
+      }
       // Stop at footnote-only markers (e.g., page numbers)
       if (FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN.test(candidateNormalized)) break;
       // Font size must be similar to the entry start
-      if (Math.abs(candidate.fontSize - lines[index].fontSize) > REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA) break;
+      if (
+        Math.abs(candidate.fontSize - lines[index].fontSize) >
+        REFERENCE_ENTRY_CONTINUATION_MAX_FONT_DELTA
+      )
+        break;
       appendBodyParagraphPart(parts, candidateNormalized);
       nextIndex += 1;
     }
@@ -1993,7 +2497,9 @@ function renderReferenceList(
   return {
     htmlLines: [
       "<ol>",
-      ...orderedItems.map((item) => `<li>${normalizeReferenceListItemHtml(item.text)}</li>`),
+      ...orderedItems.map(
+        (item) => `<li>${normalizeReferenceListItemHtml(item.text)}</li>`,
+      ),
       "</ol>",
     ],
     nextIndex: index,
@@ -2010,7 +2516,11 @@ function normalizeReferenceListItemHtml(text: string): string {
     .replaceAll(
       /<\s*span\s+class\s*=\s*(?:"([^"]+)"|'([^']+)')\s*>/giu,
       (_match, doubleQuotedClassName, singleQuotedClassName) => {
-        const className = (doubleQuotedClassName ?? singleQuotedClassName ?? "").trim();
+        const className = (
+          doubleQuotedClassName ??
+          singleQuotedClassName ??
+          ""
+        ).trim();
         return className.length > 0 ? `<span class="${className}">` : "<span>";
       },
     )
@@ -2021,12 +2531,15 @@ function normalizeReferenceListItemHtml(text: string): string {
 }
 
 function normalizeReferenceListSoftHyphenArtifacts(text: string): string {
-  return text.replaceAll(REFERENCE_IN_WORD_HYPHEN_PATTERN, (match, leftRaw, rightRaw) => {
-    const left = String(leftRaw);
-    const right = String(rightRaw);
-    if (!shouldDropReferenceInWordHyphen(left, right)) return match;
-    return `${left}${right}`;
-  });
+  return text.replaceAll(
+    REFERENCE_IN_WORD_HYPHEN_PATTERN,
+    (match, leftRaw, rightRaw) => {
+      const left = String(leftRaw);
+      const right = String(rightRaw);
+      if (!shouldDropReferenceInWordHyphen(left, right)) return match;
+      return `${left}${right}`;
+    },
+  );
 }
 
 function shouldDropReferenceInWordHyphen(left: string, right: string): boolean {
@@ -2044,11 +2557,13 @@ function shouldDropReferenceInWordHyphen(left: string, right: string): boolean {
   }
 
   if (right.length > 3) return false;
-  if (!REFERENCE_IN_WORD_HYPHEN_SHORT_RIGHT_VOWEL_PATTERN.test(right)) return false;
+  if (!REFERENCE_IN_WORD_HYPHEN_SHORT_RIGHT_VOWEL_PATTERN.test(right))
+    return false;
   if (REFERENCE_IN_WORD_HYPHEN_SHORT_LEFT_PREFIXES.has(leftLower)) return false;
   if (left.length >= 5) return true;
   if (left.length === 2 && left === leftLower) return true;
-  if (left.length >= 2 && left.length <= 3 && isTitleCaseWord(left)) return true;
+  if (left.length >= 2 && left.length <= 3 && isTitleCaseWord(left))
+    return true;
   return false;
 }
 
@@ -2063,14 +2578,18 @@ function parseReferenceListMarker(text: string): number | undefined {
   return Number.isFinite(marker) ? marker : undefined;
 }
 
-function reorderReferenceItemsByMarkerWhenInterleaved(items: ReferenceListItem[]): ReferenceListItem[] {
+function reorderReferenceItemsByMarkerWhenInterleaved(
+  items: ReferenceListItem[],
+): ReferenceListItem[] {
   if (items.some((item) => item.marker === undefined)) return items;
   const markers = items.map((item) => item.marker ?? 0);
   if (!hasNumericReferenceOrderInversion(markers)) return items;
   if (!hasLikelySequentialReferenceRange(markers)) return items;
 
   return [...items].sort(
-    (left, right) => (left.marker ?? 0) - (right.marker ?? 0) || left.sourceOrder - right.sourceOrder,
+    (left, right) =>
+      (left.marker ?? 0) - (right.marker ?? 0) ||
+      left.sourceOrder - right.sourceOrder,
   );
 }
 
@@ -2088,7 +2607,9 @@ function hasLikelySequentialReferenceRange(markers: number[]): boolean {
   const maxMarker = Math.max(...uniqueMarkers);
   const rangeSize = maxMarker - minMarker + 1;
   const missingMarkerCount = rangeSize - uniqueMarkers.length;
-  return missingMarkerCount <= Math.max(3, Math.floor(uniqueMarkers.length * 0.35));
+  return (
+    missingMarkerCount <= Math.max(3, Math.floor(uniqueMarkers.length * 0.35))
+  );
 }
 
 function parseInlineAcknowledgementsHeading(
@@ -2100,7 +2621,10 @@ function parseInlineAcknowledgementsHeading(
 
   const headingText = normalizeSpacing(match[1]);
   const bodyText = match[2].trim();
-  if (!hasInlineHeadingBodyText(bodyText, INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH)) return undefined;
+  if (
+    !hasInlineHeadingBodyText(bodyText, INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH)
+  )
+    return undefined;
   return { heading: headingText, body: bodyText, level: 2 };
 }
 
@@ -2112,14 +2636,22 @@ function parseInlineNamedSectionHeading(
   if (!match) return undefined;
 
   const headingText = normalizeSpacing(match[1]);
-  if (headingText.length === 0 || isStandaloneAcknowledgementsHeading(headingText)) {
+  if (
+    headingText.length === 0 ||
+    isStandaloneAcknowledgementsHeading(headingText)
+  ) {
     return undefined;
   }
   const namedHeading = detectNamedSectionHeadingLevel(headingText);
   if (namedHeading === undefined) return undefined;
 
   const bodyText = match[2].trim();
-  if (!hasInlineHeadingBodyText(bodyText, INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH)) {
+  if (
+    !hasInlineHeadingBodyText(
+      bodyText,
+      INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH,
+    )
+  ) {
     return undefined;
   }
   return { heading: headingText, body: bodyText, level: namedHeading.level };
@@ -2128,7 +2660,10 @@ function parseInlineNamedSectionHeading(
 function parseInlineHeadingParagraph(
   text: string,
 ): { heading: string; body: string; level: number } | undefined {
-  return parseInlineAcknowledgementsHeading(text) ?? parseInlineNamedSectionHeading(text);
+  return (
+    parseInlineAcknowledgementsHeading(text) ??
+    parseInlineNamedSectionHeading(text)
+  );
 }
 
 function hasInlineHeadingBodyText(text: string, minLength: number): boolean {
@@ -2136,7 +2671,9 @@ function hasInlineHeadingBodyText(text: string, minLength: number): boolean {
 }
 
 function isStandaloneAcknowledgementsHeading(text: string): boolean {
-  return STANDALONE_ACKNOWLEDGEMENTS_HEADING_PATTERN.test(normalizeSpacing(text));
+  return STANDALONE_ACKNOWLEDGEMENTS_HEADING_PATTERN.test(
+    normalizeSpacing(text),
+  );
 }
 
 function consumeAcknowledgementsParagraphAfterHeading(
@@ -2156,7 +2693,12 @@ function consumeAcknowledgementsParagraphAfterHeading(
   while (nextIndex < lines.length) {
     const candidate = lines[nextIndex];
     if (
-      !isAcknowledgementsBodyContinuationLine(candidate, previousLine, previousText, headingLine)
+      !isAcknowledgementsBodyContinuationLine(
+        candidate,
+        previousLine,
+        previousText,
+        headingLine,
+      )
     ) {
       break;
     }
@@ -2232,15 +2774,24 @@ function isHyphenWrapContinuationLine(
     previousLine.fontSize,
     HYPHEN_WRAP_MAX_VERTICAL_GAP_RATIO,
   );
-  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
-  if (previousLine.estimatedWidth < previousLine.pageWidth * HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO) {
+  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap))
+    return false;
+  if (
+    previousLine.estimatedWidth <
+    previousLine.pageWidth * HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO
+  ) {
     return false;
   }
-  if (line.estimatedWidth < line.pageWidth * HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO) {
+  if (
+    line.estimatedWidth <
+    line.pageWidth * HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO
+  ) {
     return false;
   }
 
-  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const centerOffset = Math.abs(
+    getLineCenter(line) - getLineCenter(previousLine),
+  );
   const leftOffset = Math.abs(line.x - previousLine.x);
   return (
     centerOffset <= line.pageWidth * HYPHEN_WRAP_MAX_CENTER_OFFSET_RATIO ||
@@ -2248,7 +2799,10 @@ function isHyphenWrapContinuationLine(
   );
 }
 
-function mergeHyphenWrappedTexts(currentText: string, nextLineText: string): string {
+function mergeHyphenWrappedTexts(
+  currentText: string,
+  nextLineText: string,
+): string {
   const trimmedLeft = currentText.trimEnd();
   const right = nextLineText.trimStart().replace(/^\s*-\s*/, "");
   if (shouldDropHyphenForSoftWrap(trimmedLeft, right)) {
@@ -2259,7 +2813,10 @@ function mergeHyphenWrappedTexts(currentText: string, nextLineText: string): str
   return normalizeSpacing(`${joinedWithHyphen}${right}`);
 }
 
-function shouldDropHyphenForSoftWrap(leftText: string, rightText: string): boolean {
+function shouldDropHyphenForSoftWrap(
+  leftText: string,
+  rightText: string,
+): boolean {
   const leftFragmentMatch = /([A-Za-z]+)\s*-\s*$/.exec(leftText);
   const rightFragmentMatch = /^([A-Za-z]+)/.exec(rightText);
   if (!leftFragmentMatch || !rightFragmentMatch) return false;
@@ -2274,7 +2831,8 @@ function shouldDropHyphenForSoftWrap(leftText: string, rightText: string): boole
   }
   if (leftFragment !== leftFragment.toLowerCase()) return false;
   if (rightFragment !== rightFragment.toLowerCase()) return false;
-  if (rightFragment.length <= HYPHEN_WRAP_SOFT_SHORT_CONTINUATION_MAX_LENGTH) return true;
+  if (rightFragment.length <= HYPHEN_WRAP_SOFT_SHORT_CONTINUATION_MAX_LENGTH)
+    return true;
   return HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN.test(rightFragment);
 }
 
@@ -2338,7 +2896,10 @@ function isSameRowSentenceSplitStartLine(
   if (normalized === undefined) return false;
   if (!SAME_ROW_SENTENCE_SPLIT_END_PATTERN.test(normalized)) return false;
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
-  if (line.estimatedWidth > line.pageWidth * SAME_ROW_SENTENCE_SPLIT_MAX_START_WIDTH_RATIO) {
+  if (
+    line.estimatedWidth >
+    line.pageWidth * SAME_ROW_SENTENCE_SPLIT_MAX_START_WIDTH_RATIO
+  ) {
     return false;
   }
   return true;
@@ -2362,9 +2923,13 @@ function isSameRowSentenceSplitContinuationLine(
   if (normalized === undefined) return false;
 
   const maxYDelta =
-    Math.max(startLine.fontSize, line.fontSize) * SAME_ROW_SENTENCE_SPLIT_MAX_VERTICAL_DELTA_FONT_RATIO;
+    Math.max(startLine.fontSize, line.fontSize) *
+    SAME_ROW_SENTENCE_SPLIT_MAX_VERTICAL_DELTA_FONT_RATIO;
   if (Math.abs(previousLine.y - line.y) > maxYDelta) return false;
-  if (Math.abs(line.fontSize - startLine.fontSize) > SAME_ROW_SENTENCE_SPLIT_MAX_FONT_DELTA) {
+  if (
+    Math.abs(line.fontSize - startLine.fontSize) >
+    SAME_ROW_SENTENCE_SPLIT_MAX_FONT_DELTA
+  ) {
     return false;
   }
 
@@ -2374,9 +2939,14 @@ function isSameRowSentenceSplitContinuationLine(
   // relative x-delta checks are too restrictive.
   const previousLineEnd = previousLine.x + previousLine.estimatedWidth;
   const gapFromPreviousEnd = line.x - previousLineEnd;
-  const maxGap = Math.max(startLine.fontSize, line.fontSize) * SAME_ROW_SENTENCE_SPLIT_MAX_GAP_FONT_RATIO;
-  const maxOverlap = Math.max(startLine.fontSize, line.fontSize) * SAME_ROW_SENTENCE_SPLIT_MAX_OVERLAP_FONT_RATIO;
-  if (gapFromPreviousEnd > maxGap || gapFromPreviousEnd < -maxOverlap) return false;
+  const maxGap =
+    Math.max(startLine.fontSize, line.fontSize) *
+    SAME_ROW_SENTENCE_SPLIT_MAX_GAP_FONT_RATIO;
+  const maxOverlap =
+    Math.max(startLine.fontSize, line.fontSize) *
+    SAME_ROW_SENTENCE_SPLIT_MAX_OVERLAP_FONT_RATIO;
+  if (gapFromPreviousEnd > maxGap || gapFromPreviousEnd < -maxOverlap)
+    return false;
   // The continuation must be to the right of the previous line's start.
   if (line.x <= previousLine.x) return false;
   return true;
@@ -2394,18 +2964,26 @@ function parseParagraphMergeCandidateText(
   line: TextLine,
   options: ParagraphMergeCandidateOptions,
 ): string | undefined {
-  if (options.samePageAs && line.pageIndex !== options.samePageAs.pageIndex) return undefined;
-  const { titleLine, bodyFontSize, hasDottedSubsectionHeadings, startPattern } = options;
+  if (options.samePageAs && line.pageIndex !== options.samePageAs.pageIndex)
+    return undefined;
+  const { titleLine, bodyFontSize, hasDottedSubsectionHeadings, startPattern } =
+    options;
   if (line === titleLine) return undefined;
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return undefined;
-  if (startPattern !== undefined && !startPattern.test(normalized)) return undefined;
+  if (startPattern !== undefined && !startPattern.test(normalized))
+    return undefined;
   if (containsDocumentMetadata(normalized)) return undefined;
   if (parseBulletListItemText(normalized) !== undefined) return undefined;
-  if (parseInlineAcknowledgementsHeading(normalized) !== undefined) return undefined;
-  if (parseInlineNamedSectionHeading(normalized) !== undefined) return undefined;
+  if (parseInlineAcknowledgementsHeading(normalized) !== undefined)
+    return undefined;
+  if (parseInlineNamedSectionHeading(normalized) !== undefined)
+    return undefined;
   if (parseStandaloneUrlLine(normalized) !== undefined) return undefined;
-  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+    undefined
+  ) {
     return undefined;
   }
   return normalized;
@@ -2422,12 +3000,19 @@ function parseAcknowledgementsBodyText(
   if (isMetadataOrSemanticHeadingText(normalized)) return undefined;
   if (parseBulletListItemText(normalized) !== undefined) return undefined;
   if (parseStandaloneUrlLine(normalized) !== undefined) return undefined;
-  if (!isWithinAcknowledgementsBodyGeometry(line, headingLine)) return undefined;
+  if (!isWithinAcknowledgementsBodyGeometry(line, headingLine))
+    return undefined;
   return normalized;
 }
 
-function isWithinAcknowledgementsBodyGeometry(line: TextLine, headingLine: TextLine): boolean {
-  if (Math.abs(line.fontSize - headingLine.fontSize) > ACKNOWLEDGEMENTS_MAX_FONT_DELTA) {
+function isWithinAcknowledgementsBodyGeometry(
+  line: TextLine,
+  headingLine: TextLine,
+): boolean {
+  if (
+    Math.abs(line.fontSize - headingLine.fontSize) >
+    ACKNOWLEDGEMENTS_MAX_FONT_DELTA
+  ) {
     return false;
   }
   const verticalGap = headingLine.y - line.y;
@@ -2436,10 +3021,16 @@ function isWithinAcknowledgementsBodyGeometry(line: TextLine, headingLine: TextL
     ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO,
   );
   if (verticalGap < 0 || verticalGap > maxVerticalGap) return false;
-  return line.x >= headingLine.x - line.pageWidth * ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO;
+  return (
+    line.x >=
+    headingLine.x - line.pageWidth * ACKNOWLEDGEMENTS_MAX_LEFT_OFFSET_RATIO
+  );
 }
 
-function isAcknowledgementsBodyLine(line: TextLine, headingLine: TextLine): boolean {
+function isAcknowledgementsBodyLine(
+  line: TextLine,
+  headingLine: TextLine,
+): boolean {
   return parseAcknowledgementsBodyText(line, headingLine) !== undefined;
 }
 
@@ -2460,15 +3051,20 @@ function isAcknowledgementsBodyContinuationLine(
   if (/[.!?]$/.test(previousText)) return false;
   const normalized = parseAcknowledgementsBodyText(line, headingLine);
   if (normalized === undefined) return false;
-  if (!ACKNOWLEDGEMENTS_CONTINUATION_START_PATTERN.test(normalized)) return false;
-  if (Math.abs(line.fontSize - previousLine.fontSize) > ACKNOWLEDGEMENTS_MAX_FONT_DELTA) {
+  if (!ACKNOWLEDGEMENTS_CONTINUATION_START_PATTERN.test(normalized))
+    return false;
+  if (
+    Math.abs(line.fontSize - previousLine.fontSize) >
+    ACKNOWLEDGEMENTS_MAX_FONT_DELTA
+  ) {
     return false;
   }
   const maxVerticalGap = getFontScaledVerticalGapLimit(
     previousLine.fontSize,
     ACKNOWLEDGEMENTS_MAX_VERTICAL_GAP_RATIO,
   );
-  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
+  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap))
+    return false;
   return (
     Math.abs(line.x - headingLine.x) <= maxLeftOffset ||
     Math.abs(line.x - previousLine.x) <= maxLeftOffset
@@ -2479,7 +3075,9 @@ function renderStandaloneLinkParagraph(
   lines: TextLine[],
   startIndex: number,
 ): { html: string; nextIndex: number; consumedIndexes: number[] } | undefined {
-  const firstLineMarker = parseStandaloneNumericFootnoteMarker(lines[startIndex].text);
+  const firstLineMarker = parseStandaloneNumericFootnoteMarker(
+    lines[startIndex].text,
+  );
   const linkStartIndex = firstLineMarker ? startIndex + 1 : startIndex;
   const standaloneLink = consumeStandaloneUrl(
     lines,
@@ -2492,7 +3090,12 @@ function renderStandaloneLinkParagraph(
 
   return {
     html: renderStandaloneLinkHtml(standaloneLink, marker),
-    nextIndex: standaloneLink.consumedIndexes.length > 0 ? standaloneLink.consumedIndexes[standaloneLink.consumedIndexes.length - 1] + 1 : linkStartIndex + 1,
+    nextIndex:
+      standaloneLink.consumedIndexes.length > 0
+        ? standaloneLink.consumedIndexes[
+            standaloneLink.consumedIndexes.length - 1
+          ] + 1
+        : linkStartIndex + 1,
     consumedIndexes: firstLineMarker
       ? [linkStartIndex, ...standaloneLink.consumedIndexes]
       : standaloneLink.consumedIndexes,
@@ -2512,7 +3115,14 @@ function consumeStandaloneUrl(
   lines: TextLine[],
   startIndex: number,
   expectedPageLine?: TextLine,
-): { url: string; trailingPunctuation: string; consumedIndexes: number[], marker?: string } | undefined {
+):
+  | {
+      url: string;
+      trailingPunctuation: string;
+      consumedIndexes: number[];
+      marker?: string;
+    }
+  | undefined {
   const urlLine = lines[startIndex];
   if (!urlLine || !isSamePage(urlLine, expectedPageLine)) return undefined;
   const baseUrl = parseStandaloneUrlLine(urlLine.text);
@@ -2533,11 +3143,20 @@ function consumeStandaloneUrl(
   return { ...resolved, marker: baseUrl.marker };
 }
 
-function isSamePage(line: TextLine, referenceLine: TextLine | undefined): boolean {
-  return referenceLine === undefined || line.pageIndex === referenceLine.pageIndex;
+function isSamePage(
+  line: TextLine,
+  referenceLine: TextLine | undefined,
+): boolean {
+  return (
+    referenceLine === undefined || line.pageIndex === referenceLine.pageIndex
+  );
 }
 
-type UrlContinuationResult = { url: string; trailingPunctuation: string; consumedIndexes: number[] };
+type UrlContinuationResult = {
+  url: string;
+  trailingPunctuation: string;
+  consumedIndexes: number[];
+};
 
 function findStandaloneUrlContinuationCandidate(
   lines: TextLine[],
@@ -2558,11 +3177,27 @@ function findStandaloneUrlContinuationCandidate(
     urlStartIndex + STANDALONE_URL_CONTINUATION_MAX_LOOKAHEAD + 1,
   );
 
-  for (let continuationIndex = urlStartIndex + 1; continuationIndex < maxScanIndex; continuationIndex += 1) {
+  for (
+    let continuationIndex = urlStartIndex + 1;
+    continuationIndex < maxScanIndex;
+    continuationIndex += 1
+  ) {
     const line = lines[continuationIndex];
-    if (!line || !isSamePage(line, expectedPageLine) || !isSamePage(line, urlLine)) break;
+    if (
+      !line ||
+      !isSamePage(line, expectedPageLine) ||
+      !isSamePage(line, urlLine)
+    )
+      break;
 
-    const result = tryMatchUrlContinuationLine(line, urlLine, baseUrl, maxVerticalGap, allowPathWithoutSlash, continuationIndex);
+    const result = tryMatchUrlContinuationLine(
+      line,
+      urlLine,
+      baseUrl,
+      maxVerticalGap,
+      allowPathWithoutSlash,
+      continuationIndex,
+    );
     if (result === "break") break;
     if (result !== undefined) return result;
   }
@@ -2583,9 +3218,15 @@ function tryMatchUrlContinuationLine(
   if (verticalGap < 0) return undefined;
   if (parseStandaloneUrlLine(line.text) !== undefined) return "break";
 
-  const continuation = parseUrlContinuationLine(line.text, { allowPathWithoutSlash });
+  const continuation = parseUrlContinuationLine(line.text, {
+    allowPathWithoutSlash,
+  });
   if (continuation === undefined) return undefined;
-  if (!continuation.hasSlash && !isStandaloneUrlContinuationAligned(line, urlLine)) return undefined;
+  if (
+    !continuation.hasSlash &&
+    !isStandaloneUrlContinuationAligned(line, urlLine)
+  )
+    return undefined;
 
   const merged = `${baseUrl}${continuation.path}`;
   if (!isValidHttpUrl(merged)) return undefined;
@@ -2596,13 +3237,19 @@ function tryMatchUrlContinuationLine(
   };
 }
 
-function isStandaloneUrlContinuationAligned(line: TextLine, urlLine: TextLine): boolean {
+function isStandaloneUrlContinuationAligned(
+  line: TextLine,
+  urlLine: TextLine,
+): boolean {
   return (
-    Math.abs(line.x - urlLine.x) <= line.pageWidth * STANDALONE_URL_CONTINUATION_MAX_LEFT_OFFSET_RATIO
+    Math.abs(line.x - urlLine.x) <=
+    line.pageWidth * STANDALONE_URL_CONTINUATION_MAX_LEFT_OFFSET_RATIO
   );
 }
 
-function parseStandaloneNumericFootnoteMarker(text: string): string | undefined {
+function parseStandaloneNumericFootnoteMarker(
+  text: string,
+): string | undefined {
   const normalized = normalizeSpacing(text);
   if (!FOOTNOTE_NUMERIC_MARKER_ONLY_PATTERN.test(normalized)) return undefined;
   return normalized;
@@ -2610,8 +3257,12 @@ function parseStandaloneNumericFootnoteMarker(text: string): string | undefined 
 
 function parseStandaloneUrlLine(
   text: string,
-): { url: string; trailingPunctuation: string; marker: string | undefined } | undefined {
-  const normalized = normalizeTrailingPunctuationSpacing(normalizeSpacing(text));
+):
+  | { url: string; trailingPunctuation: string; marker: string | undefined }
+  | undefined {
+  const normalized = normalizeTrailingPunctuationSpacing(
+    normalizeSpacing(text),
+  );
   const match = STANDALONE_URL_LINE_PATTERN.exec(normalized);
   if (!match) return undefined;
   const marker = match[1];
@@ -2623,8 +3274,12 @@ function parseStandaloneUrlLine(
 function parseUrlContinuationLine(
   text: string,
   options?: { allowPathWithoutSlash?: boolean },
-): { path: string; trailingPunctuation: string; hasSlash: boolean } | undefined {
-  const normalized = normalizeTrailingPunctuationSpacing(normalizeSpacing(text));
+):
+  | { path: string; trailingPunctuation: string; hasSlash: boolean }
+  | undefined {
+  const normalized = normalizeTrailingPunctuationSpacing(
+    normalizeSpacing(text),
+  );
   const match = URL_CONTINUATION_LINE_PATTERN.exec(normalized);
   if (!match) return undefined;
 
@@ -2691,8 +3346,15 @@ function renderNumberedCodeBlock(
     },
   ];
 
-  const maxScanIndex = Math.min(lines.length, startIndex + NUMBERED_CODE_BLOCK_MAX_LOOKAHEAD + 1);
-  for (let scanIndex = startIndex + 1; scanIndex < maxScanIndex; scanIndex += 1) {
+  const maxScanIndex = Math.min(
+    lines.length,
+    startIndex + NUMBERED_CODE_BLOCK_MAX_LOOKAHEAD + 1,
+  );
+  for (
+    let scanIndex = startIndex + 1;
+    scanIndex < maxScanIndex;
+    scanIndex += 1
+  ) {
     const candidate = lines[scanIndex];
     if (candidate.pageIndex !== startLine.pageIndex) break;
     if (
@@ -2740,7 +3402,13 @@ function renderNumberedCodeBlock(
         Math.max(previousSelectedLine.fontSize, candidate.line.fontSize),
         NUMBERED_CODE_BLOCK_MAX_VERTICAL_GAP_RATIO,
       );
-      if (!hasDescendingVerticalGapWithinLimit(previousSelectedLine, candidate.line, maxVerticalGap)) {
+      if (
+        !hasDescendingVerticalGapWithinLimit(
+          previousSelectedLine,
+          candidate.line,
+          maxVerticalGap,
+        )
+      ) {
         if (numberedLineCount >= NUMBERED_CODE_BLOCK_MIN_LINES) break;
         continue;
       }
@@ -2755,7 +3423,8 @@ function renderNumberedCodeBlock(
       }
       if (
         expectedNumber !== undefined &&
-        candidate.parsedNumberedLine.lineNumber > expectedNumber + NUMBERED_CODE_BLOCK_MAX_NUMBER_GAP
+        candidate.parsedNumberedLine.lineNumber >
+          expectedNumber + NUMBERED_CODE_BLOCK_MAX_NUMBER_GAP
       ) {
         if (numberedLineCount >= NUMBERED_CODE_BLOCK_MIN_LINES) break;
         continue;
@@ -2801,10 +3470,15 @@ function isNumberedCodeStartLine(
 ): boolean {
   if (line === titleLine) return false;
   if (containsDocumentMetadata(parsedCodeLine.content)) return false;
-  if (!STRONG_CODE_START_TEXT_PATTERN.test(parsedCodeLine.content)) return false;
+  if (!STRONG_CODE_START_TEXT_PATTERN.test(parsedCodeLine.content))
+    return false;
   if (!isLikelyCodeText(parsedCodeLine.content)) return false;
-  if (line.fontSize > bodyFontSize * NUMBERED_CODE_BLOCK_MAX_FONT_RATIO) return false;
-  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+  if (line.fontSize > bodyFontSize * NUMBERED_CODE_BLOCK_MAX_FONT_RATIO)
+    return false;
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+    undefined
+  ) {
     return false;
   }
   return true;
@@ -2817,19 +3491,30 @@ function isNumberedCodeCandidateLine(
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
   if (line.pageIndex !== startLine.pageIndex) return false;
-  if (line.fontSize > bodyFontSize * NUMBERED_CODE_BLOCK_MAX_FONT_RATIO) return false;
-  if (Math.abs(line.fontSize - startLine.fontSize) > NUMBERED_CODE_BLOCK_MAX_FONT_DELTA) return false;
+  if (line.fontSize > bodyFontSize * NUMBERED_CODE_BLOCK_MAX_FONT_RATIO)
+    return false;
+  if (
+    Math.abs(line.fontSize - startLine.fontSize) >
+    NUMBERED_CODE_BLOCK_MAX_FONT_DELTA
+  )
+    return false;
   if (!isAlignedWithNumberedCodeColumn(line, startLine)) return false;
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return false;
   if (containsDocumentMetadata(normalized)) return false;
-  if (detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !== undefined) {
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+    undefined
+  ) {
     return false;
   }
   return true;
 }
 
-function isAlignedWithNumberedCodeColumn(line: TextLine, startLine: TextLine): boolean {
+function isAlignedWithNumberedCodeColumn(
+  line: TextLine,
+  startLine: TextLine,
+): boolean {
   if (line.x < startLine.x - 2) return false;
   return line.x <= startLine.x + NUMBERED_CODE_BLOCK_MAX_LEFT_OFFSET;
 }
@@ -2852,7 +3537,7 @@ function typicalWidthKey(pageIndex: number, column?: "left" | "right"): string {
   return column ? `${pageIndex}:${column}` : `${pageIndex}`;
 }
 
-const COLUMN_WIDTH_SIGNIFICANT_REDUCTION_RATIO = 0.90;
+const COLUMN_WIDTH_SIGNIFICANT_REDUCTION_RATIO = 0.9;
 
 function getTypicalWidth(
   pageTypicalWidths: Map<string, number>,
@@ -2863,7 +3548,9 @@ function getTypicalWidth(
   // than the page-wide width (indicating a genuine narrower column).
   // When both are similar, page-wide is more stable for merge decisions.
   if (line.column) {
-    const colWidth = pageTypicalWidths.get(typicalWidthKey(line.pageIndex, line.column));
+    const colWidth = pageTypicalWidths.get(
+      typicalWidthKey(line.pageIndex, line.column),
+    );
     if (colWidth !== undefined && pageWidth !== undefined) {
       if (colWidth < pageWidth * COLUMN_WIDTH_SIGNIFICANT_REDUCTION_RATIO) {
         return colWidth;
@@ -2879,16 +3566,25 @@ const MIN_COLUMN_BODY_LINES_FOR_COLUMN_WIDTH = 5;
 
 function widthPercentile(widths: number[]): number {
   widths.sort((a, b) => a - b);
-  return widths[Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)];
+  return widths[
+    Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)
+  ];
 }
 
-function appendToMapBucket<K>(map: Map<K, number[]>, key: K, value: number): void {
+function appendToMapBucket<K>(
+  map: Map<K, number[]>,
+  key: K,
+  value: number,
+): void {
   const existing = map.get(key);
   if (existing) existing.push(value);
   else map.set(key, [value]);
 }
 
-function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): Map<string, number> {
+function computePageTypicalBodyWidths(
+  lines: TextLine[],
+  bodyFontSize: number,
+): Map<string, number> {
   const pageWidths = new Map<number, number[]>();
   const colWidths = new Map<string, number[]>();
   for (const line of lines) {
@@ -2896,7 +3592,11 @@ function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): 
     if (normalizeSpacing(line.text).length < 20) continue;
     appendToMapBucket(pageWidths, line.pageIndex, line.estimatedWidth);
     if (line.column) {
-      appendToMapBucket(colWidths, typicalWidthKey(line.pageIndex, line.column), line.estimatedWidth);
+      appendToMapBucket(
+        colWidths,
+        typicalWidthKey(line.pageIndex, line.column),
+        line.estimatedWidth,
+      );
     }
   }
   const result = new Map<string, number>();
@@ -2911,11 +3611,19 @@ function computePageTypicalBodyWidths(lines: TextLine[], bodyFontSize: number): 
     const leftWidths = colWidths.get(typicalWidthKey(pageIndex, "left"));
     const rightWidths = colWidths.get(typicalWidthKey(pageIndex, "right"));
     if (
-      leftWidths && leftWidths.length >= MIN_COLUMN_BODY_LINES_FOR_COLUMN_WIDTH &&
-      rightWidths && rightWidths.length >= MIN_COLUMN_BODY_LINES_FOR_COLUMN_WIDTH
+      leftWidths &&
+      leftWidths.length >= MIN_COLUMN_BODY_LINES_FOR_COLUMN_WIDTH &&
+      rightWidths &&
+      rightWidths.length >= MIN_COLUMN_BODY_LINES_FOR_COLUMN_WIDTH
     ) {
-      result.set(typicalWidthKey(pageIndex, "left"), widthPercentile(leftWidths));
-      result.set(typicalWidthKey(pageIndex, "right"), widthPercentile(rightWidths));
+      result.set(
+        typicalWidthKey(pageIndex, "left"),
+        widthPercentile(leftWidths),
+      );
+      result.set(
+        typicalWidthKey(pageIndex, "right"),
+        widthPercentile(rightWidths),
+      );
     }
   }
   return result;
@@ -2931,13 +3639,19 @@ function computeLocalFontSizeTypicalWidth(
   const widths: number[] = [];
   for (const line of lines) {
     if (line.pageIndex !== referenceLine.pageIndex) continue;
-    if (Math.abs(line.fontSize - referenceLine.fontSize) > LOCAL_FONT_SIZE_MAX_DELTA) continue;
+    if (
+      Math.abs(line.fontSize - referenceLine.fontSize) >
+      LOCAL_FONT_SIZE_MAX_DELTA
+    )
+      continue;
     if (normalizeSpacing(line.text).length < 20) continue;
     widths.push(line.estimatedWidth);
   }
   if (widths.length < LOCAL_FONT_SIZE_TYPICAL_WIDTH_MIN_LINES) return undefined;
   widths.sort((a, b) => a - b);
-  return widths[Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)];
+  return widths[
+    Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)
+  ];
 }
 
 const LOCAL_COLUMN_REGION_MIN_LINES = 5;
@@ -2966,13 +3680,16 @@ function computeLocalColumnRegionTypicalWidth(
     if (line.column !== referenceLine.column) continue;
     if (Math.abs(line.fontSize - bodyFontSize) > 1.0) continue;
     if (normalizeSpacing(line.text).length < 20) continue;
-    if (Math.abs(line.x - referenceLine.x) > LOCAL_COLUMN_REGION_MAX_X_DELTA) continue;
+    if (Math.abs(line.x - referenceLine.x) > LOCAL_COLUMN_REGION_MAX_X_DELTA)
+      continue;
     if (Math.abs(line.y - referenceLine.y) > maxYDelta) continue;
     widths.push(line.estimatedWidth);
   }
   if (widths.length < LOCAL_COLUMN_REGION_MIN_LINES) return undefined;
   widths.sort((a, b) => a - b);
-  return widths[Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)];
+  return widths[
+    Math.floor(widths.length * BODY_PARAGRAPH_TYPICAL_WIDTH_PERCENTILE)
+  ];
 }
 
 function consumeBodyParagraph(
@@ -2998,9 +3715,15 @@ function consumeBodyParagraph(
   // than the page-wide column width. Prefer a nearby local width when available.
   if (
     startLine.column &&
-    pageTypicalWidths.has(typicalWidthKey(startLine.pageIndex, startLine.column))
+    pageTypicalWidths.has(
+      typicalWidthKey(startLine.pageIndex, startLine.column),
+    )
   ) {
-    const localColTypical = computeLocalColumnRegionTypicalWidth(lines, startLine, bodyFontSize);
+    const localColTypical = computeLocalColumnRegionTypicalWidth(
+      lines,
+      startLine,
+      bodyFontSize,
+    );
     if (localColTypical !== undefined && localColTypical < typicalWidth) {
       typicalWidth = localColTypical;
     }
@@ -3012,7 +3735,8 @@ function consumeBodyParagraph(
     hasDottedSubsectionHeadings,
   });
   if (startNormalized === undefined) return undefined;
-  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized)) return undefined;
+  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(startNormalized))
+    return undefined;
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(startNormalized)) return undefined;
   if (
     !isBodyParagraphLead(
@@ -3056,7 +3780,11 @@ function isBodyParagraphLead(
   hasDottedSubsectionHeadings: boolean,
   typicalWidth: number,
 ): boolean {
-  if (startLine.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO) return true;
+  if (
+    startLine.estimatedWidth >=
+    typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO
+  )
+    return true;
   if (
     consumeSameRowOperatorSplitBodyContinuation(
       lines,
@@ -3122,25 +3850,37 @@ function isIndentedBodyParagraphLead(
   hasDottedSubsectionHeadings: boolean,
   typicalWidth: number,
 ): boolean {
-  if (startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_INDENT_LEAD_MIN_WIDTH_RATIO) {
+  if (
+    startLine.estimatedWidth <
+    typicalWidth * BODY_PARAGRAPH_INDENT_LEAD_MIN_WIDTH_RATIO
+  ) {
     return false;
   }
-  if (!BODY_PARAGRAPH_INDENT_LEAD_START_PATTERN.test(startNormalized)) return false;
-  if (splitWords(startNormalized).length < BODY_PARAGRAPH_INDENT_LEAD_MIN_WORD_COUNT) {
+  if (!BODY_PARAGRAPH_INDENT_LEAD_START_PATTERN.test(startNormalized))
+    return false;
+  if (
+    splitWords(startNormalized).length <
+    BODY_PARAGRAPH_INDENT_LEAD_MIN_WORD_COUNT
+  ) {
     return false;
   }
 
   const previousLine = lines[startIndex - 1];
-  if (!previousLine || previousLine.pageIndex !== startLine.pageIndex) return false;
+  if (!previousLine || previousLine.pageIndex !== startLine.pageIndex)
+    return false;
   const previousText = normalizeSpacing(previousLine.text);
-  if (!INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+  if (!INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText))
+    return false;
 
   const continuation = lines[startIndex + 1];
-  if (!continuation || continuation.pageIndex !== startLine.pageIndex) return false;
+  if (!continuation || continuation.pageIndex !== startLine.pageIndex)
+    return false;
   if (isCrossColumnPair(startLine, continuation)) return false;
 
-  const minIndent = startLine.pageWidth * BODY_PARAGRAPH_INDENT_LEAD_MIN_X_OFFSET_RATIO;
-  const maxIndent = startLine.pageWidth * BODY_PARAGRAPH_INDENT_LEAD_MAX_X_OFFSET_RATIO;
+  const minIndent =
+    startLine.pageWidth * BODY_PARAGRAPH_INDENT_LEAD_MIN_X_OFFSET_RATIO;
+  const maxIndent =
+    startLine.pageWidth * BODY_PARAGRAPH_INDENT_LEAD_MAX_X_OFFSET_RATIO;
   const indentOffset = startLine.x - continuation.x;
   if (indentOffset < minIndent || indentOffset > maxIndent) return false;
 
@@ -3203,45 +3943,51 @@ function consumeBodyParagraphContinuationParts(
       hasDottedSubsectionHeadings,
     );
     if (interposedPageWrapContinuation !== undefined) {
-      restartIndex = restartIndex === undefined
-        ? interposedPageWrapContinuation.restartIndex
-        : Math.min(restartIndex, interposedPageWrapContinuation.restartIndex);
+      restartIndex =
+        restartIndex === undefined
+          ? interposedPageWrapContinuation.restartIndex
+          : Math.min(restartIndex, interposedPageWrapContinuation.restartIndex);
       nextIndex = interposedPageWrapContinuation.continuationIndex;
       continue;
     }
 
-    const sameRowOperatorContinuation = consumeSameRowOperatorSplitBodyContinuation(
-      lines,
-      nextIndex,
-      previousLine,
-      startLine,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-      typicalWidth,
-    );
+    const sameRowOperatorContinuation =
+      consumeSameRowOperatorSplitBodyContinuation(
+        lines,
+        nextIndex,
+        previousLine,
+        startLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+        typicalWidth,
+      );
     if (sameRowOperatorContinuation !== undefined) {
       appendBodyParagraphPart(parts, sameRowOperatorContinuation.text);
-      if (restartIndex !== undefined) consumedContinuationIndexes.push(nextIndex);
+      if (restartIndex !== undefined)
+        consumedContinuationIndexes.push(nextIndex);
       nextIndex = sameRowOperatorContinuation.nextIndex;
       continue;
     }
 
-    const inlineMathBridge = findBodyParagraphContinuationAfterInlineMathArtifacts(
-      lines,
-      nextIndex,
-      previousLine,
-      startLine,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-    );
+    const inlineMathBridge =
+      findBodyParagraphContinuationAfterInlineMathArtifacts(
+        lines,
+        nextIndex,
+        previousLine,
+        startLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      );
     if (inlineMathBridge !== undefined) {
       const shouldDropLeadingNumericMarkers =
         previousLine === startLine &&
-        startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO &&
+        startLine.estimatedWidth <
+          typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO &&
         startLine.estimatedWidth >=
-          typicalWidth * BODY_PARAGRAPH_INLINE_MATH_ARTIFACT_LEAD_MIN_WIDTH_RATIO;
+          typicalWidth *
+            BODY_PARAGRAPH_INLINE_MATH_ARTIFACT_LEAD_MIN_WIDTH_RATIO;
       for (const artifactText of inlineMathBridge.artifactTexts) {
         if (
           shouldDropLeadingNumericMarkers &&
@@ -3254,14 +4000,16 @@ function consumeBodyParagraphContinuationParts(
       nextIndex = inlineMathBridge.continuationIndex;
       continue;
     }
-    if (!isBodyParagraphContinuationLine(
-      candidate,
-      previousLine,
-      startLine,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-    )) {
+    if (
+      !isBodyParagraphContinuationLine(
+        candidate,
+        previousLine,
+        startLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
       break;
     }
 
@@ -3269,7 +4017,9 @@ function consumeBodyParagraphContinuationParts(
     if (restartIndex !== undefined) consumedContinuationIndexes.push(nextIndex);
     previousLine = candidate;
     nextIndex += 1;
-    const isFullWidth = candidate.estimatedWidth >= typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO;
+    const isFullWidth =
+      candidate.estimatedWidth >=
+      typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO;
     if (isFullWidth) continue;
 
     const sameRowContinuation = consumeTrailingSameRowSentenceContinuation(
@@ -3289,22 +4039,28 @@ function consumeBodyParagraphContinuationParts(
       nextIndex = sameRowContinuation.nextIndex;
       continue;
     }
-    if (shouldContinuePastShortBodyLine(
-      candidate,
-      lines,
-      nextIndex,
-      startLine,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-    )) {
+    if (
+      shouldContinuePastShortBodyLine(
+        candidate,
+        lines,
+        nextIndex,
+        startLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
       continue;
     }
     break;
   }
 
   if (restartIndex !== undefined) {
-    addConsumedIndexes(consumedBodyLineIndexes, consumedContinuationIndexes, restartIndex);
+    addConsumedIndexes(
+      consumedBodyLineIndexes,
+      consumedContinuationIndexes,
+      restartIndex,
+    );
     return restartIndex;
   }
   return nextIndex;
@@ -3321,14 +4077,19 @@ function findInterposedPageWrapContinuation(
 ): { restartIndex: number; continuationIndex: number } | undefined {
   const firstInterposedLine = lines[continuationStartIndex];
   if (!firstInterposedLine) return undefined;
-  if (firstInterposedLine.pageIndex !== previousLine.pageIndex + 1) return undefined;
+  if (firstInterposedLine.pageIndex !== previousLine.pageIndex + 1)
+    return undefined;
 
   const targetPageIndex = firstInterposedLine.pageIndex;
   const maxScanIndex = Math.min(
     lines.length,
     continuationStartIndex + BODY_PARAGRAPH_PAGE_WRAP_INTERPOSED_MAX_LOOKAHEAD,
   );
-  for (let scanIndex = continuationStartIndex; scanIndex < maxScanIndex; scanIndex += 1) {
+  for (
+    let scanIndex = continuationStartIndex;
+    scanIndex < maxScanIndex;
+    scanIndex += 1
+  ) {
     const candidate = lines[scanIndex];
     if (!candidate || candidate.pageIndex !== targetPageIndex) break;
 
@@ -3343,9 +4104,19 @@ function findInterposedPageWrapContinuation(
       )
     ) {
       if (scanIndex === continuationStartIndex) return undefined;
-      return { restartIndex: continuationStartIndex, continuationIndex: scanIndex };
+      return {
+        restartIndex: continuationStartIndex,
+        continuationIndex: scanIndex,
+      };
     }
-    if (!isSkippableInterposedPageWrapLine(lines, scanIndex, bodyFontSize, hasDottedSubsectionHeadings)) {
+    if (
+      !isSkippableInterposedPageWrapLine(
+        lines,
+        scanIndex,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
       break;
     }
   }
@@ -3362,12 +4133,25 @@ function isSkippableInterposedPageWrapLine(
   if (!line) return false;
   const normalized = normalizeSpacing(line.text);
   if (normalized.length === 0) return true;
-  if (CAPTION_START_PATTERN.test(normalized) || STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) {
+  if (
+    CAPTION_START_PATTERN.test(normalized) ||
+    STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)
+  ) {
     return true;
   }
   return (
-    shouldSkipStandaloneFigurePanelLabel(lines, lineIndex, bodyFontSize, hasDottedSubsectionHeadings) ||
-    shouldSkipStandaloneFigureDiagramArtifact(lines, lineIndex, bodyFontSize, hasDottedSubsectionHeadings)
+    shouldSkipStandaloneFigurePanelLabel(
+      lines,
+      lineIndex,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    ) ||
+    shouldSkipStandaloneFigureDiagramArtifact(
+      lines,
+      lineIndex,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    )
   );
 }
 
@@ -3395,7 +4179,8 @@ function isRelaxedBodyParagraphPageWrapContinuationLine(
   if (isDisallowedPageWrapColumnTransition(previousLine, line)) return false;
 
   const previousText = normalizeSpacing(previousLine.text);
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText))
+    return false;
 
   const normalized = parseParagraphMergeCandidateText(line, {
     titleLine,
@@ -3411,19 +4196,28 @@ function isRelaxedBodyParagraphPageWrapContinuationLine(
     return false;
   }
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
-  if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
+  if (
+    Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA
+  )
+    return false;
 
   const previousYRatio = previousLine.y / previousLine.pageHeight;
-  if (previousYRatio > BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO) return false;
+  if (previousYRatio > BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO)
+    return false;
   const nextYRatio = line.y / line.pageHeight;
-  if (nextYRatio < BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO * 0.8) return false;
+  if (nextYRatio < BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO * 0.8)
+    return false;
 
-  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const centerOffset = Math.abs(
+    getLineCenter(line) - getLineCenter(previousLine),
+  );
   const leftOffset = Math.abs(line.x - previousLine.x);
-  const isRightToLeftPageWrap = previousLine.column === "right" && line.column === "left";
+  const isRightToLeftPageWrap =
+    previousLine.column === "right" && line.column === "left";
   if (
     !isRightToLeftPageWrap &&
-    centerOffset > line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_CENTER_OFFSET_RATIO &&
+    centerOffset >
+      line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_CENTER_OFFSET_RATIO &&
     leftOffset > line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_LEFT_OFFSET_RATIO
   ) {
     return false;
@@ -3440,7 +4234,11 @@ function shouldContinuePastShortBodyLine(
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(normalizeSpacing(currentLine.text))) {
+  if (
+    INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(
+      normalizeSpacing(currentLine.text),
+    )
+  ) {
     return false;
   }
   const nextLine = lines[nextIndex];
@@ -3489,27 +4287,39 @@ function isShortWrappedBodyParagraphLead(
   hasDottedSubsectionHeadings: boolean,
   typicalWidth: number,
 ): boolean {
-  if (startLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_SHORT_LEAD_MIN_WIDTH_RATIO) {
+  if (
+    startLine.estimatedWidth <
+    typicalWidth * BODY_PARAGRAPH_SHORT_LEAD_MIN_WIDTH_RATIO
+  ) {
     return false;
   }
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(startNormalized)) return false;
-  if (splitWords(startNormalized).length < BODY_PARAGRAPH_SHORT_LEAD_MIN_WORD_COUNT) return false;
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(startNormalized))
+    return false;
+  if (
+    splitWords(startNormalized).length <
+    BODY_PARAGRAPH_SHORT_LEAD_MIN_WORD_COUNT
+  )
+    return false;
 
   const previousLine = lines[startIndex - 1];
-  if (!previousLine || previousLine.pageIndex !== startLine.pageIndex) return false;
+  if (!previousLine || previousLine.pageIndex !== startLine.pageIndex)
+    return false;
   const maxSameRowDelta = Math.max(
-    startLine.fontSize * BODY_PARAGRAPH_SHORT_LEAD_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO,
+    startLine.fontSize *
+      BODY_PARAGRAPH_SHORT_LEAD_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO,
     1.5,
   );
   if (Math.abs(previousLine.y - startLine.y) > maxSameRowDelta) return false;
   if (previousLine.x >= startLine.x) return false;
 
   const previousText = normalizeSpacing(previousLine.text);
-  if (!INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+  if (!INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText))
+    return false;
 
   const nextLine = lines[startIndex + 1];
   if (!nextLine || nextLine.pageIndex !== startLine.pageIndex) return false;
-  if (nextLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO) return false;
+  if (nextLine.estimatedWidth < typicalWidth * BODY_PARAGRAPH_FULL_WIDTH_RATIO)
+    return false;
   if (
     startLine.x - nextLine.x <
     startLine.pageWidth * BODY_PARAGRAPH_SHORT_LEAD_MIN_X_BACKSHIFT_RATIO
@@ -3577,7 +4387,8 @@ function consumeSameRowOperatorSplitBodyContinuation(
   typicalWidth: number,
 ): { text: string; nextIndex: number } | undefined {
   const previousText = normalizeSpacing(previousLine.text);
-  if (!BODY_PARAGRAPH_OPERATOR_TRAILING_PATTERN.test(previousText)) return undefined;
+  if (!BODY_PARAGRAPH_OPERATOR_TRAILING_PATTERN.test(previousText))
+    return undefined;
   if (
     previousLine.estimatedWidth >
     typicalWidth * BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_PREVIOUS_WIDTH_RATIO
@@ -3606,7 +4417,8 @@ function consumeSameRowOperatorSplitBodyContinuation(
     Math.max(previousLine.fontSize, continuation.fontSize) *
     BODY_PARAGRAPH_OPERATOR_SAME_ROW_MAX_VERTICAL_DELTA_FONT_RATIO;
   if (Math.abs(previousLine.y - continuation.y) > maxYDelta) return undefined;
-  const minXDelta = continuation.pageWidth * BODY_PARAGRAPH_OPERATOR_SAME_ROW_MIN_X_DELTA_RATIO;
+  const minXDelta =
+    continuation.pageWidth * BODY_PARAGRAPH_OPERATOR_SAME_ROW_MIN_X_DELTA_RATIO;
   if (continuation.x - previousLine.x < minXDelta) return undefined;
 
   const nextLine = lines[continuationIndex + 1];
@@ -3637,16 +4449,24 @@ function findBodyParagraphContinuationAfterInlineMathArtifacts(
   hasDottedSubsectionHeadings: boolean,
 ): { continuationIndex: number; artifactTexts: string[] } | undefined {
   const previousText = normalizeSpacing(previousLine.text);
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return undefined;
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText))
+    return undefined;
 
   let scanIndex = artifactStartIndex;
   const artifactTexts: string[] = [];
-  const maxScanIndex = Math.min(lines.length, artifactStartIndex + INLINE_MATH_BRIDGE_MAX_LOOKAHEAD);
+  const maxScanIndex = Math.min(
+    lines.length,
+    artifactStartIndex + INLINE_MATH_BRIDGE_MAX_LOOKAHEAD,
+  );
   while (scanIndex < maxScanIndex) {
     const artifact = lines[scanIndex];
-    const artifactBridge = analyzeInlineMathArtifactBridgeLine(artifact, previousLine);
+    const artifactBridge = analyzeInlineMathArtifactBridgeLine(
+      artifact,
+      previousLine,
+    );
     if (!artifactBridge) return undefined;
-    if (artifactBridge.artifactText !== undefined) artifactTexts.push(artifactBridge.artifactText);
+    if (artifactBridge.artifactText !== undefined)
+      artifactTexts.push(artifactBridge.artifactText);
 
     const continuationIndex = scanIndex + 1;
     const continuation = resolveInlineMathArtifactContinuationCandidate(
@@ -3688,7 +4508,8 @@ function resolveInlineMathArtifactContinuationCandidate(
   if (!continuationLine) return undefined;
 
   const isCrossPage = continuationLine.pageIndex !== previousLine.pageIndex;
-  if (isCrossPage && continuationLine.pageIndex !== previousLine.pageIndex + 1) return undefined;
+  if (isCrossPage && continuationLine.pageIndex !== previousLine.pageIndex + 1)
+    return undefined;
   return { line: continuationLine, isCrossPage };
 }
 
@@ -3724,7 +4545,10 @@ function shouldSkipDetachedLowercaseMathSubscriptLine(
   if (!DETACHED_LOWERCASE_MATH_SUBSCRIPT_PATTERN.test(normalized)) return false;
 
   if (!hasPositiveInlineMathBridgeVerticalGap(line, previousLine)) return false;
-  if (line.fontSize > previousLine.fontSize * INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO) {
+  if (
+    line.fontSize >
+    previousLine.fontSize * INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO
+  ) {
     return false;
   }
   if (
@@ -3737,7 +4561,9 @@ function shouldSkipDetachedLowercaseMathSubscriptLine(
   const previousText = normalizeSpacing(previousLine.text);
   const nextLine = lines[index + 1];
   const nextText =
-    nextLine && nextLine.pageIndex === line.pageIndex ? normalizeSpacing(nextLine.text) : "";
+    nextLine && nextLine.pageIndex === line.pageIndex
+      ? normalizeSpacing(nextLine.text)
+      : "";
   return hasDetachedMathSubscriptContext(previousText, nextText);
 }
 
@@ -3757,26 +4583,42 @@ function shouldSkipDetachedNumericFootnoteMarkerLine(
     hasDottedSubsectionHeadings,
   });
   if (normalized === undefined) return false;
-  if (!isDetachedNumericFootnoteMarker(line, normalized, bodyFontSize)) return false;
+  if (!isDetachedNumericFootnoteMarker(line, normalized, bodyFontSize))
+    return false;
 
   const previousLine = lines[index - 1];
   const nextLine = lines[index + 1];
   if (!previousLine || !nextLine) return false;
-  if (previousLine.pageIndex !== line.pageIndex || nextLine.pageIndex !== line.pageIndex) return false;
   if (
-    !DETACHED_NUMERIC_FOOTNOTE_MARKER_NEIGHBOR_WORD_PATTERN.test(normalizeSpacing(previousLine.text))
+    previousLine.pageIndex !== line.pageIndex ||
+    nextLine.pageIndex !== line.pageIndex
+  )
+    return false;
+  if (
+    !DETACHED_NUMERIC_FOOTNOTE_MARKER_NEIGHBOR_WORD_PATTERN.test(
+      normalizeSpacing(previousLine.text),
+    )
   ) {
     return false;
   }
-  if (!DETACHED_NUMERIC_FOOTNOTE_MARKER_NEIGHBOR_WORD_PATTERN.test(normalizeSpacing(nextLine.text))) {
+  if (
+    !DETACHED_NUMERIC_FOOTNOTE_MARKER_NEIGHBOR_WORD_PATTERN.test(
+      normalizeSpacing(nextLine.text),
+    )
+  ) {
     return false;
   }
 
   const minBaselineYDelta =
-    line.fontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MIN_BASELINE_Y_DELTA_FONT_RATIO;
+    line.fontSize *
+    DETACHED_NUMERIC_FOOTNOTE_MARKER_MIN_BASELINE_Y_DELTA_FONT_RATIO;
   if (line.y - nextLine.y < minBaselineYDelta) return false;
 
-  return isDetachedNumericFootnoteMarkerNearNeighbors(line, previousLine, nextLine);
+  return isDetachedNumericFootnoteMarkerNearNeighbors(
+    line,
+    previousLine,
+    nextLine,
+  );
 }
 
 function shouldSkipDetachedNumericFootnoteMarkerContinuationLine(
@@ -3789,13 +4631,18 @@ function shouldSkipDetachedNumericFootnoteMarkerContinuationLine(
   hasDottedSubsectionHeadings: boolean,
 ): boolean {
   const markerLine = lines[markerIndex];
-  if (!markerLine || markerLine.pageIndex !== previousLine.pageIndex) return false;
+  if (!markerLine || markerLine.pageIndex !== previousLine.pageIndex)
+    return false;
 
   const normalizedMarker = normalizeSpacing(markerLine.text);
-  if (!isDetachedNumericFootnoteMarker(markerLine, normalizedMarker, bodyFontSize)) return false;
+  if (
+    !isDetachedNumericFootnoteMarker(markerLine, normalizedMarker, bodyFontSize)
+  )
+    return false;
 
   const previousText = normalizeSpacing(previousLine.text);
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText))
+    return false;
   if (hasChemicalFormulaTail(previousText)) return false;
 
   const nextLine = lines[markerIndex + 1];
@@ -3821,7 +4668,11 @@ function shouldSkipDetachedNumericFootnoteMarkerContinuationLine(
     return false;
   }
 
-  return isDetachedNumericFootnoteMarkerNearNeighbors(markerLine, previousLine, nextLine);
+  return isDetachedNumericFootnoteMarkerNearNeighbors(
+    markerLine,
+    previousLine,
+    nextLine,
+  );
 }
 
 function isDetachedNumericFootnoteMarker(
@@ -3829,14 +4680,18 @@ function isDetachedNumericFootnoteMarker(
   normalizedText: string,
   bodyFontSize: number,
 ): boolean {
-  if (!DETACHED_NUMERIC_FOOTNOTE_MARKER_PATTERN.test(normalizedText)) return false;
+  if (!DETACHED_NUMERIC_FOOTNOTE_MARKER_PATTERN.test(normalizedText))
+    return false;
   if (
     line.estimatedWidth >
     line.pageWidth * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_WIDTH_RATIO
   ) {
     return false;
   }
-  return line.fontSize <= bodyFontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_FONT_RATIO;
+  return (
+    line.fontSize <=
+    bodyFontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_FONT_RATIO
+  );
 }
 
 function isDetachedNumericFootnoteMarkerNearNeighbors(
@@ -3847,7 +4702,9 @@ function isDetachedNumericFootnoteMarkerNearNeighbors(
   const markerLeft = markerLine.x;
   const markerRight = markerLine.x + markerLine.estimatedWidth;
   const previousRight = previousLine.x + previousLine.estimatedWidth;
-  const maxGap = markerLine.fontSize * DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_NEIGHBOR_GAP_FONT_RATIO;
+  const maxGap =
+    markerLine.fontSize *
+    DETACHED_NUMERIC_FOOTNOTE_MARKER_MAX_NEIGHBOR_GAP_FONT_RATIO;
   const closeToPrevious = markerLeft - previousRight <= maxGap;
   const closeToNext = nextLine.x - markerRight <= maxGap;
   return closeToPrevious || closeToNext;
@@ -3862,9 +4719,14 @@ function hasChemicalFormulaTail(text: string): boolean {
   return CHEMICAL_SYMBOL_TOKEN_PATTERN.test(tailToken);
 }
 
-function hasDetachedMathSubscriptContext(previousText: string, nextText: string): boolean {
-  if (DETACHED_MATH_SUBSCRIPT_TRAILING_VARIABLE_PATTERN.test(previousText)) return true;
-  if (DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN.test(previousText)) return true;
+function hasDetachedMathSubscriptContext(
+  previousText: string,
+  nextText: string,
+): boolean {
+  if (DETACHED_MATH_SUBSCRIPT_TRAILING_VARIABLE_PATTERN.test(previousText))
+    return true;
+  if (DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN.test(previousText))
+    return true;
   return DETACHED_MATH_SUBSCRIPT_ASSIGNMENT_CONTEXT_PATTERN.test(nextText);
 }
 
@@ -3880,11 +4742,20 @@ function analyzeInlineMathArtifactBridgeLine(
   if (line.pageIndex !== previousLine.pageIndex) return undefined;
   const parsed = parseInlineMathArtifactBridgeTextParts(line);
   if (!parsed) return undefined;
-  if (!hasPositiveInlineMathBridgeVerticalGap(line, previousLine)) return undefined;
-  const bridgeKind = classifyInlineMathArtifactBridgeKind(parsed.tokens, line, previousLine);
+  if (!hasPositiveInlineMathBridgeVerticalGap(line, previousLine))
+    return undefined;
+  const bridgeKind = classifyInlineMathArtifactBridgeKind(
+    parsed.tokens,
+    line,
+    previousLine,
+  );
   if (!bridgeKind) return undefined;
   return {
-    artifactText: toInlineMathArtifactBridgeText(bridgeKind, parsed.normalized, parsed.tokens),
+    artifactText: toInlineMathArtifactBridgeText(
+      bridgeKind,
+      parsed.normalized,
+      parsed.tokens,
+    ),
   };
 }
 
@@ -3893,7 +4764,10 @@ function hasPositiveInlineMathBridgeVerticalGap(
   previousLine: TextLine,
 ): boolean {
   const verticalGap = previousLine.y - line.y;
-  const maxVerticalGap = Math.max(previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO, 3);
+  const maxVerticalGap = Math.max(
+    previousLine.fontSize * INLINE_MATH_BRIDGE_MAX_VERTICAL_GAP_RATIO,
+    3,
+  );
   return verticalGap > 0 && verticalGap <= maxVerticalGap;
 }
 
@@ -3901,11 +4775,17 @@ function parseInlineMathArtifactBridgeTextParts(
   line: TextLine,
 ): { normalized: string; tokens: string[] } | undefined {
   const normalized = normalizeSpacing(line.text);
-  if (normalized.length === 0 || normalized.length > INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH) return undefined;
-  if (!INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN.test(normalized)) return undefined;
+  if (
+    normalized.length === 0 ||
+    normalized.length > INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH
+  )
+    return undefined;
+  if (!INLINE_MATH_BRIDGE_ALLOWED_CHARS_PATTERN.test(normalized))
+    return undefined;
 
   const tokens = normalized.split(/\s+/).filter((token) => token.length > 0);
-  if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT) return undefined;
+  if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT)
+    return undefined;
   return { normalized, tokens };
 }
 
@@ -3927,14 +4807,15 @@ function classifyInlineMathArtifactBridgeKind(
   if (
     !isDetachedSingleTokenArtifact &&
     !isSparseDispersedMathArtifact &&
-    line.estimatedWidth > previousLine.estimatedWidth * INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO
+    line.estimatedWidth >
+      previousLine.estimatedWidth * INLINE_MATH_BRIDGE_MAX_WIDTH_RATIO
   ) {
     return undefined;
   }
   if (isDetachedSingleTokenArtifact) return "detachedSingleToken";
 
-  const hasNumericOrSymbol = tokens.some(
-    (token) => isNumericOrSymbolInlineMathBridgeToken(token),
+  const hasNumericOrSymbol = tokens.some((token) =>
+    isNumericOrSymbolInlineMathBridgeToken(token),
   );
   if (!hasNumericOrSymbol) {
     return isLowercaseSubscriptBridgeTokenLine(tokens, line, previousLine)
@@ -3964,7 +4845,11 @@ function toInlineMathArtifactBridgeText(
   tokens: string[],
 ): string | undefined {
   if (kind !== "lowercaseSubscript") return normalized;
-  if (tokens.every((token) => INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN.test(token))) {
+  if (
+    tokens.every((token) =>
+      INLINE_MATH_BRIDGE_APPENDABLE_LOWERCASE_TOKEN_PATTERN.test(token),
+    )
+  ) {
     return normalized;
   }
   return undefined;
@@ -3977,12 +4862,18 @@ function isDetachedSingleTokenInlineMathArtifact(
 ): boolean {
   if (tokens.length !== 1) return false;
   const token = tokens[0];
-  if (!token || !INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_PATTERN.test(token)) return false;
-  if (line.fontSize > previousLine.fontSize * INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_FONT_RATIO) {
+  if (!token || !INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_PATTERN.test(token))
+    return false;
+  if (
+    line.fontSize >
+    previousLine.fontSize *
+      INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_FONT_RATIO
+  ) {
     return false;
   }
   return (
-    line.estimatedWidth <= line.pageWidth * INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_WIDTH_RATIO
+    line.estimatedWidth <=
+    line.pageWidth * INLINE_MATH_BRIDGE_DETACHED_SINGLE_TOKEN_MAX_WIDTH_RATIO
   );
 }
 
@@ -3991,16 +4882,28 @@ function isLowercaseSubscriptBridgeTokenLine(
   line: TextLine,
   previousLine: TextLine,
 ): boolean {
-  if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_TOKEN_COUNT) {
+  if (
+    tokens.length === 0 ||
+    tokens.length > INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_TOKEN_COUNT
+  ) {
     return false;
   }
-  if (line.fontSize > previousLine.fontSize * INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO) {
+  if (
+    line.fontSize >
+    previousLine.fontSize * INLINE_MATH_BRIDGE_SUBSCRIPT_MAX_FONT_RATIO
+  ) {
     return false;
   }
-  if (!tokens.some((token) => token.length >= INLINE_MATH_BRIDGE_SUBSCRIPT_MIN_TOKEN_LENGTH)) {
+  if (
+    !tokens.some(
+      (token) => token.length >= INLINE_MATH_BRIDGE_SUBSCRIPT_MIN_TOKEN_LENGTH,
+    )
+  ) {
     return false;
   }
-  return tokens.every((token) => INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN.test(token));
+  return tokens.every((token) =>
+    INLINE_MATH_BRIDGE_LOWERCASE_SUBSCRIPT_TOKEN_PATTERN.test(token),
+  );
 }
 
 function isSparseDispersedInlineMathArtifact(
@@ -4008,13 +4911,20 @@ function isSparseDispersedInlineMathArtifact(
   line: TextLine,
   previousLine: TextLine,
 ): boolean {
-  if (tokens.length === 0 || tokens.length > INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_TOKEN_COUNT) {
+  if (
+    tokens.length === 0 ||
+    tokens.length > INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_TOKEN_COUNT
+  ) {
     return false;
   }
-  if (line.fontSize > previousLine.fontSize * INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_FONT_RATIO) {
+  if (
+    line.fontSize >
+    previousLine.fontSize * INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_FONT_RATIO
+  ) {
     return false;
   }
-  if (!tokens.some((token) => isNumericOrSymbolInlineMathBridgeToken(token))) return false;
+  if (!tokens.some((token) => isNumericOrSymbolInlineMathBridgeToken(token)))
+    return false;
   return tokens.every(
     (token) =>
       token.length <= INLINE_MATH_BRIDGE_SPARSE_DISPERSED_MAX_TOKEN_LENGTH &&
@@ -4060,12 +4970,13 @@ function isBodyParagraphContinuationLine(
   ) {
     return false;
   }
-      if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
-    
-      const previousNormalized = normalizeSpacing(previousLine.text);
-      if (
-        isLikelyAffiliationAddressToNewEntryBoundary(
-          previousLine,      previousNormalized,
+  if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
+
+  const previousNormalized = normalizeSpacing(previousLine.text);
+  if (
+    isLikelyAffiliationAddressToNewEntryBoundary(
+      previousLine,
+      previousNormalized,
       line,
       normalized,
     )
@@ -4073,7 +4984,10 @@ function isBodyParagraphContinuationLine(
     return false;
   }
 
-  if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
+  if (
+    Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA
+  )
+    return false;
 
   const isHyphenContinuation = isHyphenWrappedLineText(previousNormalized);
   const maxVerticalGapRatio = isHyphenContinuation
@@ -4083,7 +4997,8 @@ function isBodyParagraphContinuationLine(
     previousLine.fontSize,
     maxVerticalGapRatio,
   );
-  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap)) return false;
+  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap))
+    return false;
 
   const maxCenterOffsetRatio = isHyphenContinuation
     ? HYPHEN_WRAP_MAX_CENTER_OFFSET_RATIO
@@ -4092,7 +5007,9 @@ function isBodyParagraphContinuationLine(
     ? HYPHEN_WRAP_MAX_LEFT_OFFSET_RATIO
     : BODY_PARAGRAPH_MAX_LEFT_OFFSET_RATIO;
 
-  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const centerOffset = Math.abs(
+    getLineCenter(line) - getLineCenter(previousLine),
+  );
   const leftOffset = Math.abs(line.x - previousLine.x);
   if (
     centerOffset > line.pageWidth * maxCenterOffsetRatio &&
@@ -4116,7 +5033,8 @@ function isBodyParagraphPageWrapContinuationLine(
   if (isDisallowedPageWrapColumnTransition(previousLine, line)) return false;
 
   const previousText = normalizeSpacing(previousLine.text);
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText)) return false;
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText))
+    return false;
 
   const normalized = parseParagraphMergeCandidateText(line, {
     titleLine,
@@ -4133,17 +5051,24 @@ function isBodyParagraphPageWrapContinuationLine(
   }
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(normalized)) return false;
 
-  if (Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA) return false;
+  if (
+    Math.abs(line.fontSize - startLine.fontSize) > BODY_PARAGRAPH_MAX_FONT_DELTA
+  )
+    return false;
 
   const previousYRatio = previousLine.y / previousLine.pageHeight;
-  if (previousYRatio > BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO) return false;
+  if (previousYRatio > BODY_PARAGRAPH_PAGE_WRAP_PREVIOUS_BOTTOM_MAX_RATIO)
+    return false;
   const nextYRatio = line.y / line.pageHeight;
   if (nextYRatio < BODY_PARAGRAPH_PAGE_WRAP_NEXT_TOP_MIN_RATIO) return false;
 
-  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(previousLine));
+  const centerOffset = Math.abs(
+    getLineCenter(line) - getLineCenter(previousLine),
+  );
   const leftOffset = Math.abs(line.x - previousLine.x);
   if (
-    centerOffset > line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_CENTER_OFFSET_RATIO &&
+    centerOffset >
+      line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_CENTER_OFFSET_RATIO &&
     leftOffset > line.pageWidth * BODY_PARAGRAPH_PAGE_WRAP_MAX_LEFT_OFFSET_RATIO
   ) {
     return false;
@@ -4152,8 +5077,12 @@ function isBodyParagraphPageWrapContinuationLine(
   return true;
 }
 
-function isCitationLeadingContinuationLine(normalized: string, previousLine: TextLine): boolean {
-  if (!BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN.test(normalized)) return false;
+function isCitationLeadingContinuationLine(
+  normalized: string,
+  previousLine: TextLine,
+): boolean {
+  if (!BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN.test(normalized))
+    return false;
   const previousText = normalizeSpacing(previousLine.text);
   return !INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(previousText);
 }
@@ -4166,19 +5095,25 @@ function isLikelyAffiliationAddressToNewEntryBoundary(
 ): boolean {
   if (!isLikelyAffiliationAddressLine(previousText)) return false;
   if (!isLikelyAffiliationEntryStart(line, currentText)) return false;
-  const maxLeftOffset = line.pageWidth * AFFILIATION_ENTRY_MAX_LEFT_OFFSET_RATIO;
+  const maxLeftOffset =
+    line.pageWidth * AFFILIATION_ENTRY_MAX_LEFT_OFFSET_RATIO;
   if (Math.abs(line.x - previousLine.x) > maxLeftOffset) return false;
   const maxVerticalGap = getFontScaledVerticalGapLimit(
     Math.max(previousLine.fontSize, line.fontSize),
     AFFILIATION_ENTRY_MAX_VERTICAL_GAP_RATIO,
   );
-  return hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap);
+  return hasDescendingVerticalGapWithinLimit(
+    previousLine,
+    line,
+    maxVerticalGap,
+  );
 }
 
 function isLikelyAffiliationAddressLine(text: string): boolean {
   const commaCount = text.match(/,/g)?.length ?? 0;
   if (commaCount < AFFILIATION_ADDRESS_LINE_MIN_COMMA_COUNT) return false;
-  const startsWithStreetNumber = AFFILIATION_ADDRESS_LINE_START_PATTERN.test(text);
+  const startsWithStreetNumber =
+    AFFILIATION_ADDRESS_LINE_START_PATTERN.test(text);
   const hasPostalCode = AFFILIATION_ADDRESS_LINE_POSTAL_CODE_PATTERN.test(text);
   const hasGeoKeyword = AFFILIATION_ADDRESS_LINE_GEO_KEYWORD_PATTERN.test(text);
   return (
@@ -4189,6 +5124,7 @@ function isLikelyAffiliationAddressLine(text: string): boolean {
 
 function isLikelyAffiliationEntryStart(line: TextLine, text: string): boolean {
   if (!AFFILIATION_ENTRY_START_PATTERN.test(text)) return false;
-  if (line.estimatedWidth > line.pageWidth * AFFILIATION_ENTRY_MAX_WIDTH_RATIO) return false;
+  if (line.estimatedWidth > line.pageWidth * AFFILIATION_ENTRY_MAX_WIDTH_RATIO)
+    return false;
   return splitWords(text).length <= AFFILIATION_ENTRY_MAX_WORDS;
 }

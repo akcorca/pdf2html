@@ -97,7 +97,9 @@ describe("attention abstract same-row merge", () => {
     expect(attentionHtml).toContain(
       "In contrast to RNN sequence-to-sequence models [ 37 ], the Transformer outperforms the Berkeley-Parser [29] even when training only on the WSJ training set of 40K sentences.",
     );
-    expect(attentionHtml).not.toContain("<p>In contrast to RNN sequence-to-sequence models [</p>");
+    expect(attentionHtml).not.toContain(
+      "<p>In contrast to RNN sequence-to-sequence models [</p>",
+    );
     expect(attentionHtml).not.toContain(
       "<p>37 ], the Transformer outperforms the Berkeley-</p>",
     );
@@ -110,8 +112,12 @@ describe("attention abstract same-row merge", () => {
     expect(attentionHtml).toContain(
       "to the recurrent and convolutional layers commonly used for mapping one variable-length",
     );
-    expect(attentionHtml).not.toContain("sequence modeling and transduc-tion models");
-    expect(attentionHtml).not.toContain("the recurrent and convolu-tional layers");
+    expect(attentionHtml).not.toContain(
+      "sequence modeling and transduc-tion models",
+    );
+    expect(attentionHtml).not.toContain(
+      "the recurrent and convolu-tional layers",
+    );
   });
 
   it("bridges detached single-token math superscripts inside body paragraphs", () => {
@@ -142,8 +148,12 @@ describe("attention abstract same-row merge", () => {
   });
 
   it("drops dense figure-embedded word-label artifacts in the appendix while keeping figure captions", () => {
-    expect(attentionHtml).toContain("Figure 3: An example of the attention mechanism");
-    expect(attentionHtml).toContain("Figure 4: Two attention heads, also in layer 5 of 6");
+    expect(attentionHtml).toContain(
+      "Figure 3: An example of the attention mechanism",
+    );
+    expect(attentionHtml).toContain(
+      "Figure 4: Two attention heads, also in layer 5 of 6",
+    );
     expect(attentionHtml).toContain(
       "Figure 5: Many of the attention heads exhibit behaviour that seems related to the structure of the",
     );
@@ -158,12 +168,21 @@ describe("attention abstract same-row merge", () => {
     expect(attentionHtml).toContain(
       "Figure 2: (left) Scaled Dot-Product Attention. (right) Multi-Head Attention consists of several attention layers running in parallel.",
     );
-    expect(attentionHtml).not.toContain("<p>Scaled Dot-Product Attention Multi-Head Attention</p>");
+    expect(attentionHtml).not.toContain(
+      "<p>Scaled Dot-Product Attention Multi-Head Attention</p>",
+    );
+  });
+
+  it("renders post-reference appendix section titles as headings", () => {
+    expect(attentionHtml).toContain("<h2>Attention Visualizations</h2>");
+    expect(attentionHtml).not.toContain("<p>Attention Visualizations</p>");
   });
 
   it("moves unmarked bottom footnote prose out of section body and into footnotes", () => {
     const footnoteText = "To illustrate why the dot products get large";
-    const footnoteBlock = attentionHtml.match(/<div class="footnotes">(.|\n)*<\/div>/);
+    const footnoteBlock = attentionHtml.match(
+      /<div class="footnotes">(.|\n)*<\/div>/,
+    );
 
     expect(footnoteBlock).not.toBeNull();
     if (!footnoteBlock) throw new Error("Expected footnotes block to exist");
