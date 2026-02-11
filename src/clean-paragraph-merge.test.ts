@@ -99,4 +99,13 @@ describe("clean.pdf paragraph merging", () => {
       "<p>code generation process for data standardization, requiring just a few lines of code.</p>",
     );
   });
+
+  it("removes hyphens from words like gen-eration and chal-lenges", () => {
+    expect(cleanHtml).toContain(
+      "natural language understanding and code generation, it still demands expert-level programming knowledge and continuous interaction for prompt refinement."
+    );
+    expect(cleanHtml).toContain(
+      "To solve these challenges, our key idea is to propose a Python library with declarative, unified APIs"
+    );
+  });
 });

@@ -103,7 +103,7 @@ describe("pdfToHtmlInternals", () => {
         line({ text: "Abstract", x: 280, y: 560, fontSize: 12, estimatedWidth: 60 }),
         line({ text: "This is a regular paragraph.", x: 100, y: 500, fontSize: 10 }),
       ],
-      undefined,
+      { pages: [] },
       [],
     );
     expect(html).toContain("<h1>Attention Is All You Need</h1>");

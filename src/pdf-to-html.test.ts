@@ -205,14 +205,14 @@ describe("convertPdfToHtml", () => {
     // of data stan-dardization." must NOT be merged into the same <p> tag.
     // They belong to different columns and should appear as separate paragraphs.
     expect(cleanHtml).not.toMatch(
-      /chal-\s*lenges[^<]*In this section, we first describe/,
+      /chal(?:-\s*)?lenges[^<]*In this section, we first describe/,
     );
     expect(cleanHtml).not.toMatch(
-      /In this section[^<]*chal-\s*lenges/,
+      /In this section[^<]*chal(?:-\s*)?lenges/,
     );
     // The left-column paragraph about challenges should be a coherent paragraph
     expect(cleanHtml).toContain(
-      "The pursuit of simplicity, however, introduces two primary chal-lenges.",
+      "The pursuit of simplicity, however, introduces two primary challenges.",
     );
     // The right-column paragraph should be a separate coherent paragraph
     expect(cleanHtml).toContain(

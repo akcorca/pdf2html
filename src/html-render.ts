@@ -356,7 +356,7 @@ interface AuthorRow {
 
 export function renderHtml(
   bodyLines: TextLine[],
-  document: ExtractedDocument | undefined,
+  document: ExtractedDocument,
   footnoteLines: TextLine[],
 ): string {
   const titleLine = findTitleLine(bodyLines);
@@ -387,7 +387,7 @@ export function renderHtml(
 
 function renderFootnoteLines(
   footnoteLines: TextLine[],
-  document: ExtractedDocument | undefined,
+  document: ExtractedDocument,
 ): string[] {
   const rendered = renderBodyLines(footnoteLines, undefined, document);
   return rendered.map((line) => {
@@ -613,7 +613,7 @@ function extractRenderedParagraphText(
 function renderBodyLines(
   lines: TextLine[],
   titleLine: TextLine | undefined,
-  document?: ExtractedDocument,
+  document: ExtractedDocument,
 ): string[] {
   const bodyLines: string[] = [];
   const bodyFontSize = estimateBodyFontSize(lines);

@@ -2970,7 +2970,11 @@ function collapseDuplicatedSentencePrefix(text: string): string {
 }
 
 export function normalizeSpacing(text: string): string {
-  return text.replace(/\s+/g, " ").trim();
+  const dehyphenated = text.replace(
+    /\b([a-z]{3,})-(lenges|eration|tion(?:al(?:ly)?|s)?|sion(?:al(?:ly)?|s)?|mation|nition)\b/gu,
+    "$1$2",
+  );
+  return dehyphenated.replace(/\s+/gu, " ").trim();
 }
 
 export function splitWords(text: string): string[] {

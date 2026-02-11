@@ -22,4 +22,10 @@ describe("respect-footnotes", () => {
       /<sup id="fnref\d+"><a href="#fn\d+" class="footnote-ref">\d+<\/a><\/sup>/,
     );
   });
+
+  it("adds id to footnote paragraphs", () => {
+    expect(respectHtml).toMatch(
+      /<div class="footnotes">[^<]*<p id="fn\d+">/,
+    );
+  });
 });
