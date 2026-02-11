@@ -77,9 +77,8 @@ describe("tft-reading-order", () => {
   });
 
   it("keeps experimental section prose separate from right-column references", () => {
-    expect(tftHtml).toContain(
-      "Device and Film Characterization : The current–voltage characteristics",
-    );
+    expect(tftHtml).toContain("<h3>Device and Film Characterization</h3>");
+    expect(tftHtml).toContain("<p>The current–voltage characteristics");
     expect(tftHtml).not.toContain(
       "Device and Film Characterization : The current–voltage characteristics h)",
     );
@@ -95,6 +94,15 @@ describe("tft-reading-order", () => {
     );
     expect(tftHtml).toMatch(
       /<p>30 Pildong-ro 1-gil, Jung-gu, Seoul 04620, Republic of Korea<\/p>\s*<p>Prof\. S\.Y\. Seo<\/p>\s*<p>Department of Chemistry<\/p>\s*<p>Pukyong National University<\/p>\s*<p>45 Yongso-ro, Namgu Pusan 48513, Republic of Korea<\/p>/u,
+    );
+  });
+
+  it("converts subsection titles in 'Experimental Section' to h3 headings", () => {
+    // "Device and Film Characterization" should be an <h3> heading,
+    // not part of a <p> tag.
+    expect(tftHtml).toContain("<h3>Device and Film Characterization</h3>");
+    expect(tftHtml).not.toContain(
+      "<p>Device and Film Characterization :",
     );
   });
 });
