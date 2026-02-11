@@ -72,6 +72,9 @@ const LEFT_BODY_CONTINUATION_START_PATTERN = /^[a-z0-9(“‘"']/u;
 const LEFT_BODY_CONTINUATION_END_PUNCTUATION_PATTERN = /[.!?]["')\]]?$/;
 const MAX_COLUMN_BREAK_BRIDGE_LOOKAHEAD = 2;
 const COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS = 1;
+const ASYMMETRIC_COLUMN_BREAK_ARTIFACT_MAX_WIDTH_RATIO = 0.12;
+const ASYMMETRIC_COLUMN_BREAK_ARTIFACT_MAX_TOKEN_COUNT = 2;
+const ASYMMETRIC_COLUMN_BREAK_ARTIFACT_MAX_FONT_RATIO = 0.95;
 const DUPLICATED_SENTENCE_PREFIX_PATTERN =
   /^([A-Z][^.!?]{1,80}[.!?])\s+\1(\s+.+)$/u;
 const SAME_ROW_RIGHT_INLINE_MERGE_NEXT_START_PATTERN = /^[a-z(“‘"']/u;
@@ -2644,10 +2647,74 @@ function splitFragmentsByMidpoint(
     leftSubstantiveChars < MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT ||
     rightSubstantiveChars < MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT
   ) {
+    if (
+      canRecoverAsymmetricMidpointSplit(
+        leftColumn,
+        rightColumn,
+        leftSubstantiveChars,
+        rightSubstantiveChars,
+        pageWidth,
+      )
+    ) {
+      return [leftColumn, rightColumn];
+    }
     return undefined;
   }
 
   return [leftColumn, rightColumn];
+}
+
+function canRecoverAsymmetricMidpointSplit(
+  leftColumn: ExtractedFragment[],
+  rightColumn: ExtractedFragment[],
+  leftSubstantiveChars: number,
+  rightSubstantiveChars: number,
+  pageWidth: number,
+): boolean {
+  const weakerIsLeft = leftSubstantiveChars < rightSubstantiveChars;
+  const weakerSubstantiveChars = weakerIsLeft
+    ? leftSubstantiveChars
+    : rightSubstantiveChars;
+  const strongerSubstantiveChars = weakerIsLeft
+    ? rightSubstantiveChars
+    : leftSubstantiveChars;
+  if (strongerSubstantiveChars < MIN_COLUMN_BREAK_TEXT_CHARACTER_COUNT)
+    return false;
+  if (weakerSubstantiveChars > COLUMN_BREAK_BRIDGE_MAX_SUBSTANTIVE_CHARS)
+    return false;
+
+  const weakerSide = weakerIsLeft ? leftColumn : rightColumn;
+  if (
+    weakerSide.length === 0 ||
+    weakerSide.length > ASYMMETRIC_COLUMN_BREAK_ARTIFACT_MAX_TOKEN_COUNT
+  ) {
+    return false;
+  }
+  const weakerSideTexts = weakerSide.map((fragment) =>
+    normalizeSpacing(fragment.text),
+  );
+  if (
+    !weakerSideTexts.every((text) => /^[^\p{L}\p{N}]+$/u.test(text))
+  ) {
+    return false;
+  }
+  if (
+    estimateLineWidth(weakerSide) >
+    pageWidth * ASYMMETRIC_COLUMN_BREAK_ARTIFACT_MAX_WIDTH_RATIO
+  ) {
+    return false;
+  }
+
+  const strongerSide = weakerIsLeft ? rightColumn : leftColumn;
+  const strongerMedianFont = medianOrUndefined(
+    strongerSide.map((fragment) => fragment.fontSize),
+  );
+  if (strongerMedianFont === undefined) return false;
+  const weakerMaxFont = Math.max(...weakerSide.map((fragment) => fragment.fontSize));
+  return (
+    weakerMaxFont <=
+    strongerMedianFont * ASYMMETRIC_COLUMN_BREAK_ARTIFACT_MAX_FONT_RATIO
+  );
 }
 
 type FragmentGroupSide = "left" | "right" | "mixed";

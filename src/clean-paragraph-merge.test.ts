@@ -76,6 +76,16 @@ describe("clean.pdf paragraph merging", () => {
     );
   });
 
+  it("keeps API design text separate from the left-column web interface sentence", () => {
+    expect(cleanHtml).toContain(
+      "The Design of Unified APIs. The goal of our API design is to enable data scientists to complete all the common steps",
+    );
+    expect(cleanHtml).not.toContain(
+      "The goal of our API design is to We also built a web interface for CleanAgent .",
+    );
+    expect(cleanHtml).not.toContain("′ The Design of Unified APIs.");
+  });
+
   it("merges paragraphs with hyphenation and line breaks", () => {
     expect(cleanHtml).toMatch(
       /<p>To overcome these limitations, our key idea is to introduce a Python library involving declarative and unified APIs specifically designed for standardizing different column types\. This idea lowers the burden of the LLM, as it now only needs to convert natural lan-?guage \(NL\) instructions into succinct, declarative API calls instead of lengthy, procedural code\. Such an approach simplifies the LLM’s code generation process for data standardization, requiring just a few lines of code\.<\/p>/,
