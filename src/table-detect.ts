@@ -164,7 +164,7 @@ function finalizeDetectedTable(input: {
   const { headerRows, dataRows } = splitHeaderAndDataRows(headerRow, parsedRows);
   if (dataRows.length === 0) return undefined;
 
-  collapseTrailingUnlabeledColumns(headerRows, dataRows);
+  // collapseTrailingUnlabeledColumns(headerRows, dataRows);
   normalizeColumnCount([...headerRows, ...dataRows]);
 
   return {

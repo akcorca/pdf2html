@@ -32,6 +32,19 @@ describe("table detection", () => {
     expect(table1).not.toContain("<td>P</td>");
   });
 
+  it("should correctly split merged data cells in Table 1 of respect.pdf", () => {
+    const table1Match = respectHtml.match(/<caption>Table 1: Scores on the three language understanding benchmarks.<\/caption>([\s\S]*?)<\/table>/);
+    expect(table1Match).toBeTruthy();
+    const table1Html = table1Match?.[0] ?? "";
+
+    // Check that the problematic cell is split
+    const row8Match = table1Html.match(/<tr>\s*<td[^>]*>8<\/td>([\s\S]*?)<\/tr>/);
+    expect(row8Match).toBeTruthy();
+    const row8Cells = row8Match?.[1] ?? "";
+    expect(row8Cells).toContain("<td>71.98</td>");
+    expect(row8Cells).toContain("<td>38.23</td>");
+  });
+
   it("does not mix nearby body text into Table 2 rows in respect.pdf", () => {
     const table2Match = respectHtml.match(
       /<caption>Table 2: MMLU benchmark scores of Llama2-70B and its base model\.<\/caption>[\s\S]*?<\/table>/,

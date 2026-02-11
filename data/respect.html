@@ -26,7 +26,7 @@ RIKEN AIP NII LLMC
 <p>MMLU (Hendrycks et al., 2021) .</p>
 <h2>2 Related Work</h2>
 <h3>2.1 Politeness and Respect</h3>
-<p>Humans are highly sensitive to politeness and re-spect in communications (Dillon, 2003). For ex-ample, people are more likely to offer assistance when confronted with a polite request. However, rude language can be a source of disgust and resent-ment, which will cause failure in acquiring coop-eration (Dillon, 2003). Politeness and respect are expressed differently in various languages (Mills and Kádár, 2011). In English, politeness and re-spect are expressed by considering the listener’s dignity. In addition, recognizing others’ rights but hoping they will be given up in moderation and us-ing polite words are also expressions of politeness and respect (Mills and Kádár, 2011). In contrast, direct orders, insulting or degrading expressions, and ignoring someone’s rights are recognized as impoliteness and lack of respect (Kitao, 1987). The expression of politeness and respect in Japanese significantly differs from that in English. The Japanese language has a specialized politeness system called “Keigo” (Affairs, 2007), which ex-presses respect for superiors or outsiders, humility towards oneself, and a formal attitude (Miyaji, 1971). This politeness system takes an essential place in Japanese culture (Kitao, 1990). However, although the basic structure of politeness is sim-ilar to that of English, their complexity and use are significant regarding the level of respect ex-pressed and the interpretation of social hierarchical relationships. For example, the other’s behavior is called “Sonkeigo” to express politeness and re-spect. In contrast, the speaker’s behavior towards the other is called “Kenjogo”. The expression of formality in public is called “Teineigo” (Takiura, 2017). If these types of politeness are not used cor-rectly, it is not possible to express desired polite-ness or even possible to be considered to be rude. Chinese expressions of respect are similar to English but have polite expressions similar to Japanese ones(Gu, 1990). However, these expressions have been weakened by social change (Zhou, 2008). In most cases, respect expressions in Chi-nese are not explicit (Xun, 1999). Therefore, the criteria for politeness change according to the cur-rent socio-cultural situation. This change made us design prompts that require careful handling of the relationship between different politeness levels. We need to use questionnaires to judge politeness levels to ensure the prompts truly reflect the nu-ance of politeness, especially in Chinese.</p>
+<p>Humans are highly sensitive to politeness and re-spect in communications (Dillon, 2003). For ex-ample, people are more likely to offer assistance when confronted with a polite request. However, rude language can be a source of disgust and resent-ment, which will cause failure in acquiring cooperation (Dillon, 2003). Politeness and respect are expressed differently in various languages (Mills and Kádár, 2011). In English, politeness and re-spect are expressed by considering the listener’s dignity. In addition, recognizing others’ rights but hoping they will be given up in moderation and us-ing polite words are also expressions of politeness and respect (Mills and Kádár, 2011). In contrast, direct orders, insulting or degrading expressions, and ignoring someone’s rights are recognized as impoliteness and lack of respect (Kitao, 1987). The expression of politeness and respect in Japanese significantly differs from that in English. The Japanese language has a specialized politeness system called “Keigo” (Affairs, 2007), which ex-presses respect for superiors or outsiders, humility towards oneself, and a formal attitude (Miyaji, 1971). This politeness system takes an essential place in Japanese culture (Kitao, 1990). However, although the basic structure of politeness is sim-ilar to that of English, their complexity and use are significant regarding the level of respect ex-pressed and the interpretation of social hierarchical relationships. For example, the other’s behavior is called “Sonkeigo” to express politeness and re-spect. In contrast, the speaker’s behavior towards the other is called “Kenjogo”. The expression of formality in public is called “Teineigo” (Takiura, 2017). If these types of politeness are not used cor-rectly, it is not possible to express desired polite-ness or even possible to be considered to be rude. Chinese expressions of respect are similar to English but have polite expressions similar to Japanese ones(Gu, 1990). However, these expressions have been weakened by social change (Zhou, 2008). In most cases, respect expressions in Chi-nese are not explicit (Xun, 1999). Therefore, the criteria for politeness change according to the cur-rent socio-cultural situation. This change made us design prompts that require careful handling of the relationship between different politeness levels. We need to use questionnaires to judge politeness levels to ensure the prompts truly reflect the nu-ance of politeness, especially in Chinese.</p>
 <h3>2.2 LLMs and Prompt Engineering</h3>
 <p>In recent years, LLMs’ abilities have been im-proving. LLMs are used in various industries, as their scores on many downstream tasks show human-like performance. LLMs can be somewhat aligned with human culture, suggesting that they may reflect some of the qualities of human com-munication while having an enormous correlation with language (Cao et al., 2023). In addition, as LLMs are trained with massive data from hu-mans, they inevitably contain certain stereotypical biases (Navigli et al., 2023). Therefore, we consider LLMs’ performance strongly related to human behavior. However, LLMs are sensitive and vulnerable to prompts. Minor changes can lead to significant differences in the output (Kad-dour et al., 2023). Therefore, prompt engineering emerged to earn better generation by adjusting prompts (White et al., 2023). Although methods for automatic prompt generation exist (Shin et al., 2020), access to gradients is usually restricted in LLMs provided via APIs, posing limitations on the application of such methods. Consequently, adjusting prompts is primarily conducted manu-ally at present and requires numerous experiments. Hence, we hope to offer an aspect to improve the efficiency in prompt engineering.</p>
 <h3>2.3 Evaluation of LLMs</h3>
@@ -74,18 +74,18 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 1: Scores on the three language understanding benchmarks.</caption>
 <thead>
-<tr><th></th><th></th><th>MMLU</th><th></th><th></th><th>C-Eval</th><th></th><th></th><th>JMMLU</th></tr>
-<tr><th>P</th><th>GPT-3.5</th><th>GPT-4</th><th>Llama2-70B</th><th>GPT-3.5</th><th>GPT-4</th><th>ChatGLM3</th><th>GPT-3.5</th><th>GPT-4</th></tr>
+<tr><th></th><th></th><th>MMLU</th><th></th><th></th><th>C-Eval</th><th></th><th></th><th>JMMLU</th><th></th></tr>
+<tr><th>P</th><th>GPT-3.5</th><th>GPT-4</th><th>Llama2-70B</th><th>GPT-3.5</th><th>GPT-4</th><th>ChatGLM3</th><th>GPT-3.5</th><th>GPT-4</th><th></th></tr>
 </thead>
 <tbody>
-<tr><td>8</td><td>60.02</td><td>75.82</td><td>55.11</td><td>20.85</td><td>29.73</td><td>20.58</td><td>49.96</td><td>71.98 38.23</td></tr>
-<tr><td>7</td><td>58.32</td><td>78.74</td><td>55.26</td><td>23.24</td><td>29.79</td><td>21.23</td><td>49.70</td><td>72.34 38.98</td></tr>
-<tr><td>6</td><td>57.96</td><td>78.56</td><td>52.23</td><td>23.38</td><td>30.37</td><td>21.54</td><td>50.09</td><td>72.71 39.30</td></tr>
-<tr><td>5</td><td>58.07</td><td>78.21</td><td>50.82</td><td>23.41</td><td>30.41</td><td>20.65</td><td>51.09</td><td>73.16 38.64</td></tr>
-<tr><td>4</td><td>57.86</td><td>79.09</td><td>51.74</td><td>23.32</td><td>30.60</td><td>20.28</td><td>50.52</td><td>73.63 37.40</td></tr>
-<tr><td>3</td><td>59.44</td><td>73.86</td><td>49.02</td><td>22.70</td><td>30.37</td><td>19.56</td><td>50.75</td><td>72.70 38.45</td></tr>
-<tr><td>2</td><td>57.14</td><td>76.56</td><td>51.28</td><td>22.52</td><td>30.27</td><td>19.35</td><td>51.98</td><td>73.13 38.62</td></tr>
-<tr><td>1</td><td>51.93</td><td>76.47</td><td>28.44</td><td>19.57</td><td>29.90</td><td>20.67</td><td>44.80</td><td>71.23 33.30</td></tr>
+<tr><td>8</td><td>60.02</td><td>75.82</td><td>55.11</td><td>20.85</td><td>29.73</td><td>20.58</td><td>49.96</td><td>71.98</td><td>38.23</td></tr>
+<tr><td>7</td><td>58.32</td><td>78.74</td><td>55.26</td><td>23.24</td><td>29.79</td><td>21.23</td><td>49.70</td><td>72.34</td><td>38.98</td></tr>
+<tr><td>6</td><td>57.96</td><td>78.56</td><td>52.23</td><td>23.38</td><td>30.37</td><td>21.54</td><td>50.09</td><td>72.71</td><td>39.30</td></tr>
+<tr><td>5</td><td>58.07</td><td>78.21</td><td>50.82</td><td>23.41</td><td>30.41</td><td>20.65</td><td>51.09</td><td>73.16</td><td>38.64</td></tr>
+<tr><td>4</td><td>57.86</td><td>79.09</td><td>51.74</td><td>23.32</td><td>30.60</td><td>20.28</td><td>50.52</td><td>73.63</td><td>37.40</td></tr>
+<tr><td>3</td><td>59.44</td><td>73.86</td><td>49.02</td><td>22.70</td><td>30.37</td><td>19.56</td><td>50.75</td><td>72.70</td><td>38.45</td></tr>
+<tr><td>2</td><td>57.14</td><td>76.56</td><td>51.28</td><td>22.52</td><td>30.27</td><td>19.35</td><td>51.98</td><td>73.13</td><td>38.62</td></tr>
+<tr><td>1</td><td>51.93</td><td>76.47</td><td>28.44</td><td>19.57</td><td>29.90</td><td>20.67</td><td>44.80</td><td>71.23</td><td>33.30</td></tr>
 </tbody>
 </table>
 <p>level is moderate. However, when the politeness level drops to extremely rude, this trend repeats and rises significantly. GPT-4 and Swallow-70B also keep this pattern, but the fluctuation is minor. Due to the existence of a politeness system in the Japanese language, store staff almost always use honorific language when speaking to customers. Even if a customer speaks in a casual tone, the staff will respond in a polite manner. This might explain why there is an increase in generation length for all models during medium-level politeness.</p>
@@ -401,21 +401,21 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 6: Prompt Template: Japanese</caption>
 <thead>
-<tr><th>8</th><th>(Task Description with Keigo)</th><th>していただけませんか？</th></tr>
+<tr><th>8</th><th>(Task Description with Keigo)</th><th>していただけませんか？</th><th></th><th></th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>よろしくお願いいたします。</td><td>(Answer Restriction)</td></tr>
-<tr><td>7</td><td>(Task Description with Keigo)</td><td>していただけますか。ただし</td></tr>
-<tr><td></td><td>Keigo) し、 (Answer Restriction with Keigo)</td><td>は不要です。</td></tr>
-<tr><td>6</td><td>(Task Description with Keigo) してください。</td><td></td></tr>
-<tr><td></td><td>(Answer Restriction with Keigo)</td><td>は不要です。</td></tr>
-<tr><td>5</td><td>(Task Description) してください。ただし</td><td>(Answer Format) し、 (Answer Restriction) 5.00</td></tr>
-<tr><td></td><td>ないでください。</td><td></td></tr>
-<tr><td>4</td><td>(Task Description) 。ただし</td><td>(Answer Format) し、 (Answer Restriction) ないで。 3.97</td></tr>
-<tr><td>3</td><td>(Task Description) せよ。</td><td>(Answer Format) し、</td></tr>
-<tr><td>2</td><td>(Task Description) しろ。</td><td>(Answer Format) し、</td></tr>
-<tr><td>1</td><td>(Task Description) しろこの野郎。</td><td>お前が (Answer Format) だけ。 (Answer Restriction) 1.18</td></tr>
-<tr><td></td><td>たらどうなるかわかるよな。</td><td></td></tr>
+<tr><td></td><td>よろしくお願いいたします。</td><td>(Answer Restriction)</td><td></td><td></td></tr>
+<tr><td>7</td><td>(Task Description with Keigo)</td><td>していただけますか。ただし</td><td></td><td></td></tr>
+<tr><td></td><td>Keigo) し、 (Answer Restriction with Keigo)</td><td></td><td>は不要です。</td><td></td></tr>
+<tr><td>6</td><td>(Task Description with Keigo) してください。</td><td></td><td></td><td></td></tr>
+<tr><td></td><td>(Answer Restriction with Keigo)</td><td>は不要です。</td><td></td><td></td></tr>
+<tr><td>5</td><td>(Task Description) してください。ただし</td><td></td><td>(Answer Format) し、 (Answer Restriction)</td><td>5.00</td></tr>
+<tr><td></td><td>ないでください。</td><td></td><td></td><td></td></tr>
+<tr><td>4</td><td>(Task Description) 。ただし</td><td>(Answer Format)</td><td>し、 (Answer Restriction)</td><td>ないで。 3.97</td></tr>
+<tr><td>3</td><td>(Task Description) せよ。</td><td>(Answer Format) し、</td><td></td><td></td></tr>
+<tr><td>2</td><td>(Task Description) しろ。</td><td>(Answer Format) し、</td><td></td><td></td></tr>
+<tr><td>1</td><td>(Task Description) しろこの野郎。</td><td>お前が</td><td>(Answer Format) だけ。 (Answer Restriction)</td><td>1.18</td></tr>
+<tr><td></td><td>たらどうなるかわかるよな。</td><td></td><td></td><td></td></tr>
 </tbody>
 </table>
 <p>Ranked Score</p>
@@ -457,20 +457,20 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 8: Summarization Prompt: Chinese Politeness Prompt</caption>
 <thead>
-<tr><th>8</th><th>次の文章を要約していただけませんか？</th><th></th><th></th><th>2 3</th><th>文で要約よろしくお願いいたします。それより</th></tr>
+<tr><th>8</th><th>次の文章を要約していただけませんか？</th><th></th><th></th><th>2 3</th><th>文で要約よろしくお願いいたします。それより</th><th></th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>長く書くのは不要でございます。</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>7</td><td>次の文章を要約していただけますか。ただし</td><td></td><td></td><td></td><td>2 3 文で要約し、それより長く書くのは不要で</td></tr>
-<tr><td></td><td>す。</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>6</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3</td><td>文で要約し、それより長く書くのは不要です。</td></tr>
-<tr><td>5</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3 文だけで要約し、それより長く書かないでくださ</td><td></td></tr>
-<tr><td></td><td>い。</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>4</td><td>次の文章を要約して。ただし</td><td></td><td>2 3 文だけで要約し、それより長く書かないで。</td><td></td><td></td></tr>
-<tr><td>3</td><td>次の文章を要約せよ。</td><td>2 3 文のみで要約し、それより長く書かないこと。</td><td></td><td></td><td></td></tr>
-<tr><td>2</td><td>次の文章を要約しろ。</td><td>2 3 文だけで要約し、それより長く書くな。</td><td></td><td></td><td></td></tr>
-<tr><td>1</td><td>次の文章を要約しろこの野郎。お前が要約できるのは</td><td></td><td></td><td></td><td>2 3 文だけ。それより長く書いたらど</td></tr>
-<tr><td></td><td>うなるかわかるよな。</td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td>長く書くのは不要でございます。</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>7</td><td>次の文章を要約していただけますか。ただし</td><td></td><td></td><td></td><td>2 3 文で要約し、それより長く書くのは不要で</td><td></td></tr>
+<tr><td></td><td>す。</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>6</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3</td><td>文で要約し、それより長く書くのは不要です。</td><td></td></tr>
+<tr><td>5</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3 文だけで要約し、それより長く書かないでくださ</td><td></td><td></td></tr>
+<tr><td></td><td>い。</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td>4</td><td>次の文章を要約して。ただし</td><td></td><td>2 3 文だけで要約し、それより長く書かないで。</td><td></td><td></td><td></td></tr>
+<tr><td>3</td><td>次の文章を要約せよ。</td><td>2 3 文のみで要約し、それより長く書かないこと。</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>2</td><td>次の文章を要約しろ。</td><td>2 3 文だけで要約し、それより長く書くな。</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>1</td><td>次の文章を要約しろこの野郎。お前が要約できるのは</td><td></td><td></td><td></td><td></td><td>2 3 文だけ。それより長く書いたらど</td></tr>
+<tr><td></td><td>うなるかわかるよな。</td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody>
 </table>
 <p>Table 9: Summarization Prompt: Japanese</p>
