@@ -1387,11 +1387,31 @@ function renderReferenceList(
   return {
     htmlLines: [
       "<ol>",
-      ...orderedItems.map((item) => `<li>${escapeHtml(item.text)}</li>`),
+      ...orderedItems.map((item) => `<li>${normalizeReferenceListItemHtml(item.text)}</li>`),
       "</ol>",
     ],
     nextIndex: index,
   };
+}
+
+function normalizeReferenceListItemHtml(text: string): string {
+  return escapeHtml(text)
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll(/[“”]/g, '"')
+    .replaceAll(/<\s*\/\s*(em|span)\s*>/giu, "</$1>")
+    .replaceAll(/<\s*em\s*>/giu, "<em>")
+    .replaceAll(
+      /<\s*span\s+class\s*=\s*(?:"([^"]+)"|'([^']+)')\s*>/giu,
+      (_match, doubleQuotedClassName, singleQuotedClassName) => {
+        const className = (doubleQuotedClassName ?? singleQuotedClassName ?? "").trim();
+        return className.length > 0 ? `<span class="${className}">` : "<span>";
+      },
+    )
+    .replaceAll(/<\s*span\s*>/giu, "<span>")
+    .replaceAll(/<em>\s+/giu, "<em>")
+    .replaceAll(/\s+<\/em>/giu, "</em>")
+    .replaceAll(/\s+<\/span>/giu, "</span>");
 }
 
 function parseReferenceListMarker(text: string): number | undefined {
