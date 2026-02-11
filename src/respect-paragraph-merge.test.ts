@@ -27,4 +27,13 @@ describe("respect.pdf paragraph merging", () => {
     );
     expect(respectHtml).not.toContain("<p>We observed that</p>");
   });
+
+  it("merges paragraph continuations when the previous line ends with an inline footnote marker", () => {
+    expect(respectHtml).toContain(
+      '<p>We use the following languages, LLMs, and <sup id="fnref4"><a href="#fn4" class="footnote-ref">4</a></sup> prompts for our experiments.</p>',
+    );
+    expect(respectHtml).not.toContain(
+      '<p>We use the following languages, LLMs, and <sup id="fnref4"><a href="#fn4" class="footnote-ref">4</a></sup></p>\n<p>prompts for our experiments.</p>',
+    );
+  });
 });

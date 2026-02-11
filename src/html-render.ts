@@ -411,6 +411,8 @@ export function escapeHtml(value: string): string {
 
 const FOOTNOTE_REFERENCE_HTML_PATTERN =
   /<sup id="fnref(\d+)"><a href="#fn\1" class="footnote-ref">\1<\/a><\/sup>/g;
+const TRAILING_FOOTNOTE_REFERENCES_HTML_PATTERN =
+  /(?:\s*<sup id="fnref\d+"><a href="#fn\d+" class="footnote-ref">\d+<\/a><\/sup>)+\s*$/u;
 
 function escapeHtmlPreservingFootnoteReferences(value: string): string {
   if (!value.includes('<sup id="fnref')) {
@@ -548,21 +550,29 @@ function extractTrailingRenderedUrlPrefix(
   return { leadingText, urlPrefix };
 }
 
+function stripTrailingFootnoteReferencesFromRenderedText(text: string): string {
+  return text.replace(TRAILING_FOOTNOTE_REFERENCES_HTML_PATTERN, "").trimEnd();
+}
+
 function shouldMergeSplitRenderedParagraphPair(
   firstText: string,
   continuationText: string,
 ): boolean {
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(firstText))
+  const mergeAwareFirstText =
+    stripTrailingFootnoteReferencesFromRenderedText(firstText);
+  if (mergeAwareFirstText.length === 0) return false;
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(mergeAwareFirstText))
     return false;
-  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(firstText)) return false;
+  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(mergeAwareFirstText))
+    return false;
   const startsWithConnector =
     RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN.test(
       continuationText,
     );
   if (
-    !isLikelySplitParagraphEnd(firstText) &&
+    !isLikelySplitParagraphEnd(mergeAwareFirstText) &&
     !startsWithConnector &&
-    !isLikelySentenceWrappedSplitParagraphEnd(firstText)
+    !isLikelySentenceWrappedSplitParagraphEnd(mergeAwareFirstText)
   ) {
     return false;
   }
@@ -576,9 +586,25 @@ function shouldMergeSplitRenderedParagraphPair(
     CAPTION_START_PATTERN.test(continuationText)
   )
     return false;
-  if (STANDALONE_CAPTION_LABEL_PATTERN.test(firstText)) return false;
-  if (STANDALONE_CAPTION_LABEL_PATTERN.test(continuationText)) return false;
-  if (isLikelyAffiliationAddressLine(firstText)) return false;
+  if (
+    STANDALONE_CAPTION_LABEL_PATTERN.test(firstText) ||
+    STANDALONE_CAPTION_LABEL_PATTERN.test(continuationText)
+  )
+    return false;
+  if (isLikelyAffiliationAddressLine(mergeAwareFirstText)) return false;
+  if (!isValidSplitRenderedParagraphContinuationText(continuationText))
+    return false;
+  if (
+    splitWords(mergeAwareFirstText).length <
+    RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT
+  )
+    return false;
+  return true;
+}
+
+function isValidSplitRenderedParagraphContinuationText(
+  continuationText: string,
+): boolean {
   if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(continuationText))
     return false;
   if (
@@ -586,11 +612,6 @@ function shouldMergeSplitRenderedParagraphPair(
   )
     return false;
   if (parseBulletListItemText(continuationText) !== undefined) return false;
-  if (
-    splitWords(firstText).length <
-    RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT
-  )
-    return false;
   return (
     splitWords(continuationText).length >=
     RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT
