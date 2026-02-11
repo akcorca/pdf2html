@@ -145,6 +145,9 @@ const RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN =
   /^(?:and|or|with|without|to|for|from|in|on|at|by|of|as|that|which|whose|where|when|while|if)\b/iu;
 const RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT = 4;
 const RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT = 2;
+const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_TOKEN_PATTERN = /^[A-Z]{1,3}$/;
+const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MIN_TOKEN_COUNT = 3;
+const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MAX_TOKEN_COUNT = 6;
 const RENDERED_TRAILING_URL_PREFIX_PATTERN =
   /^(.*?)(https?:\/\/[A-Za-z0-9._~:/?#\[\]@!$&'()*+,;=%-]*[./-])$/iu;
 const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
@@ -177,6 +180,13 @@ const FIGURE_DIAGRAM_FLOW_LABEL_MAX_FONT_RATIO = 0.8;
 const FIGURE_DIAGRAM_NUMERIC_MARKER_PATTERN = /^\d{1,2}$/u;
 const FIGURE_DIAGRAM_NUMERIC_MARKER_MAX_WIDTH_RATIO = 0.03;
 const FIGURE_DIAGRAM_MIN_CAPTION_VERTICAL_GAP_RATIO = 2.2;
+const FIGURE_DIAGRAM_AXIS_LABEL_PATTERN = /\b[A-Za-z]\s*[–-]\s*[A-Za-z]\b/u;
+const FIGURE_DIAGRAM_AXIS_LABEL_MIN_WORDS = 4;
+const FIGURE_DIAGRAM_AXIS_LABEL_MAX_WORDS = 10;
+const FIGURE_DIAGRAM_AXIS_LABEL_MAX_WIDTH_RATIO = 0.3;
+const FIGURE_DIAGRAM_AXIS_LABEL_MAX_FONT_RATIO = 0.95;
+const FIGURE_DIAGRAM_AXIS_LABEL_MAX_CAPTION_DISTANCE = 120;
+const FIGURE_DIAGRAM_AXIS_LABEL_MAX_CAPTION_DISTANCE_FONT_RATIO = 16;
 const FIGURE_PANEL_LABEL_STOP_TOKENS = new Set([
   "figure",
   "fig",
@@ -484,6 +494,7 @@ function mergeCaptionSeparatedParagraphFragments(
   return merged;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: rendered paragraph merge handles URL, math-artifact, and continuation bridges in one pass.
 function mergeSplitRenderedParagraphContinuations(
   renderedLines: string[],
 ): string[] {
@@ -505,15 +516,53 @@ function mergeSplitRenderedParagraphContinuations(
       merged.splice(index + 1, 1);
       continue;
     }
-    if (!shouldMergeSplitRenderedParagraphPair(firstText, continuationText)) {
+    const nextContinuationText =
+      index + 2 < merged.length
+        ? extractRenderedParagraphText(merged[index + 2])
+        : undefined;
+    if (
+      nextContinuationText !== undefined &&
+      isStandaloneRenderedInlineMathArtifactText(continuationText)
+    ) {
+      const mergeAwareNextContinuationText =
+        stripLeadingInlineMathArtifactsFromRenderedContinuation(
+          nextContinuationText,
+        );
+      if (
+        shouldMergeSplitRenderedParagraphPair(
+          firstText,
+          mergeAwareNextContinuationText,
+        )
+      ) {
+        const mergedText = isHyphenWrappedLineText(firstText)
+          ? mergeHyphenWrappedTexts(firstText, mergeAwareNextContinuationText)
+          : normalizeSpacing(
+              `${firstText.trimEnd()} ${mergeAwareNextContinuationText.trimStart()}`,
+            );
+        merged[index] = `<p>${mergedText}</p>`;
+        merged.splice(index + 1, 2);
+        continue;
+      }
+    }
+
+    const mergeAwareContinuationText =
+      stripLeadingInlineMathArtifactsFromRenderedContinuation(
+        continuationText,
+      );
+    if (
+      !shouldMergeSplitRenderedParagraphPair(
+        firstText,
+        mergeAwareContinuationText,
+      )
+    ) {
       index += 1;
       continue;
     }
 
     const mergedText = isHyphenWrappedLineText(firstText)
-      ? mergeHyphenWrappedTexts(firstText, continuationText)
+      ? mergeHyphenWrappedTexts(firstText, mergeAwareContinuationText)
       : normalizeSpacing(
-          `${firstText.trimEnd()} ${continuationText.trimStart()}`,
+          `${firstText.trimEnd()} ${mergeAwareContinuationText.trimStart()}`,
         );
     merged[index] = `<p>${mergedText}</p>`;
     merged.splice(index + 1, 1);
@@ -552,6 +601,66 @@ function extractTrailingRenderedUrlPrefix(
 
 function stripTrailingFootnoteReferencesFromRenderedText(text: string): string {
   return text.replace(TRAILING_FOOTNOTE_REFERENCES_HTML_PATTERN, "").trimEnd();
+}
+
+function stripLeadingInlineMathArtifactsFromRenderedContinuation(
+  continuationText: string,
+): string {
+  const tokens = continuationText
+    .trimStart()
+    .split(/\s+/)
+    .filter((token) => token.length > 0);
+  if (tokens.length <= RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MIN_TOKEN_COUNT)
+    return continuationText;
+
+  let artifactTokenCount = 0;
+  while (
+    artifactTokenCount < tokens.length &&
+    RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_TOKEN_PATTERN.test(
+      tokens[artifactTokenCount] ?? "",
+    )
+  ) {
+    artifactTokenCount += 1;
+  }
+  if (artifactTokenCount < RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MIN_TOKEN_COUNT) {
+    return continuationText;
+  }
+
+  const nextToken = tokens[artifactTokenCount] ?? "";
+  if (!/^[a-z]/u.test(nextToken)) return continuationText;
+
+  const artifactTokens = tokens.slice(0, artifactTokenCount);
+  const hasSingleCharacterToken = artifactTokens.some(
+    (token) => token.length === 1,
+  );
+  const uniqueTokenCount = new Set(artifactTokens).size;
+  const hasRepeatedToken = uniqueTokenCount < artifactTokens.length;
+  if (!hasSingleCharacterToken && !hasRepeatedToken) return continuationText;
+
+  return normalizeSpacing(tokens.slice(artifactTokenCount).join(" "));
+}
+
+function isStandaloneRenderedInlineMathArtifactText(text: string): boolean {
+  const tokens = text
+    .trim()
+    .split(/\s+/)
+    .filter((token) => token.length > 0);
+  if (
+    tokens.length < 2 ||
+    tokens.length > RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MAX_TOKEN_COUNT
+  ) {
+    return false;
+  }
+  if (
+    !tokens.every((token) =>
+      RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_TOKEN_PATTERN.test(token),
+    )
+  ) {
+    return false;
+  }
+  const hasSingleCharacterToken = tokens.some((token) => token.length === 1);
+  const hasRepeatedToken = new Set(tokens).size < tokens.length;
+  return hasSingleCharacterToken || hasRepeatedToken;
 }
 
 function shouldMergeSplitRenderedParagraphPair(
@@ -1578,6 +1687,7 @@ function shouldSkipStandaloneFigurePanelLabel(
 
 // Ignore tiny diagram labels above a nearby figure caption that are not prose.
 // These are commonly leaked from embedded flowcharts (e.g. "3 Historical", "5").
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: artifact detection combines geometry, typography, and caption proximity guards.
 function shouldSkipStandaloneFigureDiagramArtifact(
   lines: TextLine[],
   startIndex: number,
@@ -1615,7 +1725,13 @@ function shouldSkipStandaloneFigureDiagramArtifact(
     line.estimatedWidth <=
       line.pageWidth * FIGURE_DIAGRAM_FLOW_LABEL_MAX_WIDTH_RATIO &&
     !FIGURE_PANEL_LABEL_TERMINAL_PUNCTUATION_PATTERN.test(normalized);
-  if (!isNumericMarker && !isSmallFlowLabel) return false;
+  const isAxisLabel = isStandaloneFigureDiagramAxisLabel(
+    line,
+    normalized,
+    words,
+    bodyFontSize,
+  );
+  if (!isNumericMarker && !isSmallFlowLabel && !isAxisLabel) return false;
 
   const captionStartIndex = findNearbyFigureCaptionStartIndexBidirectional(
     lines,
@@ -1625,11 +1741,45 @@ function shouldSkipStandaloneFigureDiagramArtifact(
 
   const captionLine = lines[captionStartIndex];
   if (!captionLine || line.pageIndex !== captionLine.pageIndex) return false;
+  if (isAxisLabel) {
+    return isNearFigureCaptionBand(line, captionLine);
+  }
   if (line.y <= captionLine.y) return false;
   const minGap =
     Math.max(line.fontSize, captionLine.fontSize) *
     FIGURE_DIAGRAM_MIN_CAPTION_VERTICAL_GAP_RATIO;
   return line.y - captionLine.y >= minGap;
+}
+
+function isStandaloneFigureDiagramAxisLabel(
+  line: TextLine,
+  normalized: string,
+  words: string[],
+  bodyFontSize: number,
+): boolean {
+  if (!FIGURE_DIAGRAM_AXIS_LABEL_PATTERN.test(normalized)) return false;
+  if (FIGURE_PANEL_LABEL_TERMINAL_PUNCTUATION_PATTERN.test(normalized))
+    return false;
+  if (
+    words.length < FIGURE_DIAGRAM_AXIS_LABEL_MIN_WORDS ||
+    words.length > FIGURE_DIAGRAM_AXIS_LABEL_MAX_WORDS
+  ) {
+    return false;
+  }
+  if (line.fontSize > bodyFontSize * FIGURE_DIAGRAM_AXIS_LABEL_MAX_FONT_RATIO)
+    return false;
+  return (
+    line.estimatedWidth <= line.pageWidth * FIGURE_DIAGRAM_AXIS_LABEL_MAX_WIDTH_RATIO
+  );
+}
+
+function isNearFigureCaptionBand(line: TextLine, captionLine: TextLine): boolean {
+  const maxDistance = Math.max(
+    Math.max(line.fontSize, captionLine.fontSize) *
+      FIGURE_DIAGRAM_AXIS_LABEL_MAX_CAPTION_DISTANCE_FONT_RATIO,
+    FIGURE_DIAGRAM_AXIS_LABEL_MAX_CAPTION_DISTANCE,
+  );
+  return Math.abs(line.y - captionLine.y) <= maxDistance;
 }
 
 function hasStrongTitleCaseSignal(words: string[]): boolean {

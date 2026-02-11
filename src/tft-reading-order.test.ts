@@ -76,6 +76,14 @@ describe("tft-reading-order", () => {
     expect(tftHtml).not.toContain("<p>grazing-</p>");
   });
 
+  it("skips detached figure-label artifacts between wrapped paragraph continuations", () => {
+    expect(tftHtml).not.toContain("<p>I – V and output characteristics of a-IGZO</p>");
+    expect(tftHtml).not.toContain("<p>DS G DS G for 3600 s exhibited");
+    expect(tftHtml).toContain(
+      "trodes kept under the PBS condition ( V = 25 V, V = 50 V) for 3600 s exhibited a more significant transfer-curve shift",
+    );
+  });
+
   it("keeps experimental section prose separate from right-column references", () => {
     expect(tftHtml).toContain("<h3>Device and Film Characterization</h3>");
     expect(tftHtml).toContain("<p>The current–voltage characteristics");
