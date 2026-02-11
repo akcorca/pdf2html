@@ -183,22 +183,24 @@ function splitHeaderAndDataRows(
   parsedRows: string[][],
 ): { headerRows: string[][]; dataRows: string[][] } {
   const headerRows: string[][] = [sanitizeHeaderCells(headerRow)];
-  const dataRows = [...parsedRows];
+  let firstDataRowIndex = 0;
 
-  while (dataRows.length >= 2) {
-    const candidateHeaderRow = dataRows[0];
-    const nextRow = dataRows[1];
+  while (firstDataRowIndex + 1 < parsedRows.length) {
+    const candidateHeaderRow = parsedRows[firstDataRowIndex];
+    const nextRow = parsedRows[firstDataRowIndex + 1];
     if (!isLikelySubHeaderRow(candidateHeaderRow, nextRow)) break;
     headerRows.push(sanitizeHeaderCells(candidateHeaderRow));
-    dataRows.shift();
+    firstDataRowIndex += 1;
   }
 
+  const dataRows = parsedRows.slice(firstDataRowIndex);
   const normalizedHeaderRows = collapseComplementaryHeaderRows(headerRows);
   const headerRowKeys = new Set(normalizedHeaderRows.map(buildComparableRowKey));
-  const filteredDataRows = dataRows.filter((row) => {
-    if (isLikelyNumericDataRow(row)) return true;
-    return !headerRowKeys.has(buildComparableRowKey(sanitizeHeaderCells(row)));
-  });
+  const filteredDataRows = dataRows.filter(
+    (row) =>
+      isLikelyNumericDataRow(row) ||
+      !headerRowKeys.has(buildComparableRowKey(sanitizeHeaderCells(row))),
+  );
 
   return { headerRows: normalizedHeaderRows, dataRows: filteredDataRows };
 }
@@ -216,17 +218,19 @@ function collapseComplementaryHeaderRows(headerRows: string[][]): string[][] {
 
   const collapsedRow = buildCollapsedHeaderRow(headerRows, maxCols);
 
-  const collapsedNonEmptyCount = collapsedRow.filter(
-    (cell) => cell.trim().length > 0,
-  ).length;
+  const collapsedNonEmptyCount = countNonEmptyCells(collapsedRow);
   const maxRowNonEmptyCount = Math.max(...nonEmptyCountByRow);
   if (collapsedNonEmptyCount <= maxRowNonEmptyCount) return headerRows;
   if (!collapsedRow.some((cell) => isHeaderTextLikeCell(cell))) return headerRows;
   return [collapsedRow];
 }
 
+function countNonEmptyCells(row: string[]): number {
+  return row.filter((cell) => cell.trim().length > 0).length;
+}
+
 function countNonEmptyCellsByRow(rows: string[][]): number[] {
-  return rows.map((row) => row.filter((cell) => cell.trim().length > 0).length);
+  return rows.map(countNonEmptyCells);
 }
 
 function hasOverlappingNonEmptyColumns(rows: string[][], maxCols: number): boolean {
