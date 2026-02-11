@@ -25,6 +25,12 @@ const NAMED_SECTION_HEADING_LEVELS = new Map<string, number>([
 ]);
 
 const TRAILING_TABULAR_SCORE_PATTERN = /\b\d{1,2}\.\d{1,2}$/;
+const WIDE_KERNED_HEADING_PATTERN = /^([A-Z0-9]\s+){5,}/;
+const WIDE_KERNED_HEADING_OVERRIDES: Array<readonly [string, string]> = [
+  ["ABSTRACT", "Abstract"],
+  ["INTRODUCTION", "Introduction"],
+  ["REFERENCES", "References"],
+];
 
 export function detectNumberedHeadingLevel(text: string): number | undefined {
   const normalized = normalizeHeadingCandidate(
@@ -46,18 +52,7 @@ export interface NamedHeading {
 }
 
 export function detectNamedSectionHeadingLevel(text: string): NamedHeading | undefined {
-  let candidate = text;
-  // Handle widely-kerned headings like "A B S T R A C T"
-  if (/^([A-Z0-9]\s+){5,}/.test(text)) {
-    const compacted = text.replace(/\s/g, "");
-    if (compacted.includes("ABSTRACT")) {
-      candidate = "Abstract";
-    } else if (compacted.includes("INTRODUCTION")) {
-      candidate = "Introduction";
-    } else if (compacted.includes("REFERENCES")) {
-      candidate = "References";
-    }
-  }
+  const candidate = normalizeWideKernedHeadingCandidate(text);
 
   const normalized = normalizeHeadingCandidate(candidate, 4, 40);
   if (normalized === undefined) return undefined;
@@ -72,6 +67,15 @@ export function detectNamedSectionHeadingLevel(text: string): NamedHeading | und
   }
 
   return { level, text: candidate };
+}
+
+function normalizeWideKernedHeadingCandidate(text: string): string {
+  if (!WIDE_KERNED_HEADING_PATTERN.test(text)) return text;
+  const compacted = text.replace(/\s/g, "");
+  for (const [source, replacement] of WIDE_KERNED_HEADING_OVERRIDES) {
+    if (compacted.includes(source)) return replacement;
+  }
+  return text;
 }
 
 function normalizeHeadingCandidate(
