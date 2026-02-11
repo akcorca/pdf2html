@@ -18,6 +18,7 @@ const MIN_COLUMN_GAP = 12;
 
 /** Minimum number of rows with 2+ fragment-groups to consider tabular. */
 const MIN_MULTI_GROUP_ROWS = 2;
+const MIN_DATA_ROW_TEXT_CHARS = 10;
 
 interface DetectedTable {
   captionStartIndex: number;
@@ -163,6 +164,7 @@ function finalizeDetectedTable(input: {
   const { headerRows, dataRows } = splitHeaderAndDataRows(headerRow, parsedRows);
   if (dataRows.length === 0) return undefined;
 
+  collapseTrailingUnlabeledColumns(headerRows, dataRows);
   normalizeColumnCount([...headerRows, ...dataRows]);
 
   return {
@@ -366,7 +368,8 @@ function buildTableRows(
 
   // Determine column boundaries from fragment x-positions
   const allGroupStartXs: number[] = [];
-  for (const { groups } of multiGroupRows) {
+  const rowsToDetermineColumns = chooseRowsForColumnDetection(multiGroupRows);
+  for (const { groups } of rowsToDetermineColumns) {
     for (const g of groups) {
       allGroupStartXs.push(g.startX);
     }
@@ -379,6 +382,61 @@ function buildTableRows(
   return mergeHeaderContinuationRows(
     parseRowCells(refineFragmentGroups(rowFragGroupsList, columnXs), columnXs, bodyFontSize),
   );
+}
+
+function chooseRowsForColumnDetection(
+  rows: Array<{ groups: FragmentGroup[]; line: TextLine }>,
+): Array<{ groups: FragmentGroup[]; line: TextLine }> {
+  const dataLikeRows = rows.filter(({ groups }) => isLikelyDataLikeGroupRow(groups));
+  return dataLikeRows.length >= MIN_TABLE_DATA_ROWS ? dataLikeRows : rows;
+}
+
+function isLikelyDataLikeGroupRow(groups: FragmentGroup[]): boolean {
+  const cellTexts = groups.map((group) => group.text);
+  if (!isLikelyNumericDataRow(cellTexts)) return false;
+  const totalChars = cellTexts.reduce((sum, text) => sum + text.length, 0);
+  return totalChars > MIN_DATA_ROW_TEXT_CHARS;
+}
+
+function collapseTrailingUnlabeledColumns(
+  headerRows: string[][],
+  dataRows: string[][],
+): void {
+  if (headerRows.length === 0) return;
+
+  const allRows = [...headerRows, ...dataRows];
+  const maxCols = Math.max(...allRows.map((row) => row.length));
+  if (maxCols < 2) return;
+
+  const lastHeaderColumn = findLastHeaderColumnIndex(headerRows);
+  if (lastHeaderColumn < 0 || lastHeaderColumn >= maxCols - 1) return;
+
+  for (const row of allRows) {
+    const trailingValues: string[] = [];
+    for (let columnIndex = lastHeaderColumn + 1; columnIndex < row.length; columnIndex += 1) {
+      const value = row[columnIndex]?.trim();
+      if (value) trailingValues.push(value);
+    }
+
+    const baseValue = row[lastHeaderColumn]?.trim() ?? "";
+    row[lastHeaderColumn] = [baseValue, ...trailingValues].filter(Boolean).join(" ");
+    row.length = lastHeaderColumn + 1;
+  }
+}
+
+function findLastHeaderColumnIndex(headerRows: string[][]): number {
+  let lastIndex = -1;
+
+  for (const row of headerRows) {
+    for (let columnIndex = row.length - 1; columnIndex >= 0; columnIndex -= 1) {
+      if (row[columnIndex]?.trim().length) {
+        lastIndex = Math.max(lastIndex, columnIndex);
+        break;
+      }
+    }
+  }
+
+  return lastIndex;
 }
 
 function refineFragmentGroups(
