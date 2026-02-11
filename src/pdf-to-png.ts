@@ -48,13 +48,15 @@ export function collectGeneratedPngFiles(
   outputPrefix: string,
 ): string[] {
   const expression = new RegExp(`^${escapeRegExp(outputPrefix)}-(\\d+)\\.png$`);
-  const generatedFiles: GeneratedPngFileEntry[] = [];
-
-  for (const fileName of fileNames) {
-    const pageNumber = parseGeneratedPngPageNumber(fileName, expression);
-    if (pageNumber === undefined) continue;
-    generatedFiles.push({ fileName, pageNumber });
-  }
+  const generatedFiles: GeneratedPngFileEntry[] = fileNames.reduce(
+    (entries, fileName) => {
+      const match = expression.exec(fileName);
+      if (!match) return entries;
+      entries.push({ fileName, pageNumber: Number.parseInt(match[1], 10) });
+      return entries;
+    },
+    [] as GeneratedPngFileEntry[],
+  );
 
   generatedFiles.sort(
     (left, right) => left.pageNumber - right.pageNumber || left.fileName.localeCompare(right.fileName),
@@ -81,10 +83,13 @@ export async function convertPdfToPng({
   await resolvedDependencies.assertReadableFile(resolvedInputPdfPath);
   await resolvedDependencies.ensureOutputDir(resolvedOutputDirPath);
 
-  await runPdftoppmOrThrow(
-    resolvedDependencies,
-    buildPdftoppmArgs(resolvedInputPdfPath, outputPrefixPath, dpi),
-  );
+  try {
+    await resolvedDependencies.runPdftoppm(
+      buildPdftoppmArgs(resolvedInputPdfPath, outputPrefixPath, dpi),
+    );
+  } catch (error: unknown) {
+    throw createConversionError(error);
+  }
 
   const generatedFileNames = collectGeneratedPngFiles(
     await resolvedDependencies.readOutputDir(resolvedOutputDirPath),
@@ -115,26 +120,6 @@ function createDefaultDependencies(): ConvertPdfToPngDependencies {
     },
     readOutputDir: (outputDirPath: string) => readdir(outputDirPath),
   };
-}
-
-async function runPdftoppmOrThrow(
-  dependencies: ConvertPdfToPngDependencies,
-  args: string[],
-): Promise<void> {
-  try {
-    await dependencies.runPdftoppm(args);
-  } catch (error: unknown) {
-    throw createConversionError(error);
-  }
-}
-
-function parseGeneratedPngPageNumber(
-  fileName: string,
-  expression: RegExp,
-): number | undefined {
-  const match = expression.exec(fileName);
-  if (!match) return undefined;
-  return Number.parseInt(match[1], 10);
 }
 
 function escapeRegExp(input: string): string {
