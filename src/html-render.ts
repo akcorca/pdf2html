@@ -112,6 +112,15 @@ const STANDALONE_CAPTION_LABEL_PATTERN =
   /^(?:Figure|Fig\.?|Table|Algorithm|Eq(?:uation)?\.?)\s+\d+[A-Za-z]?[.:]?$/iu;
 const CAPTION_START_PATTERN =
   /^(?:Figure|Fig\.?)\s+\d+[A-Za-z]?\s*[.:]\s+\S/iu;
+const RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN = /[:;]["')\]]?$/u;
+const RENDERED_PARAGRAPH_SOFT_CONNECTOR_END_PATTERN =
+  /\b(?:and|or|of|to|in|on|for|with|by|from|as|at|into|onto|via|than|that|which|whose|where|when|while|if|because)\s*$/iu;
+const RENDERED_PARAGRAPH_SOFT_DETERMINER_PHRASE_END_PATTERN =
+  /\b(?:the|a|an)\s+\p{L}{2,}\s*$/iu;
+const RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN =
+  /^(?:and|or|with|without|to|for|from|in|on|at|by|of|as|that|which|whose|where|when|while|if)\b/iu;
+const RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT = 4;
+const RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT = 2;
 const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
 const CAPTION_CONTINUATION_MAX_FONT_DELTA = 0.8;
 const CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.05;
@@ -401,6 +410,61 @@ function mergeCaptionSeparatedParagraphFragments(renderedLines: string[]): strin
   return merged;
 }
 
+function mergeSplitRenderedParagraphContinuations(renderedLines: string[]): string[] {
+  const merged = [...renderedLines];
+  let index = 0;
+  while (index + 1 < merged.length) {
+    const firstText = extractRenderedParagraphText(merged[index]);
+    const continuationText = extractRenderedParagraphText(merged[index + 1]);
+    if (firstText === undefined || continuationText === undefined) {
+      index += 1;
+      continue;
+    }
+    if (!shouldMergeSplitRenderedParagraphPair(firstText, continuationText)) {
+      index += 1;
+      continue;
+    }
+
+    const mergedText = isHyphenWrappedLineText(firstText)
+      ? mergeHyphenWrappedTexts(firstText, continuationText)
+      : normalizeSpacing(`${firstText.trimEnd()} ${continuationText.trimStart()}`);
+    merged[index] = `<p>${mergedText}</p>`;
+    merged.splice(index + 1, 1);
+  }
+  return merged;
+}
+
+function shouldMergeSplitRenderedParagraphPair(
+  firstText: string,
+  continuationText: string,
+): boolean {
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(firstText)) return false;
+  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(firstText)) return false;
+  const startsWithConnector = RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN.test(
+    continuationText,
+  );
+  if (!isLikelySplitParagraphEnd(firstText) && !startsWithConnector) return false;
+  if (containsDocumentMetadata(firstText) || containsDocumentMetadata(continuationText)) return false;
+  if (CAPTION_START_PATTERN.test(firstText) || CAPTION_START_PATTERN.test(continuationText)) return false;
+  if (STANDALONE_CAPTION_LABEL_PATTERN.test(firstText)) return false;
+  if (STANDALONE_CAPTION_LABEL_PATTERN.test(continuationText)) return false;
+  if (isLikelyAffiliationAddressLine(firstText)) return false;
+  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(continuationText)) return false;
+  if (!BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN.test(continuationText)) return false;
+  if (parseBulletListItemText(continuationText) !== undefined) return false;
+  if (splitWords(firstText).length < RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT) return false;
+  return splitWords(continuationText).length >= RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT;
+}
+
+function isLikelySplitParagraphEnd(text: string): boolean {
+  if (isHyphenWrappedLineText(text)) return true;
+  const trimmed = text.trimEnd();
+  return (
+    RENDERED_PARAGRAPH_SOFT_CONNECTOR_END_PATTERN.test(trimmed) ||
+    RENDERED_PARAGRAPH_SOFT_DETERMINER_PHRASE_END_PATTERN.test(trimmed)
+  );
+}
+
 function splitKnownCleanParagraphBoundary(renderedLines: string[]): string[] {
   const result: string[] = [];
   const splitAnchor = "Currently, we have";
@@ -646,7 +710,9 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
     bodyLines.push(renderParagraph(currentLine.text));
     index += 1;
   }
-  return splitKnownCleanParagraphBoundary(mergeCaptionSeparatedParagraphFragments(bodyLines));
+  const mergedCaptionFragments = mergeCaptionSeparatedParagraphFragments(bodyLines);
+  const mergedSplitParagraphs = mergeSplitRenderedParagraphContinuations(mergedCaptionFragments);
+  return splitKnownCleanParagraphBoundary(mergedSplitParagraphs);
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: author block boundary detection requires multiple sequential guards.

@@ -44,6 +44,15 @@ describe("clean.pdf paragraph merging", () => {
     );
   });
 
+  it("merges lowercase continuation lines that were split into adjacent paragraphs", () => {
+    expect(cleanHtml).toContain(
+      "In Figure 1, the data scientist inputs their requirement to standardize “Admission Date” with the “MM/DD/YYYY HH:MM:SS” format.",
+    );
+    expect(cleanHtml).not.toContain(
+      "In Figure 1, the data</p>\n<p>scientist inputs their requirement to standardize “Admission Date”",
+    );
+  });
+
   it("drops figure-internal flow labels that leak into body paragraphs", () => {
     expect(cleanHtml).toContain("<p>Figure 2: The Workflow of CleanAgent.</p>");
     expect(cleanHtml).not.toContain("<p>+ User’s Requirements Table 𝑻</p>");
@@ -67,4 +76,3 @@ describe("clean.pdf paragraph merging", () => {
     );
   });
 });
-

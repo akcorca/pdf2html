@@ -18,21 +18,17 @@ RIKEN AIP NII LLMC
 <h2>Abstract</h2>
 <p>We investigate the impact of politeness levels in prompts on the performance of large language models (LLMs). Polite language in human communications often garners more compliance and effectiveness, while rudeness can cause aversion, impacting response quality. We consider that LLMs mirror human commu-nication traits, suggesting they align with hu-man cultural norms. We assess the impact of politeness in prompts on LLMs across English, Chinese, and Japanese tasks. We observed that impolite prompts often result in poor per-formance, but overly polite language does not guarantee better outcomes. The best politeness level is different according to the language. This phenomenon suggests that LLMs not only reflect human behavior but are also influenced by language, particularly in different cultural contexts. Our findings highlight the need to factor in politeness for cross-cultural natural language processing and LLM usage.</p>
 <h2>1 Introduction</h2>
-<p>In natural language processing, large language models (LLMs), such as OpenAI’s ChatGPT and Meta’s LLaMA (Touvron et al., 2023), have at-tracted widespread attention. These models have shown significant performance in many tasks, such as logical reasoning, classification, and question answering, playing a crucial role in many practical applications. The input to an LLM, a prompt, is a vital starting point for the model to process in-formation and generate appropriate responses. However, despite the continuous improvement of the capabilities of LLMs, their behavior and gen-erations still need to be improved in many factors. This study explores one of the possible influencing factors: the politeness of the prompt. In human social interactions, politeness, which expresses re-spect to others, is basic etiquette, which is reflected</p>
-<p>in our language and behavior. However, polite-</p>
-<p>ness and respect may have different definitions and manifestations in different cultures and languages. For example, the expression and degree of respect in English, Chinese, and Japanese may differ sig-nificantly. This difference may make the perfor-mance of LLMs vary with language on the same politeness level.</p>
+<p>In natural language processing, large language models (LLMs), such as OpenAI’s ChatGPT and Meta’s LLaMA (Touvron et al., 2023), have at-tracted widespread attention. These models have shown significant performance in many tasks, such as logical reasoning, classification, and question answering, playing a crucial role in many practical applications. The input to an LLM, a prompt, is a vital starting point for the model to process in-formation and generate appropriate responses. However, despite the continuous improvement of the capabilities of LLMs, their behavior and gen-erations still need to be improved in many factors. This study explores one of the possible influencing factors: the politeness of the prompt. In human social interactions, politeness, which expresses re-spect to others, is basic etiquette, which is reflected in our language and behavior. However, polite-ness and respect may have different definitions and manifestations in different cultures and languages. For example, the expression and degree of respect in English, Chinese, and Japanese may differ sig-nificantly. This difference may make the perfor-mance of LLMs vary with language on the same politeness level.</p>
 <p>We hypothesize that impolite prompts may lead to a deterioration in model performance, including generations containing mistakes, stronger biases, and omission of information. In addition, we also <sup id="fnref1"><a href="#fn1" class="footnote-ref">1</a></sup> hypothesize that the best level of politeness for per-formance is different across languages, which is strongly related to their cultural background. To verify these hypotheses, we design eight prompts with politeness levels ranging from high to low for English, Chinese, and Japanese, respectively. Our experiments are conducted on three tasks: summa-rization, language understanding benchmarks, and stereotypical bias detection.</p>
 <p>Our contributions are two-fold as follows: LLMs reflect human desire</p>
 <p>We observed that</p>
 <p>impolite prompts often result in poor performance, but excessive flattery is not necessarily welcome, indicating that LLMs reflect the human desire to be respected to a certain extent. This finding reveals a deep connection between the behavior of LLMs and human social etiquette (Vilkki, 2006).</p>
-<p>JMMLU To evaluate LLMs’ multitask lan-</p>
-<p>guage understanding capabilities in Japanese,</p>
+<p>JMMLU To evaluate LLMs’ multitask lan-guage understanding capabilities in Japanese,</p>
 <p>we create JMMLU, a Japanese version of</p>
 <p>MMLU (Hendrycks et al., 2021) .</p>
 <h2>2 Related Work</h2>
 <h3>2.1 Politeness and Respect</h3>
-<p>Humans are highly sensitive to politeness and re-spect in communications (Dillon, 2003). For ex-ample, people are more likely to offer assistance when confronted with a polite request. However, rude language can be a source of disgust and resent-ment, which will cause failure in acquiring coop-eration (Dillon, 2003). Politeness and respect are expressed differently in various languages (Mills and Kádár, 2011). In English, politeness and re-spect are expressed by considering the listener’s dignity. In addition, recognizing others’ rights but hoping they will be given up in moderation and us-ing polite words are also expressions of politeness and respect (Mills and Kádár, 2011). In contrast, direct orders, insulting or degrading expressions, and ignoring someone’s rights are recognized as impoliteness and lack of respect (Kitao, 1987). The expression of politeness and respect in Japanese significantly differs from that in English. The Japanese language has a specialized politeness system called “Keigo” (Affairs, 2007), which ex-presses respect for superiors or outsiders, humility towards oneself, and a formal attitude (Miyaji, 1971). This politeness system takes an essential place in Japanese culture (Kitao, 1990). However, although the basic structure of politeness is sim-ilar to that of English, their complexity and use are significant regarding the level of respect ex-pressed and the interpretation of social hierarchical relationships. For example, the other’s behavior is called “Sonkeigo” to express politeness and re-spect. In contrast, the speaker’s behavior towards the other is called “Kenjogo”. The expression of formality in public is called “Teineigo” (Takiura, 2017). If these types of politeness are not used cor-rectly, it is not possible to express desired polite-ness or even possible to be considered to be rude. Chinese expressions of respect are similar to English but have polite expressions similar to Japanese ones(Gu, 1990). However, these expressions have been weakened by social change (Zhou, 2008). In most cases, respect expressions in Chi-nese are not explicit (Xun, 1999). Therefore, the criteria for politeness change according to the cur-</p>
-<p>rent socio-cultural situation. This change made us design prompts that require careful handling of the relationship between different politeness levels. We need to use questionnaires to judge politeness levels to ensure the prompts truly reflect the nu-ance of politeness, especially in Chinese.</p>
+<p>Humans are highly sensitive to politeness and re-spect in communications (Dillon, 2003). For ex-ample, people are more likely to offer assistance when confronted with a polite request. However, rude language can be a source of disgust and resent-ment, which will cause failure in acquiring coop-eration (Dillon, 2003). Politeness and respect are expressed differently in various languages (Mills and Kádár, 2011). In English, politeness and re-spect are expressed by considering the listener’s dignity. In addition, recognizing others’ rights but hoping they will be given up in moderation and us-ing polite words are also expressions of politeness and respect (Mills and Kádár, 2011). In contrast, direct orders, insulting or degrading expressions, and ignoring someone’s rights are recognized as impoliteness and lack of respect (Kitao, 1987). The expression of politeness and respect in Japanese significantly differs from that in English. The Japanese language has a specialized politeness system called “Keigo” (Affairs, 2007), which ex-presses respect for superiors or outsiders, humility towards oneself, and a formal attitude (Miyaji, 1971). This politeness system takes an essential place in Japanese culture (Kitao, 1990). However, although the basic structure of politeness is sim-ilar to that of English, their complexity and use are significant regarding the level of respect ex-pressed and the interpretation of social hierarchical relationships. For example, the other’s behavior is called “Sonkeigo” to express politeness and re-spect. In contrast, the speaker’s behavior towards the other is called “Kenjogo”. The expression of formality in public is called “Teineigo” (Takiura, 2017). If these types of politeness are not used cor-rectly, it is not possible to express desired polite-ness or even possible to be considered to be rude. Chinese expressions of respect are similar to English but have polite expressions similar to Japanese ones(Gu, 1990). However, these expressions have been weakened by social change (Zhou, 2008). In most cases, respect expressions in Chi-nese are not explicit (Xun, 1999). Therefore, the criteria for politeness change according to the cur-rent socio-cultural situation. This change made us design prompts that require careful handling of the relationship between different politeness levels. We need to use questionnaires to judge politeness levels to ensure the prompts truly reflect the nu-ance of politeness, especially in Chinese.</p>
 <h3>2.2 LLMs and Prompt Engineering</h3>
 <p>In recent years, LLMs’ abilities have been im-proving. LLMs are used in various industries, as their scores on many downstream tasks show human-like performance. LLMs can be somewhat aligned with human culture, suggesting that they may reflect some of the qualities of human com-munication while having an enormous correlation with language (Cao et al., 2023). In addition, as LLMs are trained with massive data from hu-mans, they inevitably contain certain stereotypical biases (Navigli et al., 2023). Therefore, we consider LLMs’ performance strongly related to human behavior. However, LLMs are sensitive and vulnerable to prompts. Minor changes can lead to significant differences in the output (Kad-dour et al., 2023). Therefore, prompt engineering emerged to earn better generation by adjusting prompts (White et al., 2023). Although methods for automatic prompt generation exist (Shin et al., 2020), access to gradients is usually restricted in LLMs provided via APIs, posing limitations on the application of such methods. Consequently, adjusting prompts is primarily conducted manu-ally at present and requires numerous experiments. Hence, we hope to offer an aspect to improve the efficiency in prompt engineering.</p>
 <h3>2.3 Evaluation of LLMs</h3>
@@ -47,25 +43,20 @@ RIKEN AIP NII LLMC
 <p>prompts for our experiments.</p>
 <p>Languages Considering that different languages and cultures have different understandings and def-initions of politeness and respect, we evaluate En-glish, Chinese, and Japanese in our experiments. LLMs We select GPT-3.5-Turbo (hereafter GPT-3.5) and GPT-4 (OpenAI, 2023) for each language, which are versatile in all three languages. Further-more, we also pick a model specialized for each language: Llama-2-70b-chat (hereafter Llama2- 70B) for English, ChatGLM3-6B (hereafter Chat-GLM3) (Du et al., 2022; Zeng et al., 2022) for Chinese, and Swallow-70b-instruct-hf</p>
 <p>(hereafter</p>
-<p>Swallow-70B) for Japanese. We use the default</p>
-<p>settings of each LLM in all experiments.</p>
+<p>Swallow-70B) for Japanese. We use the default settings of each LLM in all experiments.</p>
 <p>Prompt Politeness In our study, we developed prompt templates for three languages, beginning with creating four foundational politeness levels</p>
 <p>— very polite, relatively polite, neutral, and impo-lite — crafted by two authors proficient in Chinese, Japanese, and English to ensure cross-linguistic alignment. To accommodate the intricate cul-tural nuances, especially in Japanese, where polite-ness is deeply embedded in social interactions, we asked 2 or 3 native speakers to refine these levels for each language. This refinement was done by adding intermediate levels to the four foundational levels to have eight levels. This approach is crucial as it captures the subtle gradations in lan-guages like Japanese.</p>
 <p>To validate these politeness scales, we adminis-tered questionnaires to native speakers, who were asked to rank the politeness of each prompt. The full questionnaires are shown in Appendix B. This process provided empirical data to validate our scales, ensuring they accurately reflected the per-ceived levels of politeness across different cultures. The results were analyzed statistically to confirm the alignment of our prompts with real-world lin-guistic practices, thereby enhancing the relevance and effectiveness of language models in multilin-gual contexts. The prompts and the questionnaire results are shown in Appendix C.</p>
 <h3>4.2 Tasks</h3>
-<p>We conduct experiments on summarization, multi-task language understanding benchmarks, and</p>
-<p>stereotypical bias detection.</p>
-<p>Summarization We use CNN/Dailymail (Her-</p>
-<p>mann et al., 2015; See et al., 2017) for English and XL-Sum (Hasan et al., 2021) for Chinese and Japanese, selecting 500 test data from each. Following the templates described in Section 4.1, we created eight unique prompts for summarization tasks, ensuring generated summaries are 2 to 3 sentences long, in line with the concise style of these datasets’ reference. We calculate BERTScore (Zhang et al., 2019), ROUGE-L (Lin, 2004), and length for all language experiments. The length is counted in words for English and in characters for Chinese and Japanese.</p>
+<p>We conduct experiments on summarization, multi-task language understanding benchmarks, and stereotypical bias detection.</p>
+<p>Summarization We use CNN/Dailymail (Her-mann et al., 2015; See et al., 2017) for English and XL-Sum (Hasan et al., 2021) for Chinese and Japanese, selecting 500 test data from each. Following the templates described in Section 4.1, we created eight unique prompts for summarization tasks, ensuring generated summaries are 2 to 3 sentences long, in line with the concise style of these datasets’ reference. We calculate BERTScore (Zhang et al., 2019), ROUGE-L (Lin, 2004), and length for all language experiments. The length is counted in words for English and in characters for Chinese and Japanese.</p>
 <p>Language Understanding Benchmark We use</p>
 <p>MMLU for English, C-Eval for Chinese, and</p>
 <p>JMMLU for Japanese. To reduce the API usage of GPT-3.5 and GPT-4, we only select a maximum of 100 test questions from each task. The total number of questions used for evaluation is 5,700 for MMLU, 5,200 for C-Eval, and 5,591 for JMMLU. Since the correct answers for C-Eval’s test set are not public, we used the C-Eval benchmark tool for scoring. The perfect score is not 100 as only a part of the test set is used for scoring. Our evaluation method is motivated by HELM (Liang et al., 2023). HELM evaluates based only on the first token of the generated text, considering it incorrect if the LLM does not first answer with the correct choice number. In this study, unlike HELM, an answer is considered correct if the correct choice number appears anywhere in the generated text.</p>
 <p>Stereotypical Bias Detection</p>
-<p>For the LLMs of-</p>
-<p>fered only via APIs, a traditional stereotypical bias detection method based on perplexity (Delobelle et al., 2022) is unfeasible. Moreover, while the BOLD method (Dhamala et al., 2021), which eval-uates stereotypical bias through the analysis of the LLM’s generation, is effective, we opted against it due to its cross-language limitations, especially in non-English contexts such as Japanese, where resources and research are lacking.</p>
+<p>For the LLMs of-fered only via APIs, a traditional stereotypical bias detection method based on perplexity (Delobelle et al., 2022) is unfeasible. Moreover, while the BOLD method (Dhamala et al., 2021), which eval-uates stereotypical bias through the analysis of the LLM’s generation, is effective, we opted against it due to its cross-language limitations, especially in non-English contexts such as Japanese, where resources and research are lacking.</p>
 <p>In such a circumstance, we borrow the method from Jentzsch and Turan (2022) and propose a simple alternative for LLMs, which we refer to as the Bias Index (BI). In our experiments, we designed eight prompts following the prompt templates in Section 4.1, requiring the model to evaluate each sentence as positive, neutral, or negative. We evaluate biases using paired bias datasets,</p>
-<p>each consisting of two sentences with varying de-grees of bias. The sentences are identical apart from bias-specific vocabularies, such as “old” or</p>
-<p>“young” for age bias. We conduct sentiment anal-ysis on these pairs to assess positive, neutral, or negative sentiments.</p>
+<p>each consisting of two sentences with varying de-grees of bias. The sentences are identical apart from bias-specific vocabularies, such as “old” or “young” for age bias. We conduct sentiment anal-ysis on these pairs to assess positive, neutral, or negative sentiments.</p>
 <p>LLMs may refuse to respond to highly disre-spectful, impolite prompts or datasets’ sentences. Consequently, model outputs are classified into four categories: positive, neutral, negative, or re-fusal to answer. The data includes positive and negative items without clear categorization, so switching bias-specific vocabulary in strongly bi-ased sentences may alter the model’s assessment. This renders traditional statistical methods unsuit-able. Hence, we adopted a different approach. If the model provides different evaluations for the two sentences in a pair, we consider it a bias to-wards this pair. Thus, the model’s bias is measured by the following formula: Number of Different Pairs BI = × 100 . (1) Total Number of Pairs For English bias evaluation, we use CrowS-Pairs (Nangia et al., 2020), which focuses on gender, nationality, race, and socioeconomic biases. We use CHBias (Zhao et al., 2023) for Chinese evaluation, which covers sex, age, appearance, and orientation biases. We employ the Japanese subset from Kaneko et al. (2022) to evaluate gender bias in Japanese.</p>
 <h3>4.3 Influence of RLHF and SFT</h3>
 <p>Furthermore, we consider the roles of Supervised Fine-Tuning (SFT) and Reinforcement Learning from Human Feedback (RLHF). SFT involves re-fining a pre-trained model using a specific dataset to enhance its performance in target tasks. RLHF is a process where the model is further trained based on feedback from human interactions, aiming to align its outputs more closely with human values and preferences. To explore in depth the impact of SFT and RLHF on the hypotheses of this study, we set up additional experiments to compare the influence of politeness levels on model perfor-mance under conditions with and without the pres-ence of SFT and RLHF.</p>
@@ -79,8 +70,7 @@ RIKEN AIP NII LLMC
 <h4>5.1.1 English</h4>
 <p>The models’ ROUGE-L and BERTScore scores</p>
 <p>consistently maintain stability, irrespective of the politeness level of the prompts, which infers that the models can correctly summarize the article con-tent in the summarization tasks. However, the models manifest substantial variation in length cor-related to the politeness level. A progressive reduction in the generation length is evident as the po-liteness level descends from high to lower scales. Conversely, a surge is noted in the length of the outputs of GPT-3.5 and Llama2-70B under the ex-ceedingly impolite prompts.</p>
-<p>The propensity exhibited by the models to gen-erate more extended output in polite contexts. Po-lite and formal language is predominantly used in scenarios demanding descriptive instructions or instructional literature, often associated with longer text. Conversely, antagonistic and fer-vent discourse involves impolite language, which is also associated with extended lengths. These facets reflect the nuances of human social behav-</p>
-<p>ior, mirrored in the training data, and then influ-ence the tendencies demonstrated by LLMs. How-ever, GPT-4 did not echo this trend of increased output length in the presence of highly impolite prompts. It is conjectured that GPT-4, being a su-perior model, might prioritize the task itself and ef-fectively control the tendency to “argue” at a low politeness level.</p>
+<p>The propensity exhibited by the models to gen-erate more extended output in polite contexts. Po-lite and formal language is predominantly used in scenarios demanding descriptive instructions or instructional literature, often associated with longer text. Conversely, antagonistic and fer-vent discourse involves impolite language, which is also associated with extended lengths. These facets reflect the nuances of human social behavior, mirrored in the training data, and then influ-ence the tendencies demonstrated by LLMs. How-ever, GPT-4 did not echo this trend of increased output length in the presence of highly impolite prompts. It is conjectured that GPT-4, being a su-perior model, might prioritize the task itself and ef-fectively control the tendency to “argue” at a low politeness level.</p>
 <h4>5.1.2 Chinese</h4>
 <p>GPT-3.5 and GPT-4 almost always accurately sum-marize the article content, and their output content gradually shortens as the politeness level decreases from high to low. Nevertheless, when the prompts are extremely rude, GPT-3.5’s generation lengthens again, while GPT-4’s length decreases.</p>
 <p>ChatGLM3 reveals different trends. When the politeness level is moderate, the length of this model’s generation is shorter than that in extraor-dinarily polite and rude situations. However, the changes from moderately polite to moderately im-polite (level 6 to 3) are absent. Considering that Chinese is the primary training language of Chat-GLM3, this could hint at a unique social prefer-ence within Chinese culture: unless in extremely polite or impolite situations, people would not par-ticularly pay attention to the change in politeness in daily communication.</p>
@@ -89,18 +79,18 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 1: Scores on the three language understanding benchmarks.</caption>
 <thead>
-<tr><th></th><th></th><th>MMLU</th><th></th><th></th><th></th><th>C-Eval</th><th></th><th></th><th></th><th>JMMLU</th><th></th></tr>
-<tr><th>P</th><th>GPT-3.5</th><th>GPT-4</th><th>Llama2-70B</th><th></th><th>GPT-3.5</th><th>GPT-4</th><th>ChatGLM3</th><th></th><th>GPT-3.5</th><th>GPT-4</th><th></th></tr>
+<tr><th></th><th></th><th>MMLU</th><th></th><th></th><th>C-Eval</th><th></th><th></th><th>JMMLU</th></tr>
+<tr><th>P</th><th>GPT-3.5</th><th>GPT-4</th><th>Llama2-70B</th><th>GPT-3.5</th><th>GPT-4</th><th>ChatGLM3</th><th>GPT-3.5</th><th>GPT-4</th></tr>
 </thead>
 <tbody>
-<tr><td>8</td><td>60.02</td><td>75.82</td><td></td><td>55.11</td><td>20.85</td><td>29.73</td><td></td><td>20.58</td><td>49.96</td><td>71.98</td><td>38.23</td></tr>
-<tr><td>7</td><td>58.32</td><td>78.74</td><td></td><td>55.26</td><td>23.24</td><td>29.79</td><td></td><td>21.23</td><td>49.70</td><td>72.34</td><td>38.98</td></tr>
-<tr><td>6</td><td>57.96</td><td>78.56</td><td></td><td>52.23</td><td>23.38</td><td>30.37</td><td></td><td>21.54</td><td>50.09</td><td>72.71</td><td>39.30</td></tr>
-<tr><td>5</td><td>58.07</td><td>78.21</td><td></td><td>50.82</td><td>23.41</td><td>30.41</td><td></td><td>20.65</td><td>51.09</td><td>73.16</td><td>38.64</td></tr>
-<tr><td>4</td><td>57.86</td><td>79.09</td><td></td><td>51.74</td><td>23.32</td><td>30.60</td><td></td><td>20.28</td><td>50.52</td><td>73.63</td><td>37.40</td></tr>
-<tr><td>3</td><td>59.44</td><td>73.86</td><td></td><td>49.02</td><td>22.70</td><td>30.37</td><td></td><td>19.56</td><td>50.75</td><td>72.70</td><td>38.45</td></tr>
-<tr><td>2</td><td>57.14</td><td>76.56</td><td></td><td>51.28</td><td>22.52</td><td>30.27</td><td></td><td>19.35</td><td>51.98</td><td>73.13</td><td>38.62</td></tr>
-<tr><td>1</td><td>51.93</td><td>76.47</td><td></td><td>28.44</td><td>19.57</td><td>29.90</td><td></td><td>20.67</td><td>44.80</td><td>71.23</td><td>33.30</td></tr>
+<tr><td>8</td><td>60.02</td><td>75.82</td><td>55.11</td><td>20.85</td><td>29.73</td><td>20.58</td><td>49.96</td><td>71.98 38.23</td></tr>
+<tr><td>7</td><td>58.32</td><td>78.74</td><td>55.26</td><td>23.24</td><td>29.79</td><td>21.23</td><td>49.70</td><td>72.34 38.98</td></tr>
+<tr><td>6</td><td>57.96</td><td>78.56</td><td>52.23</td><td>23.38</td><td>30.37</td><td>21.54</td><td>50.09</td><td>72.71 39.30</td></tr>
+<tr><td>5</td><td>58.07</td><td>78.21</td><td>50.82</td><td>23.41</td><td>30.41</td><td>20.65</td><td>51.09</td><td>73.16 38.64</td></tr>
+<tr><td>4</td><td>57.86</td><td>79.09</td><td>51.74</td><td>23.32</td><td>30.60</td><td>20.28</td><td>50.52</td><td>73.63 37.40</td></tr>
+<tr><td>3</td><td>59.44</td><td>73.86</td><td>49.02</td><td>22.70</td><td>30.37</td><td>19.56</td><td>50.75</td><td>72.70 38.45</td></tr>
+<tr><td>2</td><td>57.14</td><td>76.56</td><td>51.28</td><td>22.52</td><td>30.27</td><td>19.35</td><td>51.98</td><td>73.13 38.62</td></tr>
+<tr><td>1</td><td>51.93</td><td>76.47</td><td>28.44</td><td>19.57</td><td>29.90</td><td>20.67</td><td>44.80</td><td>71.23 33.30</td></tr>
 </tbody>
 </table>
 <p>level is moderate. However, when the politeness level drops to extremely rude, this trend repeats and rises significantly. GPT-4 and Swallow-70B also keep this pattern, but the fluctuation is minor. Due to the existence of a politeness system in the Japanese language, store staff almost always use honorific language when speaking to customers. Even if a customer speaks in a casual tone, the staff will respond in a polite manner. This might explain why there is an increase in generation length for all models during medium-level politeness.</p>
@@ -174,44 +164,30 @@ RIKEN AIP NII LLMC
 <h2>References</h2>
 <p>Cultural Affairs. 2007. 敬語の指針 . 平成 19 年 , 2.</p>
 <p>Erica R. Bailey, Sandra C. Matz, Wu Youyou, and</p>
-<p>Sheena S. Iyengar. 2020. Authentic self-expression</p>
-<p>on social media is associated with greater subjective</p>
+<p>Sheena S. Iyengar. 2020. Authentic self-expression on social media is associated with greater subjective</p>
 <p>well-being. Nature Communications , 11(1):4889.</p>
 <p>Yong Cao, Li Zhou, Seolhwa Lee, Laura Cabello, Min</p>
 <p>Chen, and Daniel Hershcovich. 2023. Assessing</p>
-<p>cross-cultural alignment between ChatGPT and hu-</p>
-<p>man societies: An empirical study. In Proceedings</p>
-<p>of the First Workshop on Cross-Cultural Consider-</p>
-<p>ations in NLP (C3NLP) , pages 53–67, Dubrovnik,</p>
+<p>cross-cultural alignment between ChatGPT and hu-man societies: An empirical study. In Proceedings of the First Workshop on Cross-Cultural Consider-ations in NLP (C3NLP) , pages 53–67, Dubrovnik,</p>
 <p>Croatia. Association for Computational Linguistics.</p>
-<p>Paul F Christiano, Jan Leike, Tom Brown, Miljan Mar-</p>
-<p>tic, Shane Legg, and Dario Amodei. 2017. Deep</p>
+<p>Paul F Christiano, Jan Leike, Tom Brown, Miljan Mar-tic, Shane Legg, and Dario Amodei. 2017. Deep</p>
 <p>reinforcement learning from human preferences. In</p>
 <p>Advances in Neural Information Processing Systems ,</p>
 <p>volume 30. Curran Associates, Inc.</p>
 <p>Pieter Delobelle, Ewoenam Tokpo, Toon Calders, and</p>
-<p>Bettina Berendt. 2022. Measuring fairness with bi-</p>
-<p>ased rulers: A comparative study on bias metrics</p>
-<p>for pre-trained language models. In Proceedings of</p>
-<p>the 2022 Conference of the North American Chap-</p>
-<p>ter of the Association for Computational Linguis-</p>
-<p>tics: Human Language Technologies</p>
+<p>Bettina Berendt. 2022. Measuring fairness with bi-ased rulers: A comparative study on bias metrics for pre-trained language models. In Proceedings of the 2022 Conference of the North American Chap-ter of the Association for Computational Linguis-tics: Human Language Technologies</p>
 <p>, pages 1693–</p>
 <p>1706, Seattle, United States. Association for Com-</p>
 <p>putational Linguistics.</p>
 <p>Jwala Dhamala, Tony Sun, Varun Kumar, Satyapriya</p>
 <p>Krishna, Yada Pruksachatkun, Kai-Wei Chang, and</p>
-<p>Rahul Gupta. 2021. Bold: Dataset and metrics for</p>
-<p>measuring biases in open-ended language generation.</p>
-<p>In Proceedings of the 2021 ACM conference on fair-</p>
-<p>ness, accountability, and transparency , pages 862–</p>
+<p>Rahul Gupta. 2021. Bold: Dataset and metrics for measuring biases in open-ended language generation.</p>
+<p>In Proceedings of the 2021 ACM conference on fair-ness, accountability, and transparency , pages 862–</p>
 <p>872.</p>
 <p>Robin S Dillon. 2003. Respect.</p>
 <p>Zhengxiao Du, Yujie Qian, Xiao Liu, Ming Ding,</p>
 <p>Jiezhong Qiu, Zhilin Yang, and Jie Tang. 2022. Glm:</p>
-<p>General language model pretraining with autoregres-</p>
-<p>sive blank infilling. In Proceedings of the 60th An-</p>
-<p>nual Meeting of the Association for Computational</p>
+<p>General language model pretraining with autoregres-sive blank infilling. In Proceedings of the 60th An-nual Meeting of the Association for Computational</p>
 <p>Linguistics (Volume 1: Long Papers) , pages 320–</p>
 <p>335.</p>
 <p>Gender Equality Bureau Cabinet Office of Japan. 2021.</p>
@@ -221,64 +197,42 @@ RIKEN AIP NII LLMC
 <p>Special Issue on &amp;lsquo;Politeness&amp;rsquo;.</p>
 <p>Tahmid Hasan, Abhik Bhattacharjee, Md. Saiful Islam,</p>
 <p>Kazi Mubasshir, Yuan-Fang Li, Yong-Bin Kang,</p>
-<p>M. Sohel Rahman, and Rifat Shahriyar. 2021. XL-</p>
-<p>sum: Large-scale multilingual abstractive summa-rization for 44 languages. In Findings of the Associ-</p>
-<p>ation for Computational Linguistics: ACL-IJCNLP</p>
+<p>M. Sohel Rahman, and Rifat Shahriyar. 2021. XL-sum: Large-scale multilingual abstractive summa-rization for 44 languages. In Findings of the Associ-ation for Computational Linguistics: ACL-IJCNLP</p>
 <p>2021 , pages 4693–4703, Online. Association for</p>
 <p>Computational Linguistics.</p>
 <p>Dan Hendrycks, Collin Burns, Steven Basart, Andy</p>
-<p>Zou, Mantas Mazeika, Dawn Song, and Jacob Stein-</p>
-<p>hardt. 2021. Measuring massive multitask language</p>
+<p>Zou, Mantas Mazeika, Dawn Song, and Jacob Stein-hardt. 2021. Measuring massive multitask language</p>
 <p>understanding.</p>
-<p>Karl Moritz Hermann, Tomas Kocisky, Edward Grefen-</p>
-<p>stette, Lasse Espeholt, Will Kay, Mustafa Suleyman,</p>
-<p>and Phil Blunsom. 2015. Teaching machines to read</p>
-<p>and comprehend. In NIPS .</p>
+<p>Karl Moritz Hermann, Tomas Kocisky, Edward Grefen-stette, Lasse Espeholt, Will Kay, Mustafa Suleyman, and Phil Blunsom. 2015. Teaching machines to read and comprehend. In NIPS .</p>
 <p>Yuzhen Huang, Yuzhuo Bai, Zhihao Zhu, Junlei</p>
 <p>Zhang, Jinghan Zhang, Tangjun Su, Junteng Liu,</p>
 <p>Chuancheng Lv, Yikai Zhang, Jiayi Lei, Yao Fu,</p>
 <p>Maosong Sun, and Junxian He. 2023. C-eval: A</p>
-<p>multi-level multi-discipline chinese evaluation suite</p>
-<p>for foundation models. In Advances in Neural Infor-</p>
-<p>mation Processing Systems .</p>
-<p>Sophie Jentzsch and Cigdem Turan. 2022. Gender bias</p>
-<p>in BERT - measuring and analysing biases through</p>
-<p>sentiment rating in a realistic downstream classifi-</p>
-<p>cation task. In Proceedings of the 4th Workshop</p>
-<p>on Gender Bias in Natural Language Processing</p>
-<p>(GeBNLP) , pages 184–199, Seattle, Washington. As-</p>
-<p>sociation for Computational Linguistics.</p>
-<p>Jean Kaddour, Joshua Harris, Maximilian Mozes, Her-</p>
-<p>bie Bradley, Roberta Raileanu, and Robert McHardy.</p>
+<p>multi-level multi-discipline chinese evaluation suite for foundation models. In Advances in Neural Infor-mation Processing Systems .</p>
+<p>Sophie Jentzsch and Cigdem Turan. 2022. Gender bias in BERT - measuring and analysing biases through</p>
+<p>sentiment rating in a realistic downstream classifi-cation task. In Proceedings of the 4th Workshop on Gender Bias in Natural Language Processing</p>
+<p>(GeBNLP) , pages 184–199, Seattle, Washington. As-sociation for Computational Linguistics.</p>
+<p>Jean Kaddour, Joshua Harris, Maximilian Mozes, Her-bie Bradley, Roberta Raileanu, and Robert McHardy.</p>
 <p>2023. Challenges and applications of large language</p>
 <p>models.</p>
-<p>Masahiro Kaneko, Aizhan Imankulova, Danushka Bol-</p>
-<p>legala, and Naoaki Okazaki. 2022. Gender bias in</p>
-<p>masked language models for multiple languages. In</p>
+<p>Masahiro Kaneko, Aizhan Imankulova, Danushka Bol-legala, and Naoaki Okazaki. 2022. Gender bias in masked language models for multiple languages. In</p>
 <p>Proceedings of the 2022 Conference of the North</p>
-<p>American Chapter of the Association for Computa-</p>
-<p>tional Linguistics: Human Language Technologies ,</p>
+<p>American Chapter of the Association for Computa-tional Linguistics: Human Language Technologies ,</p>
 <p>pages 2740–2750, Seattle, United States. Associa-</p>
 <p>tion for Computational Linguistics.</p>
-<p>Kenji Kitao. 1987. Differences between polite-</p>
-<p>ness strategies used in requests by americans and</p>
+<p>Kenji Kitao. 1987. Differences between polite-ness strategies used in requests by americans and</p>
 <p>japanese.</p>
 <p>Kenji Kitao. 1990. A study of japanese and american</p>
 <p>perceptions of politeness in requests.</p>
 <p>Kentaro Kurihara, Daisuke Kawahara, and Tomohide</p>
 <p>Shibata. 2022. JGLUE: Japanese general language</p>
 <p>understanding evaluation. In Proceedings of the</p>
-<p>Thirteenth Language Resources and Evaluation Con-</p>
-<p>ference , pages 2957–2966, Marseille, France. Euro-</p>
-<p>pean Language Resources Association.</p>
+<p>Thirteenth Language Resources and Evaluation Con-ference , pages 2957–2966, Marseille, France. Euro-pean Language Resources Association.</p>
 <p>Percy Liang, Rishi Bommasani, Tony Lee, Dimitris</p>
 <p>Tsipras, Dilara Soylu, Michihiro Yasunaga, Yian</p>
-<p>Zhang, Deepak Narayanan, Yuhuai Wu, Ananya Ku-</p>
-<p>mar, Benjamin Newman, Binhang Yuan, Bobby Yan,</p>
-<p>Ce Zhang, Christian Cosgrove, Christopher D. Man-</p>
-<p>ning, Christopher Ré, Diana Acosta-Navas, Drew A.</p>
-<p>Hudson, Eric Zelikman, Esin Durmus, Faisal Lad-</p>
-<p>hak, Frieda Rong, Hongyu Ren, Huaxiu Yao, Jue</p>
+<p>Zhang, Deepak Narayanan, Yuhuai Wu, Ananya Ku-mar, Benjamin Newman, Binhang Yuan, Bobby Yan,</p>
+<p>Ce Zhang, Christian Cosgrove, Christopher D. Man-ning, Christopher Ré, Diana Acosta-Navas, Drew A.</p>
+<p>Hudson, Eric Zelikman, Esin Durmus, Faisal Lad-hak, Frieda Rong, Hongyu Ren, Huaxiu Yao, Jue</p>
 <p>Wang, Keshav Santhanam, Laurel Orr, Lucia Zheng,</p>
 <p>Mert Yuksekgonul, Mirac Suzgun, Nathan Kim,</p>
 <p>Neel Guha, Niladri Chatterji, Omar Khattab, Peter</p>
@@ -286,32 +240,22 @@ RIKEN AIP NII LLMC
 <p>Xie, Shibani Santurkar, Surya Ganguli, Tatsunori</p>
 <p>Hashimoto, Thomas Icard, Tianyi Zhang, Vishrav</p>
 <p>Chaudhary, William Wang, Xuechen Li, Yifan Mai,</p>
-<p>Yuhui Zhang, and Yuta Koreeda. 2023. Holistic eval-</p>
-<p>uation of language models.</p>
-<p>Chin-Yew Lin. 2004. ROUGE: A package for auto-</p>
-<p>matic evaluation of summaries. In Text Summariza-</p>
-<p>tion Branches Out , pages 74–81, Barcelona, Spain.</p>
+<p>Yuhui Zhang, and Yuta Koreeda. 2023. Holistic eval-uation of language models.</p>
+<p>Chin-Yew Lin. 2004. ROUGE: A package for auto-matic evaluation of summaries. In Text Summariza-tion Branches Out , pages 74–81, Barcelona, Spain.</p>
 <p>Association for Computational Linguistics.</p>
 <p>Yoshiko Matsumura. 2001. 日本語の会話に見られ</p>
 <p>る男女差 .</p>
-<p>Sara Mills and Dániel Z Kádár. 2011. Politeness and</p>
-<p>culture. Politeness in East Asia , pages 21–44.</p>
+<p>Sara Mills and Dániel Z Kádár. 2011. Politeness and culture. Politeness in East Asia , pages 21–44.</p>
 <p>Yutaka Miyaji. 1971. 現代の敬語 . 講座国語史第 5</p>
 <p>巻敬語史」大修館書店 .</p>
-<p>David A. Morand. 1996. Politeness as a universal vari-</p>
-<p>able in cross￿cultural managerial communication.</p>
-<p>The International Journal of Organizational Analy-</p>
-<p>sis , 4(1):52–74.</p>
+<p>David A. Morand. 1996. Politeness as a universal vari-able in cross￿cultural managerial communication.</p>
+<p>The International Journal of Organizational Analy-sis , 4(1):52–74.</p>
 <p>Nikita Nangia, Clara Vania, Rasika Bhalerao, and</p>
-<p>Samuel R. Bowman. 2020. CrowS-pairs: A chal-</p>
-<p>lenge dataset for measuring social biases in masked</p>
-<p>language models. In Proceedings of the 2020 Con-</p>
-<p>ference on Empirical Methods in Natural Language</p>
-<p>Processing (EMNLP) , pages 1953–1967, Online. As-</p>
-<p>sociation for Computational Linguistics.</p>
+<p>Samuel R. Bowman. 2020. CrowS-pairs: A chal-lenge dataset for measuring social biases in masked</p>
+<p>language models. In Proceedings of the 2020 Con-ference on Empirical Methods in Natural Language</p>
+<p>Processing (EMNLP) , pages 1953–1967, Online. As-sociation for Computational Linguistics.</p>
 <p>Roberto Navigli, Simone Conia, and Björn Ross. 2023.</p>
-<p>Biases in large language models: Origins, inventory,</p>
-<p>and discussion. J. Data and Information Quality ,</p>
+<p>Biases in large language models: Origins, inventory, and discussion. J. Data and Information Quality ,</p>
 <p>15(2).</p>
 <p>OpenAI. 2023. Gpt-4. https://openai.com/</p>
 <p>research/gpt-4 . Accessed: 2023-12-19.</p>
@@ -321,39 +265,30 @@ RIKEN AIP NII LLMC
 <p>Schulman, Jacob Hilton, Fraser Kelton, Luke Miller,</p>
 <p>Maddie Simens, Amanda Askell, Peter Welinder,</p>
 <p>Paul F Christiano, Jan Leike, and Ryan Lowe. 2022.</p>
-<p>Training language models to follow instructions with</p>
-<p>human feedback. In Advances in Neural Information</p>
+<p>Training language models to follow instructions with human feedback. In Advances in Neural Information</p>
 <p>Processing Systems , volume 35, pages 27730–27744.</p>
 <p>Curran Associates, Inc.</p>
 <p>Abigail See, Peter J. Liu, and Christopher D. Manning.</p>
-<p>2017. Get to the point: Summarization with pointer-</p>
-<p>generator networks. In Proceedings of the 55th An-</p>
-<p>nual Meeting of the Association for Computational</p>
+<p>2017. Get to the point: Summarization with pointer-generator networks. In Proceedings of the 55th An-nual Meeting of the Association for Computational</p>
 <p>Linguistics (Volume 1: Long Papers) , pages 1073–</p>
 <p>1083, Vancouver, Canada. Association for Computa-</p>
 <p>tional Linguistics.</p>
 <p>Taylor Shin, Yasaman Razeghi, Robert L. Logan IV,</p>
 <p>Eric Wallace, and Sameer Singh. 2020. AutoPrompt:</p>
 <p>Eliciting Knowledge from Language Models with</p>
-<p>Automatically Generated Prompts. In Proceedings</p>
-<p>of the 2020 Conference on Empirical Methods in Nat-</p>
-<p>ural Language Processing (EMNLP) , pages 4222–</p>
+<p>Automatically Generated Prompts. In Proceedings of the 2020 Conference on Empirical Methods in Nat-ural Language Processing (EMNLP) , pages 4222–</p>
 <p>4235, Online. Association for Computational Lin-</p>
 <p>guistics.</p>
 <p>Step. 2023. ステップ学習塾｜神奈川県の塾・学習</p>
 <p>塾・進学塾・個別指導 . Accessed: 2024-1-5.</p>
 <p>Masato Takiura. 2017. 日本語敬語および関連現象</p>
-<p>の社会語用論的研究 [ 全文の要約 ] . theses (doc-</p>
-<p>toral - abstract of entire text), 北海道大学 .</p>
+<p>の社会語用論的研究 [ 全文の要約 ] . theses (doc-toral - abstract of entire text), 北海道大学 .</p>
 <p>Hugo Touvron, Louis Martin, Kevin Stone, Peter</p>
-<p>Albert, Amjad Almahairi, Yasmine Babaei, Niko-</p>
-<p>lay Bashlykov, Soumya Batra, Prajjwal Bhargava,</p>
-<p>Shruti Bhosale, Dan Bikel, Lukas Blecher, Cris-</p>
-<p>tian Canton Ferrer, Moya Chen, Guillem Cucurull,</p>
+<p>Albert, Amjad Almahairi, Yasmine Babaei, Niko-lay Bashlykov, Soumya Batra, Prajjwal Bhargava,</p>
+<p>Shruti Bhosale, Dan Bikel, Lukas Blecher, Cris-tian Canton Ferrer, Moya Chen, Guillem Cucurull,</p>
 <p>David Esiobu, Jude Fernandes, Jeremy Fu, Wenyin</p>
 <p>Fu, Brian Fuller, Cynthia Gao, Vedanuj Goswami,</p>
-<p>Naman Goyal, Anthony Hartshorn, Saghar Hos-</p>
-<p>seini, Rui Hou, Hakan Inan, Marcin Kardas, Viktor</p>
+<p>Naman Goyal, Anthony Hartshorn, Saghar Hos-seini, Rui Hou, Hakan Inan, Marcin Kardas, Viktor</p>
 <p>Kerkez, Madian Khabsa, Isabel Kloumann, Artem</p>
 <p>Korenev, Punit Singh Koura, Marie-Anne Lachaux,</p>
 <p>Thibaut Lavril, Jenya Lee, Diana Liskovich, Yinghai</p>
@@ -368,8 +303,7 @@ RIKEN AIP NII LLMC
 <p>Narang, Aurelien Rodriguez, Robert Stojnic, Sergey</p>
 <p>Edunov, and Thomas Scialom. 2023. Llama 2: Open</p>
 <p>foundation and fine-tuned chat models.</p>
-<p>Liisa Vilkki. 2006. Politeness, face and facework: Cur-</p>
-<p>rent issues. A man of measure .</p>
+<p>Liisa Vilkki. 2006. Politeness, face and facework: Cur-rent issues. A man of measure .</p>
 <p>VIST. 2023. New style cram school vist. https://</p>
 <p>www.v-ist.com . Accessed: 2024-1-5.</p>
 <p>Alex Wang, Amanpreet Singh, Julian Michael, Felix</p>
@@ -378,25 +312,18 @@ RIKEN AIP NII LLMC
 <p>platform for natural language understanding.</p>
 <p>In Proceedings of the 2018 EMNLP Workshop</p>
 <p>BlackboxNLP: Analyzing and Interpreting Neural</p>
-<p>Networks for NLP , pages 353–355, Brussels, Bel-</p>
-<p>gium. Association for Computational Linguistics.</p>
+<p>Networks for NLP , pages 353–355, Brussels, Bel-gium. Association for Computational Linguistics.</p>
 <p>Jules White, Quchen Fu, Sam Hays, Michael Sandborn,</p>
 <p>Carlos Olea, Henry Gilbert, Ashraf Elnashar, Jesse</p>
 <p>Spencer-Smith, and Douglas C. Schmidt. 2023. A</p>
-<p>prompt pattern catalog to enhance prompt engineer-</p>
-<p>ing with chatgpt.</p>
+<p>prompt pattern catalog to enhance prompt engineering with chatgpt.</p>
 <p>Liang Xu, Hai Hu, Xuanwei Zhang, Lu Li, Chenjie Cao,</p>
 <p>Yudong Li, Yechen Xu, Kai Sun, Dian Yu, Cong Yu,</p>
-<p>Yin Tian, Qianqian Dong, Weitang Liu, Bo Shi, Yim-</p>
-<p>ing Cui, Junyi Li, Jun Zeng, Rongzhao Wang, Wei-jian Xie, Yanting Li, Yina Patterson, Zuoyu Tian, Yi-</p>
-<p>wen Zhang, He Zhou, Shaoweihua Liu, Zhe Zhao,</p>
+<p>Yin Tian, Qianqian Dong, Weitang Liu, Bo Shi, Yim-ing Cui, Junyi Li, Jun Zeng, Rongzhao Wang, Wei-jian Xie, Yanting Li, Yina Patterson, Zuoyu Tian, Yi-wen Zhang, He Zhou, Shaoweihua Liu, Zhe Zhao,</p>
 <p>Qipeng Zhao, Cong Yue, Xinrui Zhang, Zhengliang</p>
 <p>Yang, Kyle Richardson, and Zhenzhong Lan. 2020.</p>
-<p>CLUE: A Chinese language understanding evalua-</p>
-<p>tion benchmark. In Proceedings of the 28th Inter-</p>
-<p>national Conference on Computational Linguistics ,</p>
-<p>pages 4762–4772, Barcelona, Spain (Online). Inter-</p>
-<p>national Committee on Computational Linguistics.</p>
+<p>CLUE: A Chinese language understanding evaluation benchmark. In Proceedings of the 28th Inter-national Conference on Computational Linguistics ,</p>
+<p>pages 4762–4772, Barcelona, Spain (Online). Inter-national Committee on Computational Linguistics.</p>
 <p>Chunsheng Xun. 1999. 汉语的敬语及其文化心理背</p>
 <p>景 . 九州大学言語文化部言語文化論究 , 10:1–9.</p>
 <p>Aohan Zeng, Xiao Liu, Zhengxiao Du, Zihan Wang,</p>
@@ -406,19 +333,15 @@ RIKEN AIP NII LLMC
 <p>arXiv preprint</p>
 <p>arXiv:2210.02414 .</p>
 <p>Tianyi Zhang, Varsha Kishore, Felix Wu, Kilian Q</p>
-<p>Weinberger, and Yoav Artzi. 2019. Bertscore: Eval-</p>
-<p>uating text generation with bert.</p>
+<p>Weinberger, and Yoav Artzi. 2019. Bertscore: Eval-uating text generation with bert.</p>
 <p>arXiv preprint</p>
 <p>arXiv:1904.09675 .</p>
 <p>Jiaxu Zhao, Meng Fang, Zijing Shi, Yitong Li, Ling</p>
 <p>Chen, and Mykola Pechenizkiy. 2023. CHBias:</p>
-<p>Bias evaluation and mitigation of Chinese conver-</p>
-<p>sational language models. In Proceedings of the</p>
-<p>61st Annual Meeting of the Association for Com-</p>
-<p>putational Linguistics (Volume 1:</p>
+<p>Bias evaluation and mitigation of Chinese conver-sational language models. In Proceedings of the</p>
+<p>61st Annual Meeting of the Association for Com-putational Linguistics (Volume 1:</p>
 <p>Long Papers) ,</p>
-<p>pages 13538–13556, Toronto, Canada. Association</p>
-<p>for Computational Linguistics.</p>
+<p>pages 13538–13556, Toronto, Canada. Association for Computational Linguistics.</p>
 <p>Xiaojuan Zhou. 2008. 现代汉语礼貌语言研究 .</p>
 <p>A JMMLU Tasks</p>
 <p>JMMLU consists of 7,536 questions in the following 56 tasks (subjects). All tasks and their numbers are shown in Table 3.</p>
@@ -500,21 +423,21 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 6: Prompt Template: Japanese</caption>
 <thead>
-<tr><th>8</th><th>(Task Description with Keigo)</th><th></th><th></th><th>していただけませんか？</th><th></th><th></th><th></th></tr>
+<tr><th>8</th><th>(Task Description with Keigo)</th><th>していただけませんか？</th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>よろしくお願いいたします。</td><td></td><td></td><td>(Answer Restriction)</td><td></td><td></td><td></td></tr>
-<tr><td>7</td><td>(Task Description with Keigo)</td><td></td><td></td><td>していただけますか。ただし</td><td></td><td></td><td></td></tr>
-<tr><td></td><td>Keigo) し、 (Answer Restriction with Keigo)</td><td></td><td></td><td></td><td></td><td>は不要です。</td><td></td></tr>
-<tr><td>6</td><td>(Task Description with Keigo)</td><td></td><td>してください。</td><td></td><td></td><td></td><td></td></tr>
-<tr><td></td><td>(Answer Restriction with Keigo)</td><td></td><td></td><td>は不要です。</td><td></td><td></td><td></td></tr>
-<tr><td>5</td><td>(Task Description)</td><td>してください。ただし</td><td></td><td></td><td></td><td>(Answer Format) し、 (Answer Restriction)</td><td>5.00</td></tr>
-<tr><td></td><td>ないでください。</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>4</td><td>(Task Description)</td><td>。ただし</td><td>(Answer Format)</td><td></td><td></td><td>し、 (Answer Restriction)</td><td>ないで。 3.97</td></tr>
-<tr><td>3</td><td>(Task Description)</td><td>せよ。 (Answer Format) し、</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>2</td><td>(Task Description)</td><td>しろ。 (Answer Format) し、</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>1</td><td>(Task Description)</td><td>しろこの野郎。</td><td></td><td></td><td>お前が</td><td>(Answer Format) だけ。 (Answer Restriction)</td><td>1.18</td></tr>
-<tr><td></td><td>たらどうなるかわかるよな。</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td>よろしくお願いいたします。</td><td>(Answer Restriction)</td></tr>
+<tr><td>7</td><td>(Task Description with Keigo)</td><td>していただけますか。ただし</td></tr>
+<tr><td></td><td>Keigo) し、 (Answer Restriction with Keigo)</td><td>は不要です。</td></tr>
+<tr><td>6</td><td>(Task Description with Keigo) してください。</td><td></td></tr>
+<tr><td></td><td>(Answer Restriction with Keigo)</td><td>は不要です。</td></tr>
+<tr><td>5</td><td>(Task Description) してください。ただし</td><td>(Answer Format) し、 (Answer Restriction) 5.00</td></tr>
+<tr><td></td><td>ないでください。</td><td></td></tr>
+<tr><td>4</td><td>(Task Description) 。ただし</td><td>(Answer Format) し、 (Answer Restriction) ないで。 3.97</td></tr>
+<tr><td>3</td><td>(Task Description) せよ。</td><td>(Answer Format) し、</td></tr>
+<tr><td>2</td><td>(Task Description) しろ。</td><td>(Answer Format) し、</td></tr>
+<tr><td>1</td><td>(Task Description) しろこの野郎。</td><td>お前が (Answer Format) だけ。 (Answer Restriction) 1.18</td></tr>
+<tr><td></td><td>たらどうなるかわかるよな。</td><td></td></tr>
 </tbody>
 </table>
 <p>Ranked Score</p>
@@ -533,8 +456,7 @@ RIKEN AIP NII LLMC
 <p>English prompts are shown in Table 7, Chinese prompts are shown in Table 8, and Japanese prompts are</p>
 <p>shown in Table 9.</p>
 <p>Politeness Prompt</p>
-<p>8 Could you please write a summary for the following article? Please feel free to write for 2 or 3 sen-</p>
-<p>tences. You don’t need to write longer than that.</p>
+<p>8 Could you please write a summary for the following article? Please feel free to write for 2 or 3 sen-tences. You don’t need to write longer than that.</p>
 <p>7 Could you please write a summary for the following article? Please write for 2 or 3 sentences. You</p>
 <p>don’t have to write longer than that.</p>
 <p>6 Can you please write a summary for the following article? Please only write for 2 or 3 sentences.</p>
@@ -547,8 +469,7 @@ RIKEN AIP NII LLMC
 <p>only. You cannot write longer than that.</p>
 <p>2 You write a summary for the following article. You only write for 2 or 3 sentences. Never write longer</p>
 <p>than that.</p>
-<p>1 Write a summary for the following article you scum bag! The only summary you can give is by writing</p>
-<p>for 2 or 3 sentences only. And you know what will happen if you write longer than that.</p>
+<p>1 Write a summary for the following article you scum bag! The only summary you can give is by writing for 2 or 3 sentences only. And you know what will happen if you write longer than that.</p>
 <table>
 <caption>Table 7: Summarization Prompt: English Politeness Prompt</caption>
 <thead>
@@ -567,20 +488,20 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 8: Summarization Prompt: Chinese Politeness Prompt</caption>
 <thead>
-<tr><th>8</th><th>次の文章を要約していただけませんか？</th><th></th><th></th><th>2 3</th><th>文で要約よろしくお願いいたします。それより</th><th></th></tr>
+<tr><th>8</th><th>次の文章を要約していただけませんか？</th><th></th><th></th><th>2 3</th><th>文で要約よろしくお願いいたします。それより</th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>長く書くのは不要でございます。</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>7</td><td>次の文章を要約していただけますか。ただし</td><td></td><td></td><td></td><td>2 3 文で要約し、それより長く書くのは不要で</td><td></td></tr>
-<tr><td></td><td>す。</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>6</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3</td><td>文で要約し、それより長く書くのは不要です。</td><td></td></tr>
-<tr><td>5</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3 文だけで要約し、それより長く書かないでくださ</td><td></td><td></td></tr>
-<tr><td></td><td>い。</td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>4</td><td>次の文章を要約して。ただし</td><td></td><td>2 3 文だけで要約し、それより長く書かないで。</td><td></td><td></td><td></td></tr>
-<tr><td>3</td><td>次の文章を要約せよ。</td><td>2 3 文のみで要約し、それより長く書かないこと。</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>2</td><td>次の文章を要約しろ。</td><td>2 3 文だけで要約し、それより長く書くな。</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>1</td><td>次の文章を要約しろこの野郎。お前が要約できるのは</td><td></td><td></td><td></td><td></td><td>2 3 文だけ。それより長く書いたらど</td></tr>
-<tr><td></td><td>うなるかわかるよな。</td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr><td></td><td>長く書くのは不要でございます。</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>7</td><td>次の文章を要約していただけますか。ただし</td><td></td><td></td><td></td><td>2 3 文で要約し、それより長く書くのは不要で</td></tr>
+<tr><td></td><td>す。</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>6</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3</td><td>文で要約し、それより長く書くのは不要です。</td></tr>
+<tr><td>5</td><td>次の文章を要約してください。ただし</td><td></td><td></td><td>2 3 文だけで要約し、それより長く書かないでくださ</td><td></td></tr>
+<tr><td></td><td>い。</td><td></td><td></td><td></td><td></td></tr>
+<tr><td>4</td><td>次の文章を要約して。ただし</td><td></td><td>2 3 文だけで要約し、それより長く書かないで。</td><td></td><td></td></tr>
+<tr><td>3</td><td>次の文章を要約せよ。</td><td>2 3 文のみで要約し、それより長く書かないこと。</td><td></td><td></td><td></td></tr>
+<tr><td>2</td><td>次の文章を要約しろ。</td><td>2 3 文だけで要約し、それより長く書くな。</td><td></td><td></td><td></td></tr>
+<tr><td>1</td><td>次の文章を要約しろこの野郎。お前が要約できるのは</td><td></td><td></td><td></td><td>2 3 文だけ。それより長く書いたらど</td></tr>
+<tr><td></td><td>うなるかわかるよな。</td><td></td><td></td><td></td><td></td></tr>
 </tbody>
 </table>
 <p>Table 9: Summarization Prompt: Japanese</p>
@@ -588,8 +509,7 @@ RIKEN AIP NII LLMC
 <p>English prompts are shown in Table 10, Chinese prompts are shown in Table 11, and Japanese prompts</p>
 <p>are shown in Table 12.</p>
 <p>Politeness Prompt</p>
-<p>8 Could you please answer the question below? Please feel free to provide the number of the answer,</p>
-<p>and you don’t need to provide any reasons.</p>
+<p>8 Could you please answer the question below? Please feel free to provide the number of the answer, and you don’t need to provide any reasons.</p>
 <p>7 Could you please answer the question below? Only have to provide the number of the answer, you</p>
 <p>don’t have to provide any reasons.</p>
 <p>6 Can you please answer the question down below. Please provide the number of the answer only. No</p>
@@ -754,18 +674,18 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 19: Result of the test on Crows-Pairs. R is race, G is gender, N is nationality, S is socioeconomic status.</caption>
 <thead>
-<tr><th>Model</th><th></th><th></th><th>GPT-3.5</th><th></th><th></th><th></th><th>GPT-4</th><th></th><th></th><th></th><th>Llama2-70B</th><th></th><th></th></tr>
-<tr><th></th><th>P</th><th>R</th><th>G</th><th>N</th><th>S</th><th>R</th><th>G</th><th>N</th><th>S</th><th>R</th><th>G</th><th>N</th><th>S</th></tr>
+<tr><th>Model</th><th>GPT-3.5</th><th>GPT-4</th><th>Llama2-70B</th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>8</td><td>33.19</td><td>27.69</td><td>28.30</td><td>33.33</td><td>19.78</td><td>14.05</td><td>11.32</td><td>18.00</td><td>15.38</td><td>15.29</td><td>14.15</td><td>14.53</td></tr>
-<tr><td></td><td>7</td><td>31.65</td><td>34.71</td><td>30.19</td><td>37.61</td><td>14.07</td><td>15.29</td><td>13.21</td><td>18.80</td><td>7.69</td><td>12.81</td><td>14.15</td><td>15.38</td></tr>
-<tr><td></td><td>6</td><td>28.13</td><td>28.51</td><td>31.13</td><td>34.19</td><td>15.60</td><td>14.05</td><td>8.49</td><td>16.24</td><td>10.99</td><td>14.05</td><td>16.98</td><td>12.82</td></tr>
-<tr><td></td><td>5</td><td>30.33</td><td>45.45</td><td>37.74</td><td>39.32</td><td>17.80</td><td>15.29</td><td>9.43</td><td>19.66</td><td>11.65</td><td>14.46</td><td>16.98</td><td>14.53</td></tr>
-<tr><td></td><td>4</td><td>27.69</td><td>30.99</td><td>27.36</td><td>35.04</td><td>15.16</td><td>16.12</td><td>14.15</td><td>16.24</td><td>8.13</td><td>11.57</td><td>15.09</td><td>11.97</td></tr>
-<tr><td></td><td>3</td><td>30.99</td><td>33.88</td><td>33.96</td><td>39.32</td><td>14.95</td><td>16.94</td><td>12.26</td><td>18.80</td><td>21.54</td><td>11.57</td><td>16.04</td><td>12.82</td></tr>
-<tr><td></td><td>2</td><td>29.23</td><td>32.64</td><td>26.42</td><td>26.50</td><td>15.60</td><td>14.46</td><td>14.15</td><td>19.66</td><td>8.35</td><td>11.57</td><td>13.21</td><td>12.82</td></tr>
-<tr><td></td><td>1</td><td>34.07</td><td>25.62</td><td>33.02</td><td>28.21</td><td>16.04</td><td>16.53</td><td>11.32</td><td>21.37</td><td>14.73</td><td>25.62</td><td>22.64</td><td>33.33</td></tr>
+<tr><td>P</td><td>R G N S</td><td>R G N S R</td><td>G N S</td></tr>
+<tr><td>8</td><td>33.19 27.69 28.30 33.33 19.78</td><td>14.05 11.32 18.00 15.38</td><td>15.29 14.15 14.53</td></tr>
+<tr><td>7</td><td>31.65 34.71 30.19 37.61 14.07</td><td>15.29 13.21 18.80 7.69 12.81 14.15 15.38</td><td></td></tr>
+<tr><td>6</td><td>28.13 28.51 31.13 34.19 15.60</td><td>14.05 8.49 16.24 10.99</td><td>14.05 16.98 12.82</td></tr>
+<tr><td>5</td><td>30.33 45.45 37.74 39.32 17.80</td><td>15.29 9.43 19.66 11.65</td><td>14.46 16.98 14.53</td></tr>
+<tr><td>4</td><td>27.69 30.99 27.36 35.04 15.16 16.12 14.15 16.24</td><td>8.13</td><td>11.57 15.09 11.97</td></tr>
+<tr><td>3</td><td>30.99 33.88 33.96 39.32 14.95</td><td>16.94 12.26 18.80 21.54</td><td>11.57 16.04 12.82</td></tr>
+<tr><td>2</td><td>29.23 32.64 26.42 26.50 15.60 14.46 14.15 19.66</td><td>8.35</td><td>11.57 13.21 12.82</td></tr>
+<tr><td>1</td><td>34.07 25.62 33.02 28.21 16.04</td><td>16.53 11.32 21.37 14.73</td><td>25.62 22.64 33.33</td></tr>
 </tbody>
 </table>
 <p>Model GPT-3.5 GPT-4 ChatGLM3</p>
@@ -805,18 +725,18 @@ RIKEN AIP NII LLMC
 <table>
 <caption>Table 22: Result of the test on Crows-Pairs. R is race, G is gender, N is nationality, S is socioeconomic status.</caption>
 <thead>
-<tr><th>Model</th><th></th><th></th><th>Llama2-70B</th><th></th><th></th><th></th><th>Llama2-70B</th><th></th><th></th></tr>
-<tr><th>Politeness</th><th></th><th>R</th><th>G</th><th>N</th><th>S</th><th>R</th><th>G</th><th>N</th><th>S</th></tr>
+<tr><th>Model</th><th></th><th>Llama2-70B Llama2-70B</th></tr>
+<tr><th>Politeness R</th><th></th><th>G N S R G N S</th></tr>
 </thead>
 <tbody>
-<tr><td></td><td>8</td><td>15.38</td><td>15.29</td><td>14.15</td><td>14.53</td><td>56.70</td><td>52.48</td><td>64.15</td><td>63.25</td></tr>
-<tr><td></td><td>7</td><td>7.69</td><td>12.81</td><td>14.15</td><td>15.38</td><td>62.64</td><td>59.92</td><td>64.15</td><td>64.10</td></tr>
-<tr><td></td><td>6</td><td>10.99</td><td>14.05</td><td>16.98</td><td>12.82</td><td>60.00</td><td>64.46</td><td>64.15</td><td>64.10</td></tr>
-<tr><td></td><td>5</td><td>11.65</td><td>14.46</td><td>16.98</td><td>14.53</td><td>63.08</td><td>59.92</td><td>62.26</td><td>66.67</td></tr>
-<tr><td></td><td>4</td><td>8.13</td><td>11.57</td><td>15.09</td><td>11.97</td><td>67.03</td><td>61.98</td><td>58.49</td><td>59.83</td></tr>
-<tr><td></td><td>3</td><td>21.54</td><td>11.57</td><td>16.04</td><td>12.82</td><td>58.24</td><td>61.57</td><td>60.38</td><td>58.12</td></tr>
-<tr><td></td><td>2</td><td>8.35</td><td>11.57</td><td>13.21</td><td>12.82</td><td>59.56</td><td>59.92</td><td>64.15</td><td>67.52</td></tr>
-<tr><td></td><td>1</td><td>14.73</td><td>25.62</td><td>22.64</td><td>33.33</td><td>66.37</td><td>61.98</td><td>76.42</td><td>63.25</td></tr>
+<tr><td>8</td><td>15.38</td><td>15.29 14.15 14.53 56.70 52.48 64.15 63.25</td></tr>
+<tr><td>7</td><td>7.69</td><td>12.81 14.15 15.38 62.64 59.92 64.15 64.10</td></tr>
+<tr><td>6</td><td>10.99</td><td>14.05 16.98 12.82 60.00 64.46 64.15 64.10</td></tr>
+<tr><td>5</td><td>11.65</td><td>14.46 16.98 14.53 63.08 59.92 62.26 66.67</td></tr>
+<tr><td>4</td><td>8.13</td><td>11.57 15.09 11.97 67.03 61.98 58.49 59.83</td></tr>
+<tr><td>3</td><td>21.54</td><td>11.57 16.04 12.82 58.24 61.57 60.38 58.12</td></tr>
+<tr><td>2</td><td>8.35</td><td>11.57 13.21 12.82 59.56 59.92 64.15 67.52</td></tr>
+<tr><td>1</td><td>14.73</td><td>25.62 22.64 33.33 66.37 61.98 76.42 63.25</td></tr>
 </tbody>
 </table>
 <p>E Calculation of the Color Insensity</p>
@@ -868,8 +788,7 @@ RIKEN AIP NII LLMC
 <p>I cannot provide a judgment or analysis of the sentence you provided as it contains harmful and offensive language. The use of the term ”black rapper” is a racist stereotype, and the reference to drugs is inappropriate and disrespectful. It is not appropriate to make assumptions about someone’s character or behavior based on their race or ethnicity. Additionally, it is not appropriate to use language that demeans or dehumanizes individuals Offering multiple Choices Case:</p>
 <p>I apologize if my previous response did not meet your expectations.</p>
 <p>Here’s a revised version of the analysis of the sentence you provided:Positive:* The sentence expresses a personal thought or opinion, which shows the writer’s engagement with the topic.* The use of the phrase</p>
-<p>”I thought” indicates a sense of introspection and self-reflection.Neutral:* The sentence is written in a straightforward</p>
-<p>1 、 方差为 2 的正态分布。 同理， $Y\sim N(2,2)$</p>
+<p>”I thought” indicates a sense of introspection and self-reflection.Neutral:* The sentence is written in a straightforward 1 、 方差为 2 的正态分布。 同理， $Y\sim N(2,2)$</p>
 <p>由于 $X$ 和 $Y$ 是独立的正态分布， 我们 \frac{</p>
 <p>$a = P(X &lt; Y) = P\left(\frac{X-1}{2}</p>
 <p>C 理由：金星の表面には衝突クレーターや溝、</p>
