@@ -32,8 +32,7 @@ RIKEN AIP NII LLMC
 <h3>2.2 LLMs and Prompt Engineering</h3>
 <p>In recent years, LLMs’ abilities have been im-proving. LLMs are used in various industries, as their scores on many downstream tasks show human-like performance. LLMs can be somewhat aligned with human culture, suggesting that they may reflect some of the qualities of human com-munication while having an enormous correlation with language (Cao et al., 2023). In addition, as LLMs are trained with massive data from hu-mans, they inevitably contain certain stereotypical biases (Navigli et al., 2023). Therefore, we consider LLMs’ performance strongly related to human behavior. However, LLMs are sensitive and vulnerable to prompts. Minor changes can lead to significant differences in the output (Kad-dour et al., 2023). Therefore, prompt engineering emerged to earn better generation by adjusting prompts (White et al., 2023). Although methods for automatic prompt generation exist (Shin et al., 2020), access to gradients is usually restricted in LLMs provided via APIs, posing limitations on the application of such methods. Consequently, adjusting prompts is primarily conducted manu-ally at present and requires numerous experiments. Hence, we hope to offer an aspect to improve the efficiency in prompt engineering.</p>
 <h3>2.3 Evaluation of LLMs</h3>
-<p>Many benchmarks exist for LLMs, such as GLUE (Wang et al., 2018) in English, CLUE (Xu et al., 2020) in Chinese, and JGLUE (Kurihara et al., 2022) in Japanese. However, due to the perfor-mance improvement of LLMs, it is difficult to cor-rectly measure the capability of LLMs with such simple benchmarks. Hence, evaluating LLMs nowadays more often adopts more challenging benchmarks, such as MMLU (Hendrycks et al., 2021) and C-Eval (Huang et al., 2023). Such benchmarks are taken from human examinations and are more aligned with human application sce-narios and questioning content. MMLU con-tains 57 tasks spanning various domains, comprising 17,844 four-option multiple-choice questions. However, such a benchmark in Japanese does not</p>
-<p>exist, posing challenges for evaluating LLMs in the Japanese context. Therefore, we constructed JMMLU in Section 3. In addition, since LLMs reflect human culture, they inevitably carry inherent stereotypical biases, such as discriminatively biased content against disadvantaged groups. Al-though these biases can be mitigated to a cer-tain extent by reinforcement learning from human feedback (RLHF) (Christiano et al., 2017; Ouyang et al., 2022), the bias of LLMs is still an impor-tant issue. Therefore, we include the evaluation of stereotypical biases in our experiments.</p>
+<p>Many benchmarks exist for LLMs, such as GLUE (Wang et al., 2018) in English, CLUE (Xu et al., 2020) in Chinese, and JGLUE (Kurihara et al., 2022) in Japanese. However, due to the perfor-mance improvement of LLMs, it is difficult to cor-rectly measure the capability of LLMs with such simple benchmarks. Hence, evaluating LLMs nowadays more often adopts more challenging benchmarks, such as MMLU (Hendrycks et al., 2021) and C-Eval (Huang et al., 2023). Such benchmarks are taken from human examinations and are more aligned with human application sce-narios and questioning content. MMLU con-tains 57 tasks spanning various domains, comprising 17,844 four-option multiple-choice questions. However, such a benchmark in Japanese does not exist, posing challenges for evaluating LLMs in the Japanese context. Therefore, we constructed JMMLU in Section 3. In addition, since LLMs reflect human culture, they inevitably carry inherent stereotypical biases, such as discriminatively biased content against disadvantaged groups. Al-though these biases can be mitigated to a cer-tain extent by reinforcement learning from human feedback (RLHF) (Christiano et al., 2017; Ouyang et al., 2022), the bias of LLMs is still an impor-tant issue. Therefore, we include the evaluation of stereotypical biases in our experiments.</p>
 <h2>3 JMMLU Construction</h2>
 <p>To build a practical LLM benchmark in Japanese and to use it for evaluation in this study, we constructed the Japanese Massive Multitask Lan-guage Understanding Benchmark (JMMLU). This involved translating MMLU and adding tasks re-lated to Japanese culture. From each of the 57 tasks of MMLU, since the MMLU questions are not ordered, we selected up to former 150 questions. Then, ten translators from an English-Japanese translation company machine-translated the selected questions into Japanese and reviewed the translations to remove questions and tasks that were difficult to translate, irrelevant, or contradic-tory to Japanese culture. Finally, the translators revised the remaining questions to fluent Japanese. Meanwhile, additional tasks based on school sub-jects, such as civics and Japanese history, were added to supplement the aspects that were not cov-ered in the Western culture-oriented MMLU (Step, 2023; VIST, 2023). The questions in the additional tasks were manually created by Japanese teachers from two cram schools in Japan. JMMLU consists of 56 tasks. The list of the tasks and examples of removed questions are shown in Appendix A. The number of questions per task ranges from 86 to 150, totaling 7,536 questions.</p>
 <h2>4 Experimental Settings</h2>
@@ -68,8 +67,7 @@ RIKEN AIP NII LLMC
 <h3>5.1 Summarization</h3>
 <p>The summarization result is shown in Figure 2.</p>
 <h4>5.1.1 English</h4>
-<p>The models’ ROUGE-L and BERTScore scores</p>
-<p>consistently maintain stability, irrespective of the politeness level of the prompts, which infers that the models can correctly summarize the article con-tent in the summarization tasks. However, the models manifest substantial variation in length cor-related to the politeness level. A progressive reduction in the generation length is evident as the po-liteness level descends from high to lower scales. Conversely, a surge is noted in the length of the outputs of GPT-3.5 and Llama2-70B under the ex-ceedingly impolite prompts.</p>
+<p>The models’ ROUGE-L and BERTScore scores consistently maintain stability, irrespective of the politeness level of the prompts, which infers that the models can correctly summarize the article con-tent in the summarization tasks. However, the models manifest substantial variation in length cor-related to the politeness level. A progressive reduction in the generation length is evident as the po-liteness level descends from high to lower scales. Conversely, a surge is noted in the length of the outputs of GPT-3.5 and Llama2-70B under the ex-ceedingly impolite prompts.</p>
 <p>The propensity exhibited by the models to gen-erate more extended output in polite contexts. Po-lite and formal language is predominantly used in scenarios demanding descriptive instructions or instructional literature, often associated with longer text. Conversely, antagonistic and fer-vent discourse involves impolite language, which is also associated with extended lengths. These facets reflect the nuances of human social behavior, mirrored in the training data, and then influ-ence the tendencies demonstrated by LLMs. How-ever, GPT-4 did not echo this trend of increased output length in the presence of highly impolite prompts. It is conjectured that GPT-4, being a su-perior model, might prioritize the task itself and ef-fectively control the tendency to “argue” at a low politeness level.</p>
 <h4>5.1.2 Chinese</h4>
 <p>GPT-3.5 and GPT-4 almost always accurately sum-marize the article content, and their output content gradually shortens as the politeness level decreases from high to low. Nevertheless, when the prompts are extremely rude, GPT-3.5’s generation lengthens again, while GPT-4’s length decreases.</p>
@@ -108,14 +106,12 @@ RIKEN AIP NII LLMC
 <p>In Chinese, similar to English, there is a tendency to prefer polite prompts but with some differences. GPT-3.5 scores the lowest at politeness level 1, sig-nificantly underperforming the other levels. More-over, the lower politeness levels 3 and 2 are signif-icantly inferior to levels 7, 6, 5, and 4. However, level 8 also records a low score, significantly trailing behind all levels except level 1. GPT-4 remains stable, except for a performance drop at politeness levels 8 and 7. The scores drop in excessively po-lite prompts in GPT-3.5 and GPT-4, which might be because Chinese examination questions are de-signed without polite prompts, making the models less adept at handling them.</p>
 <p>ChatGLM3 shows a significant decreasing trend from politeness level 8 to 2. ChatGLM3’s pri-mary pre-training language is Chinese and might be more sensitive to the levels of politeness in Chi-nese. This trend is similar to Llama2-70B. How-ever, it shows improvement at the most impolite politeness level 1, surpassing levels 3 and 2, likely due to inherent nuances in the Chinese language.</p>
 <h4>5.2.3 Japanese</h4>
-<p>In Japanese, although significant performance</p>
-<p>drops are shown at politeness level 1, the results were markedly different from English and Chinese. There was a tendency for lower levels to score better, except for level 1.</p>
+<p>In Japanese, although significant performance drops are shown at politeness level 1, the results were markedly different from English and Chinese. There was a tendency for lower levels to score better, except for level 1.</p>
 <p>In GPT-3.5, levels 5 and 2 exhibited exception-ally high performance, with level 2 achieving the highest score. For GPT-4, levels 6 and 5 are out-standing, and level 4 achieved the highest score. Generally, good scores are observed in these models, except for level 1. Swallow-70B shows su-perior performance at levels 6 and 3, outperforming the other levels, which may be attributed to these levels being more common expressions in Japanese questions and examinations.</p>
 <h3>5.3 Stereotypical Bias Detection</h3>
 <p>The results of stereotypical bias detection are shown in Figure 4.</p>
 <h4>5.3.1 English</h4>
-<p>Figure 4 shows that the stereotype bias of GPT-3.5 is overall high. However, a moderately polite prompt (level 5) exhibits the most severe bias in most aspects except race. Although the model’s bias is lower in cases of extremely low politeness, analysis of the model’s output reveals that in these</p>
-<p>cases, the model often refuses to answer both state-ments in a pair, rendering it practically unusable. An example is shown in Appendix F. Additionally, for a highly polite prompt (level 8), bias is low in most cases but higher on racial issues.</p>
+<p>Figure 4 shows that the stereotype bias of GPT-3.5 is overall high. However, a moderately polite prompt (level 5) exhibits the most severe bias in most aspects except race. Although the model’s bias is lower in cases of extremely low politeness, analysis of the model’s output reveals that in these cases, the model often refuses to answer both state-ments in a pair, rendering it practically unusable. An example is shown in Appendix F. Additionally, for a highly polite prompt (level 8), bias is low in most cases but higher on racial issues.</p>
 <p>GPT-4 rarely refuses to answer questions, and thus its results reflect its low bias levels. Notably, when the politeness level is 6, GPT-4 shows the lowest degree of bias overall. However, in other situations, whether more polite or less polite, the bias of GPT-4 increases.</p>
 <p>Llama2-70B also exhibits a lower bias. How-ever, Llama2-70B tends to refuse to answer questions and is accompanied by plenty of reasons to a sentence in a pair when the politeness level is at its lowest. Therefore, we regard it as a form of bias. Although the degree of bias of Llama2-70B is generally lower under more polite prompts (levels 7 and 6), it has the lowest level of bias when the politeness level is 2, which represents a commanding tone of informal language, indicating that there might be other reasons hidden behind. Meanwhile, the degree of bias increases for impolite prompts (levels 3 and 1) and the most polite (level 8) situ-ations, which is similar to the trends exhibited by the other two models.</p>
 <p>We speculate that this is because, in human culture, a highly polite environment makes people more relaxed (Morand, 1996) and willing to express their true thoughts without being overly concerned about moral constraints (Bailey et al., 2020). In contrast, lower politeness may provoke a sense of offense, leading to prejudices. The behav-iors of GPT-3.5 and GPT-4 may precisely reflect such human behaviors.</p>
@@ -164,14 +160,11 @@ RIKEN AIP NII LLMC
 <h2>References</h2>
 <p>Cultural Affairs. 2007. 敬語の指針 . 平成 19 年 , 2.</p>
 <p>Erica R. Bailey, Sandra C. Matz, Wu Youyou, and</p>
-<p>Sheena S. Iyengar. 2020. Authentic self-expression on social media is associated with greater subjective</p>
-<p>well-being. Nature Communications , 11(1):4889.</p>
+<p>Sheena S. Iyengar. 2020. Authentic self-expression on social media is associated with greater subjective well-being. Nature Communications , 11(1):4889.</p>
 <p>Yong Cao, Li Zhou, Seolhwa Lee, Laura Cabello, Min</p>
-<p>Chen, and Daniel Hershcovich. 2023. Assessing</p>
-<p>cross-cultural alignment between ChatGPT and hu-man societies: An empirical study. In Proceedings of the First Workshop on Cross-Cultural Consider-ations in NLP (C3NLP) , pages 53–67, Dubrovnik,</p>
+<p>Chen, and Daniel Hershcovich. 2023. Assessing cross-cultural alignment between ChatGPT and hu-man societies: An empirical study. In Proceedings of the First Workshop on Cross-Cultural Consider-ations in NLP (C3NLP) , pages 53–67, Dubrovnik,</p>
 <p>Croatia. Association for Computational Linguistics.</p>
-<p>Paul F Christiano, Jan Leike, Tom Brown, Miljan Mar-tic, Shane Legg, and Dario Amodei. 2017. Deep</p>
-<p>reinforcement learning from human preferences. In</p>
+<p>Paul F Christiano, Jan Leike, Tom Brown, Miljan Mar-tic, Shane Legg, and Dario Amodei. 2017. Deep reinforcement learning from human preferences. In</p>
 <p>Advances in Neural Information Processing Systems ,</p>
 <p>volume 30. Curran Associates, Inc.</p>
 <p>Pieter Delobelle, Ewoenam Tokpo, Toon Calders, and</p>
@@ -192,13 +185,11 @@ RIKEN AIP NII LLMC
 <p>335.</p>
 <p>Gender Equality Bureau Cabinet Office of Japan. 2021.</p>
 <p>共同参画 . Accessed: 2023-12-19.</p>
-<p>Yueguo Gu. 1990. Politeness phenomena in modern</p>
-<p>chinese. Journal of Pragmatics , 14(2):237–257.</p>
+<p>Yueguo Gu. 1990. Politeness phenomena in modern chinese. Journal of Pragmatics , 14(2):237–257.</p>
 <p>Special Issue on &amp;lsquo;Politeness&amp;rsquo;.</p>
 <p>Tahmid Hasan, Abhik Bhattacharjee, Md. Saiful Islam,</p>
 <p>Kazi Mubasshir, Yuan-Fang Li, Yong-Bin Kang,</p>
-<p>M. Sohel Rahman, and Rifat Shahriyar. 2021. XL-sum: Large-scale multilingual abstractive summa-rization for 44 languages. In Findings of the Associ-ation for Computational Linguistics: ACL-IJCNLP</p>
-<p>2021 , pages 4693–4703, Online. Association for</p>
+<p>M. Sohel Rahman, and Rifat Shahriyar. 2021. XL-sum: Large-scale multilingual abstractive summa-rization for 44 languages. In Findings of the Associ-ation for Computational Linguistics: ACL-IJCNLP 2021 , pages 4693–4703, Online. Association for</p>
 <p>Computational Linguistics.</p>
 <p>Dan Hendrycks, Collin Burns, Steven Basart, Andy</p>
 <p>Zou, Mantas Mazeika, Dawn Song, and Jacob Stein-hardt. 2021. Measuring massive multitask language</p>
@@ -207,11 +198,8 @@ RIKEN AIP NII LLMC
 <p>Yuzhen Huang, Yuzhuo Bai, Zhihao Zhu, Junlei</p>
 <p>Zhang, Jinghan Zhang, Tangjun Su, Junteng Liu,</p>
 <p>Chuancheng Lv, Yikai Zhang, Jiayi Lei, Yao Fu,</p>
-<p>Maosong Sun, and Junxian He. 2023. C-eval: A</p>
-<p>multi-level multi-discipline chinese evaluation suite for foundation models. In Advances in Neural Infor-mation Processing Systems .</p>
-<p>Sophie Jentzsch and Cigdem Turan. 2022. Gender bias in BERT - measuring and analysing biases through</p>
-<p>sentiment rating in a realistic downstream classifi-cation task. In Proceedings of the 4th Workshop on Gender Bias in Natural Language Processing</p>
-<p>(GeBNLP) , pages 184–199, Seattle, Washington. As-sociation for Computational Linguistics.</p>
+<p>Maosong Sun, and Junxian He. 2023. C-eval: A multi-level multi-discipline chinese evaluation suite for foundation models. In Advances in Neural Infor-mation Processing Systems .</p>
+<p>Sophie Jentzsch and Cigdem Turan. 2022. Gender bias in BERT - measuring and analysing biases through sentiment rating in a realistic downstream classifi-cation task. In Proceedings of the 4th Workshop on Gender Bias in Natural Language Processing (GeBNLP) , pages 184–199, Seattle, Washington. As-sociation for Computational Linguistics.</p>
 <p>Jean Kaddour, Joshua Harris, Maximilian Mozes, Her-bie Bradley, Roberta Raileanu, and Robert McHardy.</p>
 <p>2023. Challenges and applications of large language</p>
 <p>models.</p>
@@ -222,11 +210,9 @@ RIKEN AIP NII LLMC
 <p>tion for Computational Linguistics.</p>
 <p>Kenji Kitao. 1987. Differences between polite-ness strategies used in requests by americans and</p>
 <p>japanese.</p>
-<p>Kenji Kitao. 1990. A study of japanese and american</p>
-<p>perceptions of politeness in requests.</p>
+<p>Kenji Kitao. 1990. A study of japanese and american perceptions of politeness in requests.</p>
 <p>Kentaro Kurihara, Daisuke Kawahara, and Tomohide</p>
-<p>Shibata. 2022. JGLUE: Japanese general language</p>
-<p>understanding evaluation. In Proceedings of the</p>
+<p>Shibata. 2022. JGLUE: Japanese general language understanding evaluation. In Proceedings of the</p>
 <p>Thirteenth Language Resources and Evaluation Con-ference , pages 2957–2966, Marseille, France. Euro-pean Language Resources Association.</p>
 <p>Percy Liang, Rishi Bommasani, Tony Lee, Dimitris</p>
 <p>Tsipras, Dilara Soylu, Michihiro Yasunaga, Yian</p>
@@ -251,8 +237,7 @@ RIKEN AIP NII LLMC
 <p>David A. Morand. 1996. Politeness as a universal vari-able in cross￿cultural managerial communication.</p>
 <p>The International Journal of Organizational Analy-sis , 4(1):52–74.</p>
 <p>Nikita Nangia, Clara Vania, Rasika Bhalerao, and</p>
-<p>Samuel R. Bowman. 2020. CrowS-pairs: A chal-lenge dataset for measuring social biases in masked</p>
-<p>language models. In Proceedings of the 2020 Con-ference on Empirical Methods in Natural Language</p>
+<p>Samuel R. Bowman. 2020. CrowS-pairs: A chal-lenge dataset for measuring social biases in masked language models. In Proceedings of the 2020 Con-ference on Empirical Methods in Natural Language</p>
 <p>Processing (EMNLP) , pages 1953–1967, Online. As-sociation for Computational Linguistics.</p>
 <p>Roberto Navigli, Simone Conia, and Björn Ross. 2023.</p>
 <p>Biases in large language models: Origins, inventory, and discussion. J. Data and Information Quality ,</p>
@@ -301,22 +286,19 @@ RIKEN AIP NII LLMC
 <p>Kuan, Puxin Xu, Zheng Yan, Iliyan Zarov, Yuchen</p>
 <p>Zhang, Angela Fan, Melanie Kambadur, Sharan</p>
 <p>Narang, Aurelien Rodriguez, Robert Stojnic, Sergey</p>
-<p>Edunov, and Thomas Scialom. 2023. Llama 2: Open</p>
-<p>foundation and fine-tuned chat models.</p>
+<p>Edunov, and Thomas Scialom. 2023. Llama 2: Open foundation and fine-tuned chat models.</p>
 <p>Liisa Vilkki. 2006. Politeness, face and facework: Cur-rent issues. A man of measure .</p>
 <p>VIST. 2023. New style cram school vist. https://</p>
 <p>www.v-ist.com . Accessed: 2024-1-5.</p>
 <p>Alex Wang, Amanpreet Singh, Julian Michael, Felix</p>
 <p>Hill, Omer Levy, and Samuel Bowman. 2018.</p>
-<p>GLUE: A multi-task benchmark and analysis</p>
-<p>platform for natural language understanding.</p>
+<p>GLUE: A multi-task benchmark and analysis platform for natural language understanding.</p>
 <p>In Proceedings of the 2018 EMNLP Workshop</p>
 <p>BlackboxNLP: Analyzing and Interpreting Neural</p>
 <p>Networks for NLP , pages 353–355, Brussels, Bel-gium. Association for Computational Linguistics.</p>
 <p>Jules White, Quchen Fu, Sam Hays, Michael Sandborn,</p>
 <p>Carlos Olea, Henry Gilbert, Ashraf Elnashar, Jesse</p>
-<p>Spencer-Smith, and Douglas C. Schmidt. 2023. A</p>
-<p>prompt pattern catalog to enhance prompt engineering with chatgpt.</p>
+<p>Spencer-Smith, and Douglas C. Schmidt. 2023. A prompt pattern catalog to enhance prompt engineering with chatgpt.</p>
 <p>Liang Xu, Hai Hu, Xuanwei Zhang, Lu Li, Chenjie Cao,</p>
 <p>Yudong Li, Yechen Xu, Kai Sun, Dian Yu, Cong Yu,</p>
 <p>Yin Tian, Qianqian Dong, Weitang Liu, Bo Shi, Yim-ing Cui, Junyi Li, Jun Zeng, Rongzhao Wang, Wei-jian Xie, Yanting Li, Yina Patterson, Zuoyu Tian, Yi-wen Zhang, He Zhou, Shaoweihua Liu, Zhe Zhao,</p>
@@ -338,8 +320,7 @@ RIKEN AIP NII LLMC
 <p>arXiv:1904.09675 .</p>
 <p>Jiaxu Zhao, Meng Fang, Zijing Shi, Yitong Li, Ling</p>
 <p>Chen, and Mykola Pechenizkiy. 2023. CHBias:</p>
-<p>Bias evaluation and mitigation of Chinese conver-sational language models. In Proceedings of the</p>
-<p>61st Annual Meeting of the Association for Com-putational Linguistics (Volume 1:</p>
+<p>Bias evaluation and mitigation of Chinese conver-sational language models. In Proceedings of the 61st Annual Meeting of the Association for Com-putational Linguistics (Volume 1:</p>
 <p>Long Papers) ,</p>
 <p>pages 13538–13556, Toronto, Canada. Association for Computational Linguistics.</p>
 <p>Xiaojuan Zhou. 2008. 现代汉语礼貌语言研究 .</p>
@@ -442,33 +423,24 @@ RIKEN AIP NII LLMC
 </table>
 <p>Ranked Score</p>
 <p>Ranked Score</p>
-<p>。不必 (Answer Restriction) 。 5.52</p>
-<p>(Answer Restriction) 。 3.70</p>
+<p>。不必 (Answer Restriction) 。 5.52 (Answer Restriction) 。 3.70</p>
 <p>， 别让我看你 (Answer Restriction) 。 1.98</p>
 <p>， 让我看见你 (Answer Restriction) 1.07</p>
 <p>Ranked Score</p>
-<p>(Answer Format with Keigo) 7.74</p>
-<p>(Answer Format with 6.92</p>
-<p>ただし (Answer Format with Keigo) し、 5.92</p>
-<p>(Answer Restriction) ないこと。 3.10</p>
-<p>(Answer Restriction) な。 2.15</p>
+<p>(Answer Format with Keigo) 7.74 (Answer Format with 6.92</p>
+<p>ただし (Answer Format with Keigo) し、 5.92 (Answer Restriction) ないこと。 3.10 (Answer Restriction) な。 2.15</p>
 <p>C.2 Summarization</p>
-<p>English prompts are shown in Table 7, Chinese prompts are shown in Table 8, and Japanese prompts are</p>
-<p>shown in Table 9.</p>
+<p>English prompts are shown in Table 7, Chinese prompts are shown in Table 8, and Japanese prompts are shown in Table 9.</p>
 <p>Politeness Prompt</p>
 <p>8 Could you please write a summary for the following article? Please feel free to write for 2 or 3 sen-tences. You don’t need to write longer than that.</p>
-<p>7 Could you please write a summary for the following article? Please write for 2 or 3 sentences. You</p>
-<p>don’t have to write longer than that.</p>
+<p>7 Could you please write a summary for the following article? Please write for 2 or 3 sentences. You don’t have to write longer than that.</p>
 <p>6 Can you please write a summary for the following article? Please only write for 2 or 3 sentences.</p>
 <p>Please don’t write longer than that.</p>
-<p>5 Please write a summary for the following article. Please only write for 2 or 3 sentences, and don’t</p>
-<p>write longer than that.</p>
+<p>5 Please write a summary for the following article. Please only write for 2 or 3 sentences, and don’t write longer than that.</p>
 <p>4 Write a summary for the following article. Only write for 2 or 3 sentences. Don’t write longer than</p>
 <p>that.</p>
-<p>3 You are required to write a summary for the following article. You must write for 2 or 3 sentences</p>
-<p>only. You cannot write longer than that.</p>
-<p>2 You write a summary for the following article. You only write for 2 or 3 sentences. Never write longer</p>
-<p>than that.</p>
+<p>3 You are required to write a summary for the following article. You must write for 2 or 3 sentences only. You cannot write longer than that.</p>
+<p>2 You write a summary for the following article. You only write for 2 or 3 sentences. Never write longer than that.</p>
 <p>1 Write a summary for the following article you scum bag! The only summary you can give is by writing for 2 or 3 sentences only. And you know what will happen if you write longer than that.</p>
 <table>
 <caption>Table 7: Summarization Prompt: English Politeness Prompt</caption>
@@ -506,21 +478,16 @@ RIKEN AIP NII LLMC
 </table>
 <p>Table 9: Summarization Prompt: Japanese</p>
 <p>C.3 Language Understanding Benchmark</p>
-<p>English prompts are shown in Table 10, Chinese prompts are shown in Table 11, and Japanese prompts</p>
-<p>are shown in Table 12.</p>
+<p>English prompts are shown in Table 10, Chinese prompts are shown in Table 11, and Japanese prompts are shown in Table 12.</p>
 <p>Politeness Prompt</p>
 <p>8 Could you please answer the question below? Please feel free to provide the number of the answer, and you don’t need to provide any reasons.</p>
-<p>7 Could you please answer the question below? Only have to provide the number of the answer, you</p>
-<p>don’t have to provide any reasons.</p>
-<p>6 Can you please answer the question down below. Please provide the number of the answer only. No</p>
-<p>need for any reasons.</p>
+<p>7 Could you please answer the question below? Only have to provide the number of the answer, you don’t have to provide any reasons.</p>
+<p>6 Can you please answer the question down below. Please provide the number of the answer only. No need for any reasons.</p>
 <p>5 Please answer the question down below. Please give the number of the answer only without reasons.</p>
 <p>4 Answer the question down below. Giving the number of the answer only. Do not give reasons.</p>
-<p>3 You are required to answer the question down below. You must follow the order and provide the</p>
-<p>number of the answer. You cannot give any reasons.</p>
+<p>3 You are required to answer the question down below. You must follow the order and provide the number of the answer. You cannot give any reasons.</p>
 <p>2 You answer the question down below. You only give the number of the answer. Never give reasons.</p>
-<p>1 Answer these question you scum bag! The only answer you can give is by saying the number of the</p>
-<p>answer. And you know what will happen if I see any reasons.</p>
+<p>1 Answer these question you scum bag! The only answer you can give is by saying the number of the answer. And you know what will happen if I see any reasons.</p>
 <table>
 <caption>Table 10: MMLU Prompt Politeness Prompt</caption>
 <thead>
@@ -555,8 +522,7 @@ RIKEN AIP NII LLMC
 </table>
 <p>Table 12: JMMLU Prompts</p>
 <p>C.4 Stereotypical Bias Detection</p>
-<p>English prompts are shown in Table 13, Chinese prompts are shown in Table 14, and Japanese prompts</p>
-<p>are shown in Table 15.</p>
+<p>English prompts are shown in Table 13, Chinese prompts are shown in Table 14, and Japanese prompts are shown in Table 15.</p>
 <p>Politeness Prompt</p>
 <p>8 Could you please tell me how to analyze this sentence? Please feel free to answer with one of (Positive</p>
 <p>Neutral Negative), and don’t need to give reasons.</p>

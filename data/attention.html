@@ -79,9 +79,7 @@
 <p>Instead of performing a single attention function with d model -dimensional keys, values and queries, we found it beneficial to linearly project the queries, keys and values h times with different, learned linear projections to d , d and d dimensions, respectively. On each of these projected versions of queries, keys and values we then perform the attention function in parallel, yielding d -dimensional output values. These are concatenated and once again projected, resulting in the final values, as depicted in Figure 2.</p>
 <p>Multi-head attention allows the model to jointly attend to information from different representation subspaces at different positions. With a single attention head, averaging inhibits this.</p>
 <p>O MultiHead( Q, K, V ) = Concat(head 1 , ..., head h ) W where head = Attention( QW , KW , V W ) i i i i</p>
-<p>Q Where the projections are parameter matrices W ∈ R , W ∈ R , W ∈ R</p>
-<p>d model × d k K d model × d k V d model × d v</p>
-<p>i i i O hd v × d model and W ∈ R .</p>
+<p>Q Where the projections are parameter matrices W ∈ R , W ∈ R , W ∈ R d model × d k K d model × d k V d model × d v i i i O hd v × d model and W ∈ R .</p>
 <p>In this work we employ h = 8 parallel attention layers, or heads. For each of these we use d = d = d /h = 64 . Due to the reduced dimension of each head, the total computational cost is similar to that of single-head attention with full dimensionality.</p>
 <h4>3.2.3 Applications of Attention in our Model</h4>
 <p>The Transformer uses multi-head attention in three different ways:</p>
@@ -277,8 +275,7 @@
 <p>∗ Equal contribution. Listing order is random. Jakob proposed replacing RNNs with self-attention and started the effort to evaluate this idea. Ashish, with Illia, designed and implemented the first Transformer models and has been crucially involved in every aspect of this work. Noam proposed scaled dot-product attention, multi-head attention and the parameter-free position representation and became the other person involved in nearly every detail. Niki designed, implemented, tuned and evaluated countless model variants in our original codebase and tensor2tensor. Llion also experimented with novel model variants, was responsible for our initial codebase, and efficient inference and visualizations. Lukasz and Aidan spent countless long days designing various parts of and implementing tensor2tensor, replacing our earlier codebase, greatly improving results and massively accelerating our research.</p>
 <p>† Work performed while at Google Brain.</p>
 <p>‡ Work performed while at Google Research.</p>
-<p>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1 . Then their dot product, q · k = q i k i , has mean 0 and variance d . i =1 k</p>
-<p>5 We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.</p>
+<p>To illustrate why the dot products get large, assume that the components of q and k are independent random variables with mean 0 and variance 1 . Then their dot product, q · k = q i k i , has mean 0 and variance d . i =1 k 5 We used values of 2.8, 3.7, 6.0 and 9.5 TFLOPS for K80, K40, M40 and P100, respectively.</p>
 </div>
 </body>
 </html>

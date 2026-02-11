@@ -20,6 +20,22 @@ const FOOTNOTE_UNMARKED_MAX_PAGE_FONT_RATIO = 0.95;
 const FOOTNOTE_UNMARKED_MIN_WORD_COUNT = 8;
 const FOOTNOTE_UNMARKED_MIN_LOWERCASE_WORD_COUNT = 4;
 const FOOTNOTE_UNMARKED_MIN_BOUNDARY_GAP = 12;
+const FOOTNOTE_PUBLICATION_METADATA_MAX_PAGE_INDEX = 1;
+const FOOTNOTE_PUBLICATION_METADATA_START_MAX_VERTICAL_RATIO = 0.2;
+const FOOTNOTE_PUBLICATION_METADATA_START_MAX_FONT_RATIO = 1.06;
+const FOOTNOTE_PUBLICATION_METADATA_START_MAX_PAGE_FONT_RATIO = 1.08;
+const FOOTNOTE_PUBLICATION_METADATA_MAX_X_DELTA_RATIO = 0.05;
+const FOOTNOTE_PUBLICATION_METADATA_MAX_FONT_DELTA = 0.8;
+const FOOTNOTE_PUBLICATION_METADATA_MIN_LINES = 2;
+const FOOTNOTE_PUBLICATION_METADATA_START_PATTERN =
+  /^(?:[*∗†‡§¶#]\s*)?corresponding\s+author\b/iu;
+const FOOTNOTE_PUBLICATION_METADATA_EMAIL_PATTERN = /^e-?mail\s+address:\s+/iu;
+const FOOTNOTE_PUBLICATION_METADATA_DOI_PATTERN =
+  /^(?:https?:\/\/(?:dx\.)?doi\.org\/10\.|doi\.org\/10\.|org\/10\.|(?:doi\s*:\s*)?10\.\d{4,9}\/)/iu;
+const FOOTNOTE_PUBLICATION_METADATA_ARTICLE_HISTORY_PATTERN =
+  /^(?:received\b|accepted\b|available\s+online\b)/iu;
+const FOOTNOTE_PUBLICATION_METADATA_COPYRIGHT_PATTERN =
+  /^(?:\d{4}-\d{3,4}\/)?(?:©|\(c\)|copyright\b|all rights reserved\b)/iu;
 
 const FOOTNOTE_START_MARKER_RULES = [
   {
@@ -68,6 +84,12 @@ function collectFootnoteLines(lines: TextLine[], bodyFontSize: number): Set<Text
     let index = 0;
     while (index < pageLines.length - 1) {
       const endIndex =
+        findPublicationMetadataFootnoteRangeEndIndex(
+          pageLines,
+          index,
+          bodyFontSize,
+          pageBodyFontSize,
+        ) ??
         findFootnoteRangeEndIndex(pageLines, index, bodyFontSize) ??
         findUnmarkedFootnoteRangeEndIndex(pageLines, index, bodyFontSize, pageBodyFontSize);
       if (endIndex === undefined) {
@@ -81,6 +103,36 @@ function collectFootnoteLines(lines: TextLine[], bodyFontSize: number): Set<Text
     }
   }
   return moved;
+}
+
+function findPublicationMetadataFootnoteRangeEndIndex(
+  pageLines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+  pageBodyFontSize: number,
+): number | undefined {
+  const startLine = pageLines[startIndex];
+  if (!isPublicationMetadataStartLine(startLine, bodyFontSize, pageBodyFontSize)) return undefined;
+
+  let endIndex = startIndex + 1;
+  let previousLine = startLine;
+  while (endIndex < pageLines.length) {
+    const line = pageLines[endIndex];
+    if (
+      !isLikelyPublicationMetadataContinuationLine(
+        line,
+        previousLine,
+        bodyFontSize,
+        pageBodyFontSize,
+      )
+    ) {
+      break;
+    }
+    previousLine = line;
+    endIndex += 1;
+  }
+
+  return endIndex - startIndex >= FOOTNOTE_PUBLICATION_METADATA_MIN_LINES ? endIndex : undefined;
 }
 
 function findUnmarkedFootnoteRangeEndIndex(
@@ -179,6 +231,63 @@ function isLikelyFootnoteProseText(text: string): boolean {
   if (words.length < FOOTNOTE_UNMARKED_MIN_WORD_COUNT) return false;
   const lowercaseWords = words.filter((word) => /^[a-z][a-z'-]{2,}$/u.test(word));
   return lowercaseWords.length >= FOOTNOTE_UNMARKED_MIN_LOWERCASE_WORD_COUNT;
+}
+
+function isPublicationMetadataStartLine(
+  line: TextLine,
+  bodyFontSize: number,
+  pageBodyFontSize: number,
+): boolean {
+  if (line.pageIndex > FOOTNOTE_PUBLICATION_METADATA_MAX_PAGE_INDEX) return false;
+  if (line.pageHeight <= 0) return false;
+  if (line.y > line.pageHeight * FOOTNOTE_PUBLICATION_METADATA_START_MAX_VERTICAL_RATIO) {
+    return false;
+  }
+  if (line.fontSize > bodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_FONT_RATIO) {
+    return false;
+  }
+  if (line.fontSize > pageBodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_PAGE_FONT_RATIO) {
+    return false;
+  }
+
+  const text = normalizeSpacing(line.text);
+  return FOOTNOTE_PUBLICATION_METADATA_START_PATTERN.test(text);
+}
+
+function isLikelyPublicationMetadataContinuationLine(
+  line: TextLine,
+  previousLine: TextLine,
+  bodyFontSize: number,
+  pageBodyFontSize: number,
+): boolean {
+  if (!isDescendingNearbyFootnoteLine(line, previousLine)) return false;
+  if (
+    Math.abs(line.x - previousLine.x) > line.pageWidth * FOOTNOTE_PUBLICATION_METADATA_MAX_X_DELTA_RATIO
+  ) {
+    return false;
+  }
+  if (Math.abs(line.fontSize - previousLine.fontSize) > FOOTNOTE_PUBLICATION_METADATA_MAX_FONT_DELTA) {
+    return false;
+  }
+  if (line.fontSize > bodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_FONT_RATIO) {
+    return false;
+  }
+  if (line.fontSize > pageBodyFontSize * FOOTNOTE_PUBLICATION_METADATA_START_MAX_PAGE_FONT_RATIO) {
+    return false;
+  }
+
+  const text = normalizeSpacing(line.text);
+  if (text.length < FOOTNOTE_MIN_TEXT_LENGTH) return false;
+  return isPublicationMetadataLineText(text);
+}
+
+function isPublicationMetadataLineText(text: string): boolean {
+  return (
+    FOOTNOTE_PUBLICATION_METADATA_EMAIL_PATTERN.test(text) ||
+    FOOTNOTE_PUBLICATION_METADATA_DOI_PATTERN.test(text) ||
+    FOOTNOTE_PUBLICATION_METADATA_ARTICLE_HISTORY_PATTERN.test(text) ||
+    FOOTNOTE_PUBLICATION_METADATA_COPYRIGHT_PATTERN.test(text)
+  );
 }
 
 function isLikelyFootnoteContinuationLine(
