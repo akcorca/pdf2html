@@ -128,13 +128,16 @@ describe("convertPdfToHtml", () => {
     );
   });
 
-  it("keeps unfinished left-column paragraph text before a right-column heading in clean.pdf", () => {
-    const mergedParagraph =
-      "<p>code generation process for data standardization, requiring just a few lines of code.</p>";
+  it("merges unfinished left-column paragraph text before a right-column heading in clean.pdf", () => {
+    const mergedParagraphPattern =
+      /<p>To overcome these limitations, our key idea is to introduce a Python library involving declarative and unified APIs specifically designed for standardizing different column types\. This idea lowers the burden of the LLM, as it now only needs to convert natural lan-?guage \(NL\) instructions into succinct, declarative API calls instead of lengthy, procedural code\. Such an approach simplifies the LLM’s code generation process for data standardization, requiring just a few lines of code\.<\/p>/;
     const section2 = "<h2>2 TYPE-SPECIFIC STANDARDIZATION API DESIGN</h2>";
-    expect(cleanHtml).toContain(mergedParagraph);
+    expect(cleanHtml).toMatch(mergedParagraphPattern);
     expect(cleanHtml).toContain(section2);
-    expect(cleanHtml.indexOf(mergedParagraph)).toBeLessThan(cleanHtml.indexOf(section2));
+    const mergedParagraphMatch = cleanHtml.match(mergedParagraphPattern);
+    expect(mergedParagraphMatch).toBeTruthy();
+    const mergedParagraphText = mergedParagraphMatch?.[0] ?? "";
+    expect(cleanHtml.indexOf(mergedParagraphText)).toBeLessThan(cleanHtml.indexOf(section2));
   });
 
   it("keeps clean.pdf numbered section headings in left-to-right column reading order", () => {

@@ -113,6 +113,7 @@ const STANDALONE_CAPTION_LABEL_PATTERN =
 const CAPTION_START_PATTERN =
   /^(?:Figure|Fig\.?)\s+\d+[A-Za-z]?\s*[.:]\s+\S/iu;
 const RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN = /[:;]["')\]]?$/u;
+const RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN = /[.!?]["')\]]?$/u;
 const RENDERED_PARAGRAPH_SOFT_CONNECTOR_END_PATTERN =
   /\b(?:and|or|of|to|in|on|for|with|by|from|as|at|into|onto|via|than|that|which|whose|where|when|while|if|because)\s*$/iu;
 const RENDERED_PARAGRAPH_SOFT_DETERMINER_PHRASE_END_PATTERN =
@@ -443,7 +444,13 @@ function shouldMergeSplitRenderedParagraphPair(
   const startsWithConnector = RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN.test(
     continuationText,
   );
-  if (!isLikelySplitParagraphEnd(firstText) && !startsWithConnector) return false;
+  if (
+    !isLikelySplitParagraphEnd(firstText) &&
+    !startsWithConnector &&
+    !isLikelySentenceWrappedSplitParagraphEnd(firstText)
+  ) {
+    return false;
+  }
   if (containsDocumentMetadata(firstText) || containsDocumentMetadata(continuationText)) return false;
   if (CAPTION_START_PATTERN.test(firstText) || CAPTION_START_PATTERN.test(continuationText)) return false;
   if (STANDALONE_CAPTION_LABEL_PATTERN.test(firstText)) return false;
@@ -489,6 +496,12 @@ function splitKnownCleanParagraphBoundary(renderedLines: string[]): string[] {
     if (after.length > 0) result.push(`<p>${after}</p>`);
   }
   return result;
+}
+
+function isLikelySentenceWrappedSplitParagraphEnd(text: string): boolean {
+  const trimmed = text.trimEnd();
+  if (RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN.test(trimmed)) return false;
+  return /[\p{L}\p{N}][”"')\]]?$/u.test(trimmed);
 }
 
 function extractRenderedParagraphText(renderedLine: string): string | undefined {
@@ -714,7 +727,6 @@ function renderBodyLines(lines: TextLine[], titleLine: TextLine | undefined, doc
   const mergedSplitParagraphs = mergeSplitRenderedParagraphContinuations(mergedCaptionFragments);
   return splitKnownCleanParagraphBoundary(mergedSplitParagraphs);
 }
-
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: author block boundary detection requires multiple sequential guards.
 function consumeAuthorBlock(
   lines: TextLine[],

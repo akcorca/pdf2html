@@ -75,4 +75,18 @@ describe("clean.pdf paragraph merging", () => {
       "<p>declarative data standardization tools for LLMs is not only feasible",
     );
   });
+
+  it("merges paragraphs with hyphenation and line breaks", () => {
+    expect(cleanHtml).toMatch(
+      /<p>To overcome these limitations, our key idea is to introduce a Python library involving declarative and unified APIs specifically designed for standardizing different column types\. This idea lowers the burden of the LLM, as it now only needs to convert natural lan-?guage \(NL\) instructions into succinct, declarative API calls instead of lengthy, procedural code\. Such an approach simplifies the LLM’s code generation process for data standardization, requiring just a few lines of code\.<\/p>/,
+    );
+
+    // Check that the broken parts are not present
+    expect(cleanHtml).not.toContain(
+      "Such an approach simplifies the LLM’s</p>",
+    );
+    expect(cleanHtml).not.toContain(
+      "<p>code generation process for data standardization, requiring just a few lines of code.</p>",
+    );
+  });
 });
