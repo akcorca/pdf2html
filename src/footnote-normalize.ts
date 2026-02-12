@@ -89,23 +89,42 @@ function mergeFootnoteContinuationLine(
 ): TextLine | undefined {
   if (!isDescendingNearbyFootnoteLine(line, previousLine)) return undefined;
 
+  const continuationTexts = getMergeableFootnoteContinuationTexts(
+    previousLine,
+    line,
+    bodyFontSize,
+  );
+  if (!continuationTexts) return undefined;
+
+  const { previousText, currentText } = continuationTexts;
+  if (
+    !isDetachedTinyMathContinuationLine(previousLine, line, previousText, currentText) &&
+    !isWithinStandardContinuationBounds(previousLine, line)
+  ) {
+    return undefined;
+  }
+
+  return buildMergedFootnoteContinuationLine(previousLine, line, previousText, currentText);
+}
+
+function getMergeableFootnoteContinuationTexts(
+  previousLine: TextLine,
+  line: TextLine,
+  bodyFontSize: number,
+): { previousText: string; currentText: string } | undefined {
   const previousText = getFootnoteBlockText(previousLine, bodyFontSize);
   const currentText = getFootnoteBlockText(line, bodyFontSize);
   if (!previousText || !currentText) return undefined;
-  if (isBlockedFootnoteContinuationText(previousText, currentText)) {
-    return undefined;
-  }
+  if (isBlockedFootnoteContinuationText(previousText, currentText)) return undefined;
+  return { previousText, currentText };
+}
 
-  const detachedTinyMathContinuation = isDetachedTinyMathContinuationLine(
-    previousLine,
-    line,
-    previousText,
-    currentText,
-  );
-  if (!detachedTinyMathContinuation && !isWithinStandardContinuationBounds(previousLine, line)) {
-    return undefined;
-  }
-
+function buildMergedFootnoteContinuationLine(
+  previousLine: TextLine,
+  line: TextLine,
+  previousText: string,
+  currentText: string,
+): TextLine {
   return {
     ...previousLine,
     // Keep the merged line anchored to the latest physical line so
@@ -119,7 +138,8 @@ function mergeFootnoteContinuationLine(
 function isBlockedFootnoteContinuationText(previousText: string, currentText: string): boolean {
   return (
     FOOTNOTE_MARKER_PREFIX_PATTERN.test(currentText) ||
-    FOOTNOTE_URL_START_PATTERN.test(currentText) || FOOTNOTE_URL_START_PATTERN.test(previousText)
+    FOOTNOTE_URL_START_PATTERN.test(currentText) ||
+    FOOTNOTE_URL_START_PATTERN.test(previousText)
   );
 }
 
