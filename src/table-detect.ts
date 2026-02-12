@@ -213,27 +213,45 @@ function splitHeaderAndDataRows(
   headerRow: string[],
   parsedRows: string[][],
 ): { headerRows: string[][]; dataRows: string[][] } {
-  const headerRows: string[][] = [sanitizeHeaderCells(headerRow)];
-  let firstDataRowIndex = 0;
-  while (firstDataRowIndex + 1 < parsedRows.length) {
-    const candidateHeaderRow = parsedRows[firstDataRowIndex];
-    const nextRow = parsedRows[firstDataRowIndex + 1];
-    if (!isLikelySubHeaderRow(candidateHeaderRow, nextRow)) break;
-    headerRows.push(sanitizeHeaderCells(candidateHeaderRow));
-    firstDataRowIndex += 1;
-  }
-  const dataRows = parsedRows.slice(firstDataRowIndex);
-  const normalizedHeaderRows = collapseComplementaryHeaderRows(headerRows);
-  const headerRowKeys = new Set(normalizedHeaderRows.map(buildComparableRowKey));
-  const filteredDataRows = dataRows.filter(
-    (row) =>
-      isLikelyNumericDataRow(row) ||
-      !headerRowKeys.has(buildComparableRowKey(sanitizeHeaderCells(row))),
-  );
+  const { subHeaderRows, dataRows } = collectLeadingSubHeaderRows(parsedRows);
+  const normalizedHeaderRows = collapseComplementaryHeaderRows([
+    sanitizeHeaderCells(headerRow),
+    ...subHeaderRows,
+  ]);
+  const filteredDataRows = removeHeaderDuplicateDataRows(dataRows, normalizedHeaderRows);
   return promoteWrappedLeadingDataRowsIntoHeader(
     normalizedHeaderRows,
     filteredDataRows,
   );
+}
+
+function collectLeadingSubHeaderRows(parsedRows: string[][]): {
+  subHeaderRows: string[][];
+  dataRows: string[][];
+} {
+  let subHeaderCount = 0;
+  while (
+    subHeaderCount + 1 < parsedRows.length &&
+    isLikelySubHeaderRow(parsedRows[subHeaderCount], parsedRows[subHeaderCount + 1])
+  ) {
+    subHeaderCount += 1;
+  }
+
+  return {
+    subHeaderRows: parsedRows.slice(0, subHeaderCount).map(sanitizeHeaderCells),
+    dataRows: parsedRows.slice(subHeaderCount),
+  };
+}
+
+function removeHeaderDuplicateDataRows(
+  dataRows: string[][],
+  headerRows: string[][],
+): string[][] {
+  const headerRowKeys = new Set(headerRows.map(buildComparableRowKey));
+  return dataRows.filter((row) => {
+    if (isLikelyNumericDataRow(row)) return true;
+    return !headerRowKeys.has(buildComparableRowKey(sanitizeHeaderCells(row)));
+  });
 }
 
 function promoteWrappedLeadingDataRowsIntoHeader(
