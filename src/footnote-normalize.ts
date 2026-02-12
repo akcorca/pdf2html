@@ -20,7 +20,6 @@ const FOOTNOTE_TINY_MATH_FRAGMENT_MAX_FONT_RATIO = 0.85;
 const FOOTNOTE_TINY_MATH_FRAGMENT_ALLOWED_PATTERN = /^[A-Za-z0-9\s−\-+*/=(){}[\],.;:·√∑∏∞]+$/u;
 const FOOTNOTE_TINY_MATH_FRAGMENT_SYMBOL_PATTERN = /[=+\-−*/√∑∏∞·]/u;
 const FOOTNOTE_TINY_MATH_FRAGMENT_NUMERIC_PATTERN = /\d/;
-const FOOTNOTE_TINY_MATH_FRAGMENT_ALPHA_TOKEN_PATTERN = /[A-Za-z]/;
 const FOOTNOTE_TINY_MATH_FRAGMENT_MULTI_LETTER_TOKEN_PATTERN = /[A-Za-z]{2,}/;
 const FOOTNOTE_TINY_MATH_CONTEXT_PATTERN = /[=+\-−*/√∑∏∞·]/u;
 
@@ -118,8 +117,8 @@ function mergeFootnoteContinuationLine(
 }
 
 function isBlockedFootnoteContinuationText(previousText: string, currentText: string): boolean {
-  if (FOOTNOTE_MARKER_PREFIX_PATTERN.test(currentText)) return true;
   return (
+    FOOTNOTE_MARKER_PREFIX_PATTERN.test(currentText) ||
     FOOTNOTE_URL_START_PATTERN.test(currentText) || FOOTNOTE_URL_START_PATTERN.test(previousText)
   );
 }
@@ -152,13 +151,7 @@ function isDetachedTinyMathContinuationLine(
   if (tokens.length === 0 || tokens.length > FOOTNOTE_TINY_MATH_FRAGMENT_MAX_TOKEN_COUNT) {
     return false;
   }
-  if (
-    tokens.some(
-      (token) =>
-        FOOTNOTE_TINY_MATH_FRAGMENT_ALPHA_TOKEN_PATTERN.test(token) &&
-        FOOTNOTE_TINY_MATH_FRAGMENT_MULTI_LETTER_TOKEN_PATTERN.test(token),
-    )
-  ) {
+  if (tokens.some((token) => FOOTNOTE_TINY_MATH_FRAGMENT_MULTI_LETTER_TOKEN_PATTERN.test(token))) {
     return false;
   }
 

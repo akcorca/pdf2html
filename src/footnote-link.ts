@@ -39,14 +39,12 @@ function buildLinkedLineText(line: TextLine, footnoteMap: Set<number>): string |
   const referenceFont = getReferenceBodyFont(fragments, normalizedTexts);
   if (referenceFont === undefined) return undefined;
 
-  const rewritten = rewriteFragmentsWithFootnoteAnchors(
+  return rewriteFragmentsWithFootnoteAnchors(
     fragments,
     normalizedTexts,
     footnoteMap,
     referenceFont,
   );
-  if (!rewritten.hasMarker) return undefined;
-  return normalizeSpacing(rewritten.fragments.join(" "));
 }
 
 function getReferenceBodyFont(
@@ -64,7 +62,7 @@ function rewriteFragmentsWithFootnoteAnchors(
   normalizedTexts: string[],
   footnoteMap: Set<number>,
   referenceFont: number,
-): { fragments: string[]; hasMarker: boolean } {
+): string | undefined {
   const rewrittenFragments: string[] = [];
   let hasMarker = false;
 
@@ -93,7 +91,8 @@ function rewriteFragmentsWithFootnoteAnchors(
     hasMarker = true;
   }
 
-  return { fragments: rewrittenFragments, hasMarker };
+  if (!hasMarker) return undefined;
+  return normalizeSpacing(rewrittenFragments.join(" "));
 }
 
 function medianOrUndefined(values: number[]): number | undefined {
