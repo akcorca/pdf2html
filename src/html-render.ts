@@ -148,6 +148,12 @@ const RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT = 2;
 const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_TOKEN_PATTERN = /^[A-Z]{1,3}$/;
 const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MIN_TOKEN_COUNT = 3;
 const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MAX_TOKEN_COUNT = 6;
+const RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_BRIDGE_PATTERN =
+  /^\([^)]*$/u;
+const RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_BRIDGE_MAX_WORD_COUNT = 4;
+const RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_BRIDGE_MAX_CHAR_LENGTH = 40;
+const RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_CLOSING_START_PATTERN =
+  /^["'“‘]?[^\s)]+\)/u;
 const RENDERED_TRAILING_URL_PREFIX_PATTERN =
   /^(.*?)(https?:\/\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]*[./-])$/iu;
 const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
@@ -520,6 +526,7 @@ function mergeCaptionSeparatedParagraphFragments(
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: rendered paragraph merge handles URL, math-artifact, and continuation bridges in one pass.
+// biome-ignore lint/complexity/noExcessiveLinesPerFunction: rendered paragraph merge keeps ordered checks in one place.
 function mergeSplitRenderedParagraphContinuations(
   renderedLines: string[],
 ): string[] {
@@ -545,6 +552,26 @@ function mergeSplitRenderedParagraphContinuations(
       index + 2 < merged.length
         ? extractRenderedParagraphText(merged[index + 2])
         : undefined;
+    if (
+      nextContinuationText !== undefined &&
+      shouldMergeSplitRenderedParentheticalBridge(
+        firstText,
+        continuationText,
+        nextContinuationText,
+      )
+    ) {
+      const bridgeContinuationText = normalizeSpacing(
+        `${continuationText.trimEnd()} ${nextContinuationText.trimStart()}`,
+      );
+      const mergedText = isHyphenWrappedLineText(firstText)
+        ? mergeHyphenWrappedTexts(firstText, bridgeContinuationText)
+        : normalizeSpacing(
+            `${firstText.trimEnd()} ${bridgeContinuationText.trimStart()}`,
+          );
+      merged[index] = `<p>${mergedText}</p>`;
+      merged.splice(index + 1, 2);
+      continue;
+    }
     if (
       nextContinuationText !== undefined &&
       isStandaloneRenderedInlineMathArtifactText(continuationText)
@@ -593,6 +620,103 @@ function mergeSplitRenderedParagraphContinuations(
     merged.splice(index + 1, 1);
   }
   return merged;
+}
+
+function shouldMergeSplitRenderedParentheticalBridge(
+  firstText: string,
+  bridgeText: string,
+  continuationText: string,
+): boolean {
+  if (!isDanglingSplitRenderedParentheticalBridgeText(bridgeText))
+    return false;
+  if (
+    !RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_CLOSING_START_PATTERN.test(
+      continuationText.trimStart(),
+    )
+  ) {
+    return false;
+  }
+  const mergeAwareFirstText =
+    stripTrailingFootnoteReferencesFromRenderedText(firstText);
+  if (mergeAwareFirstText.length === 0) return false;
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(mergeAwareFirstText))
+    return false;
+  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(mergeAwareFirstText))
+    return false;
+  if (
+    !isLikelySplitParagraphEnd(mergeAwareFirstText) &&
+    !isLikelySentenceWrappedSplitParagraphEnd(mergeAwareFirstText)
+  ) {
+    return false;
+  }
+  if (
+    containsDocumentMetadata(firstText) ||
+    containsDocumentMetadata(bridgeText) ||
+    containsDocumentMetadata(continuationText)
+  ) {
+    return false;
+  }
+  if (
+    CAPTION_START_PATTERN.test(firstText) ||
+    CAPTION_START_PATTERN.test(bridgeText) ||
+    CAPTION_START_PATTERN.test(continuationText)
+  ) {
+    return false;
+  }
+  if (
+    STANDALONE_CAPTION_LABEL_PATTERN.test(firstText) ||
+    STANDALONE_CAPTION_LABEL_PATTERN.test(bridgeText) ||
+    STANDALONE_CAPTION_LABEL_PATTERN.test(continuationText)
+  ) {
+    return false;
+  }
+  if (isLikelyAffiliationAddressLine(mergeAwareFirstText)) return false;
+  if (
+    splitWords(mergeAwareFirstText).length <
+    RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT
+  ) {
+    return false;
+  }
+  const combinedContinuationText = normalizeSpacing(
+    `${bridgeText.trimEnd()} ${continuationText.trimStart()}`,
+  );
+  return isValidParentheticalBridgeContinuationText(combinedContinuationText);
+}
+
+function isDanglingSplitRenderedParentheticalBridgeText(text: string): boolean {
+  const normalized = normalizeSpacing(text.trim());
+  if (normalized.length === 0) return false;
+  if (
+    normalized.length >
+    RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_BRIDGE_MAX_CHAR_LENGTH
+  ) {
+    return false;
+  }
+  if (
+    splitWords(normalized).length >
+    RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_BRIDGE_MAX_WORD_COUNT
+  ) {
+    return false;
+  }
+  if (containsDocumentMetadata(normalized)) return false;
+  if (parseBulletListItemText(normalized) !== undefined) return false;
+  if (RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN.test(normalized))
+    return false;
+  return RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_BRIDGE_PATTERN.test(
+    normalized,
+  );
+}
+
+function isValidParentheticalBridgeContinuationText(
+  continuationText: string,
+): boolean {
+  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(continuationText))
+    return false;
+  if (parseBulletListItemText(continuationText) !== undefined) return false;
+  return (
+    splitWords(continuationText).length >=
+    RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT
+  );
 }
 
 function mergeSplitRenderedUrlParagraph(
