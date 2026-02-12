@@ -61,7 +61,7 @@ describe("attention abstract same-row merge", () => {
 
   it("merges citation-led continuation lines into the preceding paragraph", () => {
     expect(attentionHtml).toContain(
-      "At each step the model is auto-regressive [10], consuming the previously generated symbols as additional input",
+      'At each step the model is auto-regressive <a href="#ref-10">[10]</a>, consuming the previously generated symbols as additional input',
     );
     expect(attentionHtml).not.toContain(
       "<p>Most competitive neural sequence transduction models have an encoder-decoder structure [ 5 , 2 , 35 ]. Here, the encoder maps an input sequence of symbol representations ( x 1 , ..., x n ) to a sequence of continuous representations z = ( z , ..., z ) . Given z , the decoder then generates an output sequence ( y 1 , ..., y m ) of symbols one element at a time. At each step the model is auto-regressive</p>",
@@ -113,7 +113,7 @@ describe("attention abstract same-row merge", () => {
 
   it("merges same-row citation-fragment splits in conclusion paragraphs", () => {
     expect(attentionHtml).toContain(
-      "In contrast to RNN sequence-to-sequence models [ 37 ], the Transformer outperforms the Berkeley-Parser [29] even when training only on the WSJ training set of 40K sentences.",
+      'In contrast to RNN sequence-to-sequence models [ 37 ], the Transformer outperforms the Berkeley-Parser <a href="#ref-29">[29]</a> even when training only on the WSJ training set of 40K sentences.',
     );
     expect(attentionHtml).not.toContain(
       "<p>In contrast to RNN sequence-to-sequence models [</p>",

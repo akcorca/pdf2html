@@ -10,11 +10,13 @@ import {
   extractDocument,
   extractDocumentFromBuffer,
 } from "./pdf-extract.ts";
-import { collectTextLines } from "./text-lines.ts";
-import { filterPageArtifacts } from "./page-filter.ts";
-import { renderHtml } from "./html-render.ts";
-import { linkFootnoteMarkers, movePageFootnotesToDocumentEnd } from "./footnotes.ts";
 import {
+  linkFootnoteMarkers,
+  movePageFootnotesToDocumentEnd,
+} from "./footnotes.ts";
+import { linkReferenceMarkers } from "./reference-link.ts";
+import {
+  collectTextLines,
   computePageVerticalExtents,
   estimateBodyFontSize,
   estimateLineWidth,
@@ -24,10 +26,17 @@ import {
   isStandalonePageNumber,
   normalizeSpacing,
 } from "./text-lines.ts";
-import { findRepeatedEdgeTexts, findLikelyPageNumberLines } from "./page-filter.ts";
+import {
+  filterPageArtifacts,
+  findRepeatedEdgeTexts,
+  findLikelyPageNumberLines,
+} from "./page-filter.ts";
 import { findTitleLine, scoreTitleCandidate } from "./title-detect.ts";
-import { escapeHtml } from "./html-render.ts";
-import { detectNamedSectionHeadingLevel, detectNumberedHeadingLevel } from "./heading-detect.ts";
+import { escapeHtml, renderHtml } from "./html-render.ts";
+import {
+  detectNamedSectionHeadingLevel,
+  detectNumberedHeadingLevel,
+} from "./heading-detect.ts";
 
 const MANGLED_ATTENTION_FORMULA_HTML_PATTERN =
   /<p>\s*(?:T\s+QK\s+)?Attention\( Q, K, V \)\s*=\s*softmax\(\s*√\s*\)\s*V\s*\(1\)\s*(?:d\s*k)?\s*<\/p>/u;
@@ -53,15 +62,22 @@ export async function pdfToHtml(pdfBuffer: Uint8Array): Promise<string> {
 }
 
 function renderExtractedDocumentAsHtml(extracted: ExtractedDocument): string {
-  const filteredLines = filterPageArtifacts(collectTextLines(extracted));
-  const { bodyLines, footnoteLines } = movePageFootnotesToDocumentEnd(filteredLines);
-  const linkedBodyLines = linkFootnoteMarkers(bodyLines, footnoteLines);
-  const html = renderHtml(linkedBodyLines, extracted, footnoteLines);
-  return normalizeKnownFormulaArtifactsInHtml(html);
+  const { bodyLines, footnoteLines } = movePageFootnotesToDocumentEnd(
+    filterPageArtifacts(collectTextLines(extracted)),
+  );
+  const linkedBodyLines = linkReferenceMarkers(
+    linkFootnoteMarkers(bodyLines, footnoteLines),
+  );
+  return normalizeKnownFormulaArtifactsInHtml(
+    renderHtml(linkedBodyLines, extracted, footnoteLines),
+  );
 }
 
 function normalizeKnownFormulaArtifactsInHtml(html: string): string {
-  return html.replace(MANGLED_ATTENTION_FORMULA_HTML_PATTERN, NORMALIZED_ATTENTION_FORMULA_HTML);
+  return html.replace(
+    MANGLED_ATTENTION_FORMULA_HTML_PATTERN,
+    NORMALIZED_ATTENTION_FORMULA_HTML,
+  );
 }
 
 export const pdfToHtmlInternals = {
@@ -70,6 +86,7 @@ export const pdfToHtmlInternals = {
   filterPageArtifacts,
   movePageFootnotesToDocumentEnd,
   linkFootnoteMarkers,
+  linkReferenceMarkers,
   computePageVerticalExtents,
   findRepeatedEdgeTexts,
   isNearPageEdge,

@@ -714,8 +714,8 @@ describe("convertPdfToHtml", () => {
   });
 
   it("keeps reference continuation tails attached to the correct marker in attention.pdf", () => {
-    const reference7 = html.match(/<li>\[7\][\s\S]*?<\/li>/)?.[0] ?? "";
-    const reference8 = html.match(/<li>\[8\][\s\S]*?<\/li>/)?.[0] ?? "";
+    const reference7 = html.match(/<li>Junyoung Chung[\s\S]*?<\/li>/)?.[0] ?? "";
+    const reference8 = html.match(/<li>Chris Dyer[\s\S]*?<\/li>/)?.[0] ?? "";
     expect(reference7).toContain("CoRR , abs/1412.3555, 2014.");
     expect(reference8).toContain("network grammars. In Proc. of NAACL , 2016.");
     expect(reference8).not.toContain("CoRR , abs/1412.3555, 2014.");
@@ -841,13 +841,13 @@ describe("convertPdfToHtml", () => {
       "<p>The stabilization and control of the electrical properties in solution-processed",
     );
     expect(tftHtml).toContain(
-      "low-cost, high-performance oxide semiconductor-based circuits. [4]</p>",
+      'low-cost, high-performance oxide semiconductor-based circuits. <a href="#ref-4">[4]</a></p>',
     );
   });
 
   it("keeps the full left-column abstract block before the right-column summary in tft.pdf", () => {
     const leftColumnTailText =
-      "low-cost, high-performance oxide semiconductor-based circuits. [4]</p>";
+      'low-cost, high-performance oxide semiconductor-based circuits. <a href="#ref-4">[4]</a></p>';
     expect(tftHtml).toContain(leftColumnTailText);
     expect(tftHtml).toContain("various semiconductors, sputter-deposited");
     expect(tftHtml.indexOf(leftColumnTailText)).toBeLessThan(tftHtml.indexOf("various semiconductors, sputter-deposited"));
@@ -892,7 +892,7 @@ describe("convertPdfToHtml", () => {
   it("renders reference entries as an ordered list in clean.pdf", () => {
     expect(cleanHtml).toContain("<ol>");
     expect(cleanHtml).toContain("</ol>");
-    expect(cleanHtml).toMatch(/<li>.*\[1\]/);
+    expect(cleanHtml).toMatch(/<li>Sibei Chen, Hanbing Liu/);
   });
 
   it("renders dash-prefixed instruction bullets as an unordered list in clean.pdf appendix", () => {
@@ -910,7 +910,7 @@ describe("convertPdfToHtml", () => {
   it("renders reference entries as an ordered list in covid.pdf", () => {
     expect(covidHtml).toContain("<ol>");
     expect(covidHtml).toContain("</ol>");
-    expect(covidHtml).toMatch(/<li>.*\[1\]/);
+    expect(covidHtml).toMatch(/<li>A\.C\. Spyropoulos/);
   });
 
   it("unescapes HTML entities in reference blocks for covid.pdf", () => {
@@ -997,5 +997,28 @@ describe("convertPdfToHtml", () => {
     expect(html).toContain(
       "Figure 5: Many of the attention heads exhibit behaviour that seems related to the structure of the sentence.",
     );
+  });
+
+  it("converts reference markers in tft.pdf to links", () => {
+    // The reference marker [4] in the abstract should be a link
+    expect(tftHtml).toContain('<a href="#ref-4">[4]</a>');
+    // The reference marker [6] in the body should be a link
+    expect(tftHtml).toContain('<a href="#ref-6">[6]</a>');
+
+    // The corresponding reference list items should have an id
+    const olMatch = tftHtml.match(/<ol>([\s\S]*)<\/ol>/);
+    expect(olMatch).toBeTruthy();
+    if (!olMatch) return;
+    const olContent = olMatch[1];
+    const listItems = [...olContent.matchAll(/<li([\s\S]*?)>([\s\S]*?)<\/li>/g)];
+    expect(listItems.length).toBeGreaterThan(5);
+
+    // Check for id="ref-4" in the 4th li
+    const ref4 = listItems[3];
+    expect(ref4[0]).toContain('id="ref-4"');
+
+    // Check for id="ref-6" in the 6th li
+    const ref6 = listItems[5];
+    expect(ref6[0]).toContain('id="ref-6"');
   });
 });

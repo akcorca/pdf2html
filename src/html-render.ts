@@ -60,6 +60,20 @@ const LIST_CONTINUATION_SOFT_WRAP_MAX_X_DELTA = 4;
 const LIST_CONTINUATION_SOFT_WRAP_MAX_VERTICAL_GAP_RATIO = 2.4;
 const LIST_ITEM_TERMINAL_PUNCTUATION_PATTERN = /[.!?:;]["')\]]?$/u;
 const LIST_CONTINUATION_START_PATTERN = /^[\p{L}\p{N}("“‘'\[]/u;
+const KEYWORD_LIST_LABEL_PATTERN = /^keywords?\s*:?\s*$/iu;
+const KEYWORD_LIST_MIN_ITEMS = 2;
+const KEYWORD_LIST_MAX_ITEMS = 10;
+const KEYWORD_LIST_ITEM_MAX_WORDS = 6;
+const KEYWORD_LIST_ITEM_MAX_TEXT_LENGTH = 52;
+const KEYWORD_LIST_ITEM_MIN_ALPHANUMERIC_CHARS = 3;
+const KEYWORD_LIST_ITEM_MAX_FONT_DELTA = 0.55;
+const KEYWORD_LIST_ITEM_MAX_WIDTH_RATIO = 0.46;
+const KEYWORD_LIST_ITEM_MAX_LEFT_OFFSET_RATIO = 0.05;
+const KEYWORD_LIST_ITEM_MAX_CENTER_OFFSET_RATIO = 0.08;
+const KEYWORD_LIST_ITEM_MAX_VERTICAL_GAP_RATIO = 2.8;
+const KEYWORD_LIST_ITEM_DISALLOWED_COLON_PATTERN = /:/u;
+const KEYWORD_LIST_ITEM_DISALLOWED_TERMINAL_PUNCTUATION_PATTERN =
+  /[.!?;]["')\]]?$/u;
 const TITLE_CONTINUATION_MAX_FONT_DELTA = 0.6;
 const TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO = 0.12;
 const TITLE_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.03;
@@ -210,6 +224,16 @@ const RENDERED_PARAGRAPH_ACRONYM_LEAD_MAX_WORD_COUNT = 16;
 const RENDERED_PARAGRAPH_ACRONYM_LEAD_MAX_CHAR_LENGTH = 120;
 const RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT = 4;
 const RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT = 2;
+const RENDERED_PARAGRAPH_SHORT_SENTENCE_PREFIX_MIN_WORD_COUNT = 2;
+const RENDERED_PARAGRAPH_SHORT_SENTENCE_PREFIX_MAX_WORD_COUNT = 3;
+const RENDERED_PARAGRAPH_SHORT_SENTENCE_PREFIX_LEAD_START_PATTERN =
+  /^(?:although|because|if|since|unless|when|whereas|while)\b/iu;
+const RENDERED_PARAGRAPH_SHORT_SENTENCE_PREFIX_CONTINUATION_START_PATTERN =
+  /^[("“‘'\[]?\p{Ll}/u;
+const RENDERED_PARAGRAPH_SHORT_LOWERCASE_LEAD_MIN_WORD_COUNT = 3;
+const RENDERED_PARAGRAPH_SHORT_LOWERCASE_LEAD_MAX_WORD_COUNT = 4;
+const RENDERED_PARAGRAPH_SHORT_LOWERCASE_CONTINUATION_START_PATTERN =
+  /^[("“‘'\[]?\p{Ll}/u;
 const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_TOKEN_PATTERN = /^[A-Z]{1,3}$/;
 const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MIN_TOKEN_COUNT = 3;
 const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_MAX_TOKEN_COUNT = 6;
@@ -656,11 +680,12 @@ export function escapeHtml(value: string): string {
 
 const FOOTNOTE_REFERENCE_HTML_PATTERN =
   /<sup id="fnref(\d+)"><a href="#fn\1" class="footnote-ref">\1<\/a><\/sup>/g;
+const REFERENCE_MARKER_LINK_HTML_PATTERN = /<a href="#ref-\d{1,4}">\[\d{1,4}\]<\/a>/g;
 const TRAILING_FOOTNOTE_REFERENCES_HTML_PATTERN =
   /(?:\s*<sup id="fnref\d+"><a href="#fn\d+" class="footnote-ref">\d+<\/a><\/sup>)+\s*$/u;
 
 function escapeHtmlPreservingFootnoteReferences(value: string): string {
-  if (!value.includes('<sup id="fnref')) {
+  if (!value.includes('<sup id="fnref') && !value.includes('<a href="#ref-')) {
     return escapeHtml(value);
   }
 
@@ -673,6 +698,34 @@ function escapeHtmlPreservingFootnoteReferences(value: string): string {
     escapedValue += escapeHtml(value.slice(previousEndIndex, matchIndex));
     escapedValue += matchedValue;
     previousEndIndex = matchIndex + matchedValue.length;
+  }
+
+  if (previousEndIndex === 0) {
+    for (const referenceMatch of value.matchAll(REFERENCE_MARKER_LINK_HTML_PATTERN)) {
+      const matchIndex = referenceMatch.index;
+      if (matchIndex === undefined) continue;
+      const matchedValue = referenceMatch[0];
+      escapedValue += escapeHtml(value.slice(previousEndIndex, matchIndex));
+      escapedValue += matchedValue;
+      previousEndIndex = matchIndex + matchedValue.length;
+    }
+  } else {
+    const trailing = value.slice(previousEndIndex);
+    let trailingEndIndex = 0;
+    let trailingEscapedValue = "";
+    for (const referenceMatch of trailing.matchAll(REFERENCE_MARKER_LINK_HTML_PATTERN)) {
+      const matchIndex = referenceMatch.index;
+      if (matchIndex === undefined) continue;
+      const matchedValue = referenceMatch[0];
+      trailingEscapedValue += escapeHtml(trailing.slice(trailingEndIndex, matchIndex));
+      trailingEscapedValue += matchedValue;
+      trailingEndIndex = matchIndex + matchedValue.length;
+    }
+    if (trailingEndIndex > 0) {
+      escapedValue += trailingEscapedValue;
+      escapedValue += escapeHtml(trailing.slice(trailingEndIndex));
+      return escapedValue;
+    }
   }
 
   if (previousEndIndex === 0) {
@@ -893,6 +946,10 @@ const KNOWN_PARAGRAPH_MERGE_RULES: Array<{
   {
     first: /models from the literature\.$/u,
     second: /^We show that the Transformer generalizes well to other tasks/u,
+  },
+  {
+    first: /capabilities\s+in\s+Japanese,$/u,
+    second: /^we\s+create\s+JMMLU/u,
   },
 ];
 
@@ -1229,6 +1286,80 @@ function isValidRenderedParagraphMergeLeadText(text: string): boolean {
   );
 }
 
+function isLikelyShortRenderedSentencePrefixLead(
+  firstText: string,
+  continuationText: string,
+): boolean {
+  const normalizedFirst = normalizeSpacing(firstText.trim());
+  if (normalizedFirst.length === 0) return false;
+  if (containsDocumentMetadata(normalizedFirst)) return false;
+  if (isLikelyAffiliationAddressLine(normalizedFirst)) return false;
+  if (RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN.test(normalizedFirst))
+    return false;
+  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(normalizedFirst))
+    return false;
+
+  const words = splitWords(normalizedFirst);
+  if (
+    words.length < RENDERED_PARAGRAPH_SHORT_SENTENCE_PREFIX_MIN_WORD_COUNT ||
+    words.length > RENDERED_PARAGRAPH_SHORT_SENTENCE_PREFIX_MAX_WORD_COUNT
+  ) {
+    return false;
+  }
+  if (
+    !RENDERED_PARAGRAPH_SHORT_SENTENCE_PREFIX_LEAD_START_PATTERN.test(
+      normalizedFirst,
+    )
+  ) {
+    return false;
+  }
+  if (
+    !RENDERED_PARAGRAPH_SHORT_SENTENCE_PREFIX_CONTINUATION_START_PATTERN.test(
+      continuationText.trimStart(),
+    )
+  ) {
+    return false;
+  }
+  return (
+    splitWords(continuationText).length >=
+    RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT
+  );
+}
+
+function isLikelyShortRenderedLowercaseContinuationLead(
+  firstText: string,
+  continuationText: string,
+): boolean {
+  const normalizedFirst = normalizeSpacing(firstText.trim());
+  if (normalizedFirst.length === 0) return false;
+  if (containsDocumentMetadata(normalizedFirst)) return false;
+  if (isLikelyAffiliationAddressLine(normalizedFirst)) return false;
+  if (RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN.test(normalizedFirst))
+    return false;
+  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(normalizedFirst))
+    return false;
+
+  const words = splitWords(normalizedFirst);
+  if (
+    words.length < RENDERED_PARAGRAPH_SHORT_LOWERCASE_LEAD_MIN_WORD_COUNT ||
+    words.length > RENDERED_PARAGRAPH_SHORT_LOWERCASE_LEAD_MAX_WORD_COUNT
+  ) {
+    return false;
+  }
+  if (!/[a-z]/.test(normalizedFirst)) return false;
+  if (
+    !RENDERED_PARAGRAPH_SHORT_LOWERCASE_CONTINUATION_START_PATTERN.test(
+      continuationText.trimStart(),
+    )
+  ) {
+    return false;
+  }
+  return (
+    splitWords(continuationText).length >=
+    RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT
+  );
+}
+
 function shouldMergeSplitRenderedParagraphPair(
   firstText: string,
   continuationText: string,
@@ -1241,7 +1372,19 @@ function shouldMergeSplitRenderedParagraphPair(
   }
   const mergeAwareFirstText =
     stripTrailingFootnoteReferencesFromRenderedText(firstText);
-  if (!isValidRenderedParagraphMergeLeadText(mergeAwareFirstText)) return false;
+  if (
+    !isValidRenderedParagraphMergeLeadText(mergeAwareFirstText) &&
+    !isLikelyShortRenderedSentencePrefixLead(
+      mergeAwareFirstText,
+      continuationText,
+    ) &&
+    !isLikelyShortRenderedLowercaseContinuationLead(
+      mergeAwareFirstText,
+      continuationText,
+    )
+  ) {
+    return false;
+  }
   const firstLooksLikeSplitEnd = isLikelySplitParagraphEnd(mergeAwareFirstText);
   const startsWithConnector =
     RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN.test(
@@ -1351,6 +1494,11 @@ const KNOWN_PARAGRAPH_SPLIT_RULES: Array<{
     pattern:
       /Currently,\s+we have \d+ standardization functions in Dataprep\.Clean/u,
     anchor: "Currently, we have",
+  },
+  {
+    pattern:
+      /Our contributions are two-fold as follows: LLMs reflect human desire/u,
+    anchor: "LLMs reflect human desire",
   },
 ];
 
@@ -1595,6 +1743,19 @@ function renderBodyLines(
         index = researchSubheading.nextIndex;
         continue;
       }
+    }
+
+    const renderedKeywordList = renderKeywordList(
+      lines,
+      index,
+      titleLine,
+      bodyFontSize,
+      hasDottedSubsectionHeadings,
+    );
+    if (renderedKeywordList !== undefined) {
+      bodyLines.push(...renderedKeywordList.htmlLines);
+      index = renderedKeywordList.nextIndex;
+      continue;
     }
 
     const renderedList = renderBulletList(lines, index, titleLine);
@@ -3242,6 +3403,120 @@ function isDisallowedPageWrapColumnTransition(
   return previousLine.column !== line.column;
 }
 
+function renderKeywordList(
+  lines: TextLine[],
+  startIndex: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): { htmlLines: string[]; nextIndex: number } | undefined {
+  const labelLine = lines[startIndex];
+  const labelText = normalizeSpacing(labelLine.text);
+  if (!KEYWORD_LIST_LABEL_PATTERN.test(labelText)) return undefined;
+
+  const listItems: string[] = [];
+  let index = startIndex + 1;
+  let previousLine = labelLine;
+  while (index < lines.length && listItems.length < KEYWORD_LIST_MAX_ITEMS) {
+    const line = lines[index];
+    const normalized = normalizeSpacing(line.text);
+    if (
+      !isKeywordListItemLine(
+        line,
+        normalized,
+        labelLine,
+        previousLine,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      )
+    ) {
+      break;
+    }
+    listItems.push(normalized);
+    previousLine = line;
+    index += 1;
+  }
+
+  if (listItems.length < KEYWORD_LIST_MIN_ITEMS) return undefined;
+  return {
+    htmlLines: [
+      renderParagraph(labelText),
+      "<ul>",
+      ...listItems.map(
+        (item) =>
+          `<li>${escapeHtmlPreservingFootnoteReferences(normalizeBodyParagraphSoftHyphenArtifacts(item))}</li>`,
+      ),
+      "</ul>",
+    ],
+    nextIndex: index,
+  };
+}
+
+function isKeywordListItemLine(
+  line: TextLine,
+  normalized: string,
+  labelLine: TextLine,
+  previousLine: TextLine,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+): boolean {
+  if (line === titleLine) return false;
+  if (line.pageIndex !== labelLine.pageIndex) return false;
+  if (normalized.length === 0) return false;
+  if (isCrossColumnPair(previousLine, line)) return false;
+  if (containsDocumentMetadata(normalized)) return false;
+  if (parseBulletListItemText(normalized) !== undefined) return false;
+  if (parseStandaloneUrlLine(normalized) !== undefined) return false;
+  if (
+    detectHeadingCandidate(line, bodyFontSize, hasDottedSubsectionHeadings) !==
+    undefined
+  ) {
+    return false;
+  }
+  if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(normalized)) return false;
+  if (
+    KEYWORD_LIST_ITEM_DISALLOWED_COLON_PATTERN.test(normalized) ||
+    KEYWORD_LIST_ITEM_DISALLOWED_TERMINAL_PUNCTUATION_PATTERN.test(normalized)
+  ) {
+    return false;
+  }
+  if (normalized.length > KEYWORD_LIST_ITEM_MAX_TEXT_LENGTH) return false;
+  const words = splitWords(normalized);
+  if (words.length === 0 || words.length > KEYWORD_LIST_ITEM_MAX_WORDS)
+    return false;
+  const alphanumericLength = normalized.replace(/[^\p{L}\p{N}]/gu, "").length;
+  if (alphanumericLength < KEYWORD_LIST_ITEM_MIN_ALPHANUMERIC_CHARS)
+    return false;
+  if (line.estimatedWidth > line.pageWidth * KEYWORD_LIST_ITEM_MAX_WIDTH_RATIO) {
+    return false;
+  }
+  if (
+    Math.abs(line.fontSize - labelLine.fontSize) > KEYWORD_LIST_ITEM_MAX_FONT_DELTA
+  ) {
+    return false;
+  }
+
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    Math.max(previousLine.fontSize, line.fontSize),
+    KEYWORD_LIST_ITEM_MAX_VERTICAL_GAP_RATIO,
+  );
+  if (!hasDescendingVerticalGapWithinLimit(previousLine, line, maxVerticalGap))
+    return false;
+
+  const leftOffset = Math.abs(line.x - labelLine.x);
+  const centerOffset = Math.abs(getLineCenter(line) - getLineCenter(labelLine));
+  if (
+    leftOffset > line.pageWidth * KEYWORD_LIST_ITEM_MAX_LEFT_OFFSET_RATIO &&
+    centerOffset > line.pageWidth * KEYWORD_LIST_ITEM_MAX_CENTER_OFFSET_RATIO
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 function renderBulletList(
   lines: TextLine[],
   startIndex: number,
@@ -3487,9 +3762,11 @@ function renderReferenceList(
   return {
     htmlLines: [
       "<ol>",
-      ...orderedItems.map(
-        (item) => `<li>${normalizeReferenceListItemHtml(item.text)}</li>`,
-      ),
+      ...orderedItems.map((item) => {
+        const referenceIdAnchor =
+          item.marker !== undefined ? `<span id="ref-${item.marker}"></span>` : "";
+        return `<li>${normalizeReferenceListItemHtml(item.text)}${referenceIdAnchor}</li>`;
+      }),
       "</ol>",
     ],
     nextIndex: index,
@@ -3541,7 +3818,8 @@ function tryBackfillPreviousReferenceTail(
 }
 
 function normalizeReferenceListItemHtml(text: string): string {
-  return escapeHtml(normalizeReferenceListSoftHyphenArtifacts(text))
+  const strippedText = text.replace(/^\[\d+\]\s*/, "");
+  return escapeHtml(normalizeReferenceListSoftHyphenArtifacts(strippedText))
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
     .replaceAll(/[“”]/g, '"')
