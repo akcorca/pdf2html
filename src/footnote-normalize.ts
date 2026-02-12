@@ -165,10 +165,7 @@ function isDetachedTinyMathContinuationLine(
 
 function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
-  const markerNumbers = lines.map((line) => parseLeadingNumericMarker(line.text));
-  const explicitMarkers = markerNumbers
-    .map((marker, index) => (marker === undefined ? undefined : { marker, index }))
-    .filter((value): value is { marker: number; index: number } => value !== undefined);
+  const explicitMarkers = collectExplicitNumericMarkers(lines);
   const resolvedLines = [...lines];
   let previousMarker: number | undefined;
   let nextExplicitMarkerIndex = 0;
@@ -182,18 +179,28 @@ function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
     }
     if (previousMarker === undefined) continue;
 
-    const text = normalizeSpacing(lines[index].text);
-    if (!FOOTNOTE_URL_START_PATTERN.test(text)) continue;
-
     const nextMarker = explicitMarkers[nextExplicitMarkerIndex]?.marker;
     if (nextMarker === undefined || nextMarker <= previousMarker + 1) continue;
 
-    const inferredMarker = previousMarker + 1;
-    resolvedLines[index] = { ...lines[index], text: `${inferredMarker} ${text}` };
-    previousMarker = inferredMarker;
+    const text = normalizeSpacing(lines[index].text);
+    if (!FOOTNOTE_URL_START_PATTERN.test(text)) continue;
+
+    previousMarker += 1;
+    resolvedLines[index] = { ...lines[index], text: `${previousMarker} ${text}` };
   }
 
   return resolvedLines;
+}
+
+function collectExplicitNumericMarkers(lines: TextLine[]): Array<{ marker: number; index: number }> {
+  const explicitMarkers: Array<{ marker: number; index: number }> = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const marker = parseLeadingNumericMarker(lines[index].text);
+    if (marker !== undefined) {
+      explicitMarkers.push({ marker, index });
+    }
+  }
+  return explicitMarkers;
 }
 
 export { parseLeadingNumericMarker } from "./string-utils.ts";
