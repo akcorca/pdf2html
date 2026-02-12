@@ -17,8 +17,36 @@ import { detectTable, renderTableHtml } from "./table-detect.ts";
 const INLINE_ACKNOWLEDGEMENTS_HEADING_PATTERN =
   /^(acknowledg(?:e)?ments?)(?:(?:\s*[:\-–]\s*)|\s+)(.+)$/iu;
 const INLINE_ACKNOWLEDGEMENTS_MIN_BODY_LENGTH = 8;
-const INLINE_NAMED_SECTION_HEADING_PATTERN = /^(.+?)(?:\s*[:\-–]\s*)(.+)$/u;
+const INLINE_NAMED_SECTION_HEADING_PATTERN = /^(.+?)(\s*[:\-–]\s*)(.+)$/u;
 const INLINE_NAMED_SECTION_HEADING_MIN_BODY_LENGTH = 8;
+const INLINE_GENERIC_SUBSECTION_HEADING_MIN_LENGTH = 8;
+const INLINE_GENERIC_SUBSECTION_HEADING_MAX_LENGTH = 64;
+const INLINE_GENERIC_SUBSECTION_HEADING_MIN_WORDS = 2;
+const INLINE_GENERIC_SUBSECTION_HEADING_MAX_WORDS = 10;
+const INLINE_GENERIC_SUBSECTION_HEADING_MIN_ALPHA_WORDS = 2;
+const INLINE_GENERIC_SUBSECTION_HEADING_MIN_MEANINGFUL_WORDS = 2;
+const INLINE_GENERIC_SUBSECTION_HEADING_MIN_TITLE_CASE_RATIO = 0.65;
+const INLINE_GENERIC_SUBSECTION_HEADING_DISALLOWED_PUNCTUATION_PATTERN =
+  /[,;!?()[\]{}<>]/u;
+const INLINE_GENERIC_SUBSECTION_HEADING_TERMINAL_PUNCTUATION_PATTERN =
+  /[.!?]["')\]]?$/u;
+const INLINE_GENERIC_SUBSECTION_HEADING_CONNECTOR_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "as",
+  "at",
+  "by",
+  "for",
+  "from",
+  "in",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "with",
+]);
 const AUTHOR_BLOCK_END_PATTERN = /^(abstract|introduction)/iu;
 const AUTHOR_BLOCK_MAX_LINES = 20;
 const AUTHOR_BLOCK_MAX_FONT_DELTA = 2.5;
@@ -387,13 +415,107 @@ interface AuthorRow {
   cells: Array<{ x: number; text: string }>;
 }
 
+function reorderInterleavedTitlePageAffiliationLines(
+  lines: TextLine[],
+  titleLine: TextLine | undefined,
+): TextLine[] {
+  if (!titleLine) return lines;
+
+  const titlePageIndex = titleLine.pageIndex;
+  const pageStartIndex = lines.findIndex(
+    (line) => line.pageIndex === titlePageIndex,
+  );
+  if (pageStartIndex < 0) return lines;
+
+  let pageEndIndex = pageStartIndex;
+  while (
+    pageEndIndex < lines.length &&
+    lines[pageEndIndex].pageIndex === titlePageIndex
+  ) {
+    pageEndIndex += 1;
+  }
+
+  let firstRightBodyIndex: number | undefined;
+  for (let index = pageStartIndex; index < pageEndIndex; index += 1) {
+    const line = lines[index];
+    if (line.column !== "right") continue;
+    const normalized = normalizeSpacing(line.text);
+    if (!isLikelyTitlePageRightBodyLine(line, normalized)) continue;
+    firstRightBodyIndex = index;
+    break;
+  }
+  if (firstRightBodyIndex === undefined) return lines;
+
+  const affiliationIndexes: number[] = [];
+  for (let index = firstRightBodyIndex + 1; index < pageEndIndex; index += 1) {
+    const line = lines[index];
+    const normalized = normalizeSpacing(line.text);
+    if (!isLikelyAffiliationTopMatterLine(line, normalized)) continue;
+    affiliationIndexes.push(index);
+  }
+  if (affiliationIndexes.length === 0) return lines;
+
+  const reordered = [...lines];
+  const movedLines = affiliationIndexes.map((index) => reordered[index]);
+  for (let index = affiliationIndexes.length - 1; index >= 0; index -= 1) {
+    reordered.splice(affiliationIndexes[index], 1);
+  }
+  reordered.splice(firstRightBodyIndex, 0, ...movedLines);
+  return reordered;
+}
+
+function isLikelyAffiliationTopMatterLine(
+  line: TextLine,
+  normalized: string,
+): boolean {
+  if (normalized.length === 0) return false;
+  if (/^e-?mail\s*:/iu.test(normalized)) return true;
+  return (
+    isLikelyAffiliationEntryStart(line, normalized) ||
+    isLikelyAffiliationAddressLine(normalized)
+  );
+}
+
+function isLikelyTitlePageRightBodyLine(
+  line: TextLine,
+  normalized: string,
+): boolean {
+  if (normalized.length < 24) return false;
+  if (splitWords(normalized).length < 3) return false;
+  if (!/[A-Za-z]/.test(normalized)) return false;
+  if (containsDocumentMetadata(normalized)) return false;
+  if (parseStandaloneUrlLine(normalized) !== undefined) return false;
+  if (isLikelyAffiliationTopMatterLine(line, normalized)) return false;
+  if (
+    detectNumberedHeadingLevel(normalized) !== undefined ||
+    detectNamedSectionHeadingLevel(normalized) !== undefined
+  ) {
+    return false;
+  }
+  if (
+    /^[A-Z0-9][A-Z0-9\s\-–:;/()&]{0,64}$/u.test(normalized) &&
+    splitWords(normalized).length <= 4
+  ) {
+    return false;
+  }
+  return line.fontSize <= 11;
+}
+
 export function renderHtml(
   bodyLines: TextLine[],
   document: ExtractedDocument,
   footnoteLines: TextLine[],
 ): string {
   const titleLine = findTitleLine(bodyLines);
-  const renderedBodyLines = renderBodyLines(bodyLines, titleLine, document);
+  const reorderedBodyLines = reorderInterleavedTitlePageAffiliationLines(
+    bodyLines,
+    titleLine,
+  );
+  const renderedBodyLines = renderBodyLines(
+    reorderedBodyLines,
+    titleLine,
+    document,
+  );
   const renderedFootnotes =
     footnoteLines.length > 0
       ? renderFootnoteLines(footnoteLines)
@@ -3102,6 +3224,7 @@ function parseInlineNamedSectionHeading(
   if (!match) return undefined;
 
   const headingText = normalizeSpacing(match[1]);
+  const separator = match[2] ?? "";
   if (
     headingText.length === 0 ||
     isStandaloneAcknowledgementsHeading(headingText)
@@ -3109,9 +3232,8 @@ function parseInlineNamedSectionHeading(
     return undefined;
   }
   const namedHeading = detectNamedSectionHeadingLevel(headingText);
-  if (namedHeading === undefined) return undefined;
 
-  const bodyText = match[2].trim();
+  const bodyText = match[3].trim();
   if (
     !hasInlineHeadingBodyText(
       bodyText,
@@ -3120,7 +3242,16 @@ function parseInlineNamedSectionHeading(
   ) {
     return undefined;
   }
-  return { heading: headingText, body: bodyText, level: namedHeading.level };
+  if (namedHeading !== undefined) {
+    return { heading: headingText, body: bodyText, level: namedHeading.level };
+  }
+  if (!separator.includes(":")) return undefined;
+
+  const genericSubsectionLevel = detectInlineGenericSubsectionHeadingLevel(
+    headingText,
+  );
+  if (genericSubsectionLevel === undefined) return undefined;
+  return { heading: headingText, body: bodyText, level: genericSubsectionLevel };
 }
 
 function parseInlineHeadingParagraph(
@@ -3129,6 +3260,94 @@ function parseInlineHeadingParagraph(
   return (
     parseInlineAcknowledgementsHeading(text) ??
     parseInlineNamedSectionHeading(text)
+  );
+}
+
+function detectInlineGenericSubsectionHeadingLevel(
+  headingText: string,
+): number | undefined {
+  const normalized = normalizeSpacing(headingText);
+  if (!isInlineGenericSubsectionHeadingText(normalized)) return undefined;
+  const words = splitWords(normalized);
+  if (!hasInlineGenericSubsectionHeadingWordCount(words)) return undefined;
+  if (!hasInlineGenericSubsectionHeadingWordCasing(words)) return undefined;
+
+  const stats = countWordShapeStats(words);
+  if (!hasInlineGenericSubsectionHeadingWordStats(stats)) return undefined;
+
+  return 3;
+}
+
+function isInlineGenericSubsectionHeadingText(normalized: string): boolean {
+  if (
+    normalized.length < INLINE_GENERIC_SUBSECTION_HEADING_MIN_LENGTH ||
+    normalized.length > INLINE_GENERIC_SUBSECTION_HEADING_MAX_LENGTH
+  ) {
+    return false;
+  }
+  if (containsDocumentMetadata(normalized)) return false;
+  if (/\d/.test(normalized)) return false;
+  if (
+    INLINE_GENERIC_SUBSECTION_HEADING_DISALLOWED_PUNCTUATION_PATTERN.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+  if (
+    INLINE_GENERIC_SUBSECTION_HEADING_TERMINAL_PUNCTUATION_PATTERN.test(
+      normalized,
+    )
+  ) {
+    return false;
+  }
+  return /^\p{Lu}/u.test(normalized);
+}
+
+function hasInlineGenericSubsectionHeadingWordCount(words: string[]): boolean {
+  return (
+    words.length >= INLINE_GENERIC_SUBSECTION_HEADING_MIN_WORDS &&
+    words.length <= INLINE_GENERIC_SUBSECTION_HEADING_MAX_WORDS
+  );
+}
+
+function hasInlineGenericSubsectionHeadingWordCasing(words: string[]): boolean {
+  for (const rawWord of words) {
+    const word = stripWordBoundaryPunctuation(rawWord);
+    const alphaOnly = word.replace(/[^\p{L}]/gu, "");
+    if (alphaOnly.length === 0) continue;
+    if (/^\p{Lu}/u.test(word)) continue;
+    if (
+      INLINE_GENERIC_SUBSECTION_HEADING_CONNECTOR_WORDS.has(
+        alphaOnly.toLowerCase(),
+      )
+    ) {
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
+function hasInlineGenericSubsectionHeadingWordStats(stats: {
+  alphaWordCount: number;
+  titleCaseWordCount: number;
+  meaningfulWordCount: number;
+}): boolean {
+  if (
+    stats.alphaWordCount < INLINE_GENERIC_SUBSECTION_HEADING_MIN_ALPHA_WORDS
+  ) {
+    return false;
+  }
+  if (
+    stats.meaningfulWordCount <
+    INLINE_GENERIC_SUBSECTION_HEADING_MIN_MEANINGFUL_WORDS
+  ) {
+    return false;
+  }
+  return (
+    stats.titleCaseWordCount / stats.alphaWordCount >=
+    INLINE_GENERIC_SUBSECTION_HEADING_MIN_TITLE_CASE_RATIO
   );
 }
 

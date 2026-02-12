@@ -113,4 +113,27 @@ describe("tft-reading-order", () => {
       "<p>Device and Film Characterization :",
     );
   });
+
+  it("promotes inline experimental subsection labels to h3 headings", () => {
+    expect(tftHtml).toContain(
+      "<h3>Material Preparation and Device Fabrication</h3>",
+    );
+    expect(tftHtml).toContain("<p>A 0.2 m mixture of indium nitrate hydrate");
+    expect(tftHtml).not.toContain(
+      "<p>Material Preparation and Device Fabrication :",
+    );
+  });
+
+  it("does not interleave author affiliations with main body text", () => {
+    // Author affiliations in the left column should not be interleaved with
+    // the main body text from the right column.
+    expect(tftHtml).not.toMatch(
+      /84 Heukseok-ro, Dongjak-Gu, Seoul 06974, Republic of Korea<\/p>\s*<p>various semiconductors, sputter-deposited/u,
+    );
+
+    // The main body text should start after all affiliation blocks.
+    expect(tftHtml).toMatch(
+      /45 Yongso-ro, Namgu Pusan 48513, Republic of Korea<\/p>\s*<p>various semiconductors, sputter-deposited/u,
+    );
+  });
 });
