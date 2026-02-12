@@ -3265,6 +3265,26 @@ function isBulletListContinuation(
 }
 
 const REFERENCE_LIST_MIN_ITEMS = 3;
+const MERGED_REFERENCE_ITEM_SEPARATOR_PATTERN = /\s+(?=\[\d{1,3}\])/u;
+
+function splitMergedReferenceText(text: string): string[] {
+  const normalized = normalizeSpacing(text);
+  if (!normalized.startsWith("[")) return [text];
+
+  const parts = normalized.split(MERGED_REFERENCE_ITEM_SEPARATOR_PATTERN);
+  return parts.length > 1 ? parts : [text];
+}
+
+function toReferenceListItems(
+  text: string,
+  sourceOrderStart: number,
+): ReferenceListItem[] {
+  return splitMergedReferenceText(text).map((itemText, index) => ({
+    text: itemText,
+    marker: parseReferenceListMarker(itemText),
+    sourceOrder: sourceOrderStart + index,
+  }));
+}
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: reference list parsing handles orphan fragments between entries.
 function renderReferenceList(
@@ -3341,11 +3361,7 @@ function renderReferenceList(
     }
 
     const itemText = normalizeSpacing(parts.join(" "));
-    items.push({
-      text: itemText,
-      marker: parseReferenceListMarker(itemText),
-      sourceOrder: items.length,
-    });
+    items.push(...toReferenceListItems(itemText, items.length));
     previousStartLine = startLine;
     index = nextIndex;
   }

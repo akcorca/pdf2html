@@ -31,6 +31,15 @@ describe("attention abstract same-row merge", () => {
     );
   });
 
+  it("merges the two paragraphs of the abstract into one", () => {
+    expect(attentionHtml).toContain(
+      "a small fraction of the training costs of the best models from the literature. We show that the Transformer generalizes well to other tasks by applying it successfully to English constituency parsing both with large and limited training data.",
+    );
+    expect(attentionHtml).not.toContain(
+      "a small fraction of the training costs of the best models from the literature.</p>",
+    );
+  });
+
   it("keeps body paragraph flow when inline formula indices are detached into tiny lines", () => {
     expect(attentionHtml).toContain(
       "This inherently sequential nature precludes parallelization within training examples, which becomes critical at longer",
@@ -102,6 +111,15 @@ describe("attention abstract same-row merge", () => {
     );
     expect(attentionHtml).not.toContain(
       "<p>37 ], the Transformer outperforms the Berkeley-</p>",
+    );
+  });
+
+  it("keeps paragraph flow when a table block is interposed between wrapped sentence fragments", () => {
+    expect(attentionHtml).toContain(
+      "measuring the change in performance on English-to-German translation on the development set, newstest2013.",
+    );
+    expect(attentionHtml).not.toMatch(
+      /translation on the<\/p>\s*<table>[\s\S]*?<\/table>\s*<p>development set, newstest2013\./u,
     );
   });
 

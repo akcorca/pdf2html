@@ -153,4 +153,29 @@ describe("tft-reading-order", () => {
       "Department of Electrical and Computer Engineering",
     );
   });
+
+  it("splits merged reference items into distinct li tags", () => {
+    // In tft.pdf, the line starting with "[2] a) M. G. Kim..." also contains "[13] a) D. Q. Zhang...".
+    // This indicates that multiple references were merged into one line.
+    // The ideal output should have separate `<li>` tags for `[2]` and `[13]`.
+    const olMatch = /<ol>([\s\S]*)<\/ol>/.exec(tftHtml);
+    expect(olMatch).toBeDefined();
+    if (!olMatch) {
+      throw new Error("Expected ordered reference list in generated HTML");
+    }
+    const olContent = olMatch[1];
+    const listItems = [...olContent.matchAll(/<li>([\s\S]*?)<\/li>/g)];
+
+    const mergedItem = listItems.find(([_, content]) =>
+      content.includes("[2]") && content.includes("[13]")
+    );
+
+    expect(mergedItem, "References [2] and [13] should not be in the same <li> tag").toBeUndefined();
+
+    const ref2Item = listItems.find(([_, content]) => content.trim().startsWith("[2]"));
+    const ref13Item = listItems.find(([_, content]) => content.trim().startsWith("[13]"));
+
+    expect(ref2Item, "Reference [2] should exist in its own <li> tag").toBeDefined();
+    expect(ref13Item, "Reference [13] should exist in its own <li> tag").toBeDefined();
+  });
 });
