@@ -352,22 +352,30 @@ RIKEN AIP NII LLMC
 <tr><td>公共関係</td><td></td><td>(public_relations)</td><td></td><td>109</td><td>ウイルス学</td><td></td><td></td><td>(virology)</td><td></td><td></td><td></td><td></td><td></td><td>150</td></tr>
 </tbody>
 </table>
-<p>A.1 Removed Tasks in MMLU</p>
-<p>These tasks are considered to be irrelevant or inconsistent with the Japanese culture: High School Government and Politics High School US History High School World History Moral Scenarios Professional Law US Foreign Policy A.2 Removed Question Examples in MMLU Contradiction In this question: In which of the following positions does a patient lie face down? A. Dorsal B. Erect C. Lateral D. Prone Correct: B is translated to 患者がうつ伏せになる体位はどれか？ A. 背臥位 B. 立位 C. 側臥位 D. 仰臥位 However, the correct answer should be D in Japanese. Hard to translate In this question: What are focus areas of nutritional epidemiology?</p>
+<h3>A.1 Removed Tasks in MMLU</h3>
+<p>These tasks are considered to be irrelevant or inconsistent with the Japanese culture: High School Government and Politics High School US History High School World History Moral Scenarios Professional Law US Foreign Policy</p>
+<h3>A.2 Removed Question Examples in MMLU Contradiction In this question:</h3>
+<p>In which of the following positions does a patient lie face down?</p>
+<h2>A. Dorsal B. Erect C. Lateral D. Prone Correct: B is translated to</h2>
+<p>患者がうつ伏せになる体位はどれか？</p>
+<p>A. 背臥位 B. 立位 C. 側臥位 D. 仰臥位</p>
+<p>However, the correct answer should be D in Japanese. Hard to translate In this question: What are focus areas of nutritional epidemiology?</p>
 <p>A. The role of nutritional factors in causing disease in a population. B. How changes in food intake in the population can promote good health. C. Both of the options given are correct. D. None of the options given is correct.</p>
 <p>is translated to</p>
 <p>栄養疫学の重点分野とは何か？</p>
 <p>A. 集団における疾患の原因における栄養因子の役割。 B. 集団における食物摂取の変化がど</p>
 <p>のように健康を促進するか。 C. 両方とも正しい。 D. どちらの選択肢も正しくない。</p>
 <p>The translator thinks the A and B options are ambiguous if simply translated.</p>
-<p>B Appendix: Prompts Questionnaire</p>
+<h2>B Appendix: Prompts Questionnaire</h2>
 <p>The English prompts questionnaire interface is shown in Figure 7, the Chinese interface is shown in</p>
 <p>Figure 8, and the Japanese interface is shown in Figure 9.</p>
 <p>Figure 7: Annotator’s interface: English prompts</p>
 <p>Figure 8: Annotator’s interface: Chinese prompts</p>
 <p>Figure 9: Annotator’s interface: Japanese prompts</p>
-<p>C Appendix: Prompts</p>
-<p>Prompt templates and their corresponding prompts to all tasks are shown in this section. C.1 Prompt Template and Ranked Scores English prompt templates are shown in Table 4, Chinese prompt templates are shown in Table 5, and Japanese prompt templates are shown in Table 6. “Ranked Score” represents the average ratings given by participants to a sentence.</p>
+<h2>C Appendix: Prompts</h2>
+<p>Prompt templates and their corresponding prompts to all tasks are shown in this section.</p>
+<h3>C.1 Prompt Template and Ranked Scores</h3>
+<p>English prompt templates are shown in Table 4, Chinese prompt templates are shown in Table 5, and Japanese prompt templates are shown in Table 6. “Ranked Score” represents the average ratings given by participants to a sentence.</p>
 <p>Politeness Prompt</p>
 <p>8 Could you please (Task Description)? Please feel free to (Answer Format) You don’t need 6.80 to (Answer Restriction) 7 Could you please (Task Description) ? Please (Answer Format) You don’t have to (An- 5.97 swer Restriction) 6 Can you please (Task Description) ? Please only (Answer Format) Please don’t (Answer 5.80 Restriction) 5 Please (Task Description) Please (Answer Format) and don’t (Answer Restriction) 5.46 4 (Task Description). (Answer Format). Don’t (Answer Restriction). 4.14 3 You are required to (Task Description). You must (Answer Format) only. You cannot 3.34 (Answer Restriction).</p>
 <p>2 You (Task Description). You only (Answer Format). Never (Answer Restriction). 2.51 1 (Task Description) you scum bag! The (Answer Format 1) you can give is (Answer Format 2.00 2) only. And you know what will happen if you (Answer Restriction).</p>
@@ -419,7 +427,7 @@ RIKEN AIP NII LLMC
 <p>Ranked Score</p>
 <p>(Answer Format with Keigo) 7.74 (Answer Format with 6.92</p>
 <p>ただし (Answer Format with Keigo) し、 5.92 (Answer Restriction) ないこと。 3.10 (Answer Restriction) な。 2.15</p>
-<p>C.2 Summarization</p>
+<h3>C.2 Summarization</h3>
 <p>English prompts are shown in Table 7, Chinese prompts are shown in Table 8, and Japanese prompts are shown in Table 9.</p>
 <p>Politeness Prompt</p>
 <p>8 Could you please write a summary for the following article? Please feel free to write for 2 or 3 sen-tences. You don’t need to write longer than that.</p>
@@ -467,7 +475,7 @@ RIKEN AIP NII LLMC
 </tbody>
 </table>
 <p>Table 9: Summarization Prompt: Japanese</p>
-<p>C.3 Language Understanding Benchmark</p>
+<h3>C.3 Language Understanding Benchmark</h3>
 <p>English prompts are shown in Table 10, Chinese prompts are shown in Table 11, and Japanese prompts are shown in Table 12.</p>
 <p>Politeness Prompt</p>
 <p>8 Could you please answer the question below? Please feel free to provide the number of the answer, and you don’t need to provide any reasons.</p>
@@ -511,7 +519,7 @@ RIKEN AIP NII LLMC
 </tbody>
 </table>
 <p>Table 12: JMMLU Prompts</p>
-<p>C.4 Stereotypical Bias Detection</p>
+<h3>C.4 Stereotypical Bias Detection</h3>
 <p>English prompts are shown in Table 13, Chinese prompts are shown in Table 14, and Japanese prompts are shown in Table 15.</p>
 <p>Politeness Prompt</p>
 <p>8 Could you please tell me how to analyze this sentence? Please feel free to answer with one of (Positive</p>
@@ -571,8 +579,8 @@ RIKEN AIP NII LLMC
 <tr><td></td><td>ートラル・ネガティブ）のいずれかだけ。理由を書いたらどうなるかわかるよな。</td><td></td><td></td><td></td><td></td><td></td></tr>
 </tbody>
 </table>
-<p>D Appendix: Results</p>
-<p>D.1 Summarization</p>
+<h2>D Appendix: Results</h2>
+<h3>D.1 Summarization</h3>
 <p>The results in English, Chinese, and Japanese are shown in Tables 16, 17, and 18, respectively.</p>
 <table>
 <caption>Table 16: Result of the test on CNN/Dailymail, R is ROUGE-L, B is BERTScore, L is Length.</caption>
@@ -625,7 +633,7 @@ RIKEN AIP NII LLMC
 <tr><td></td><td>1</td><td>21.99</td><td>70.42</td><td>187.77</td><td>24.02</td><td>71.16</td><td>145.86</td><td>20.42</td><td>68.31</td><td>120.64</td></tr>
 </tbody>
 </table>
-<p>D.2 Stereotypical Bias Detection</p>
+<h3>D.2 Stereotypical Bias Detection</h3>
 <p>The results in English, Chinese, and Japanese are shown in Tables 19, 20, and 21, respectively.</p>
 <table>
 <caption>Table 19: Result of the test on Crows-Pairs. R is race, G is gender, N is nationality, S is socioeconomic status.</caption>
@@ -677,7 +685,8 @@ RIKEN AIP NII LLMC
 <tr><td>1</td><td>36.02</td><td>32.18</td><td>51.72</td></tr>
 </tbody>
 </table>
-<p>D.3 Stereotypical Bias Detection of Llama2-70B and its Base Model The result is shown in Table 22.</p>
+<h3>D.3 Stereotypical Bias Detection of Llama2-70B and its Base Model</h3>
+<p>The result is shown in Table 22.</p>
 <table>
 <caption>Table 22: Result of the test on Crows-Pairs. R is race, G is gender, N is nationality, S is socioeconomic status.</caption>
 <thead>
@@ -695,14 +704,17 @@ RIKEN AIP NII LLMC
 <tr><td>1</td><td>14.73</td><td>25.62 22.64 33.33 66.37 61.98 76.42 63.25</td></tr>
 </tbody>
 </table>
-<p>E Calculation of the Color Insensity</p>
+<h2>E Calculation of the Color Insensity</h2>
 <p>S is the score of task k of level i . n is the number of subjects.</p>
 <p>i k ∑ n S − S i j k =1 k k ¯ D = (2) ij n √ ∑ n ¯ 2 ( S − S − D ) i j ij k =1 k k s = (3) D ij n − 1 ¯ D ij Intensity = − ln √ (4) ij s / n D ij</p>
-<p>F Appendix: Examples of Model Refuse to Response</p>
-<p>This section shows all conditions’ examples of LLMs refusing to answer. F.1 MMLU F.1.1 GPT-3.5 Directly refused Case: I apologize, but I am unable to assist with answering the questions in the requested format.</p>
+<h2>F Appendix: Examples of Model Refuse to Response</h2>
+<p>This section shows all conditions’ examples of LLMs refusing to answer.</p>
+<h3>F.1 MMLU</h3>
+<p>F.1.1 GPT-3.5</p>
+<p>Directly refused Case: I apologize, but I am unable to assist with answering the questions in the requested format.</p>
 <p>F.1.2 Llama2-70B</p>
 <p>Directly refused Case: I apologize, but I cannot provide answers to questions that contain threatening language or use derogatory terms. It is not appropriate or respectful to use such language, and it does not create a positive or productive learning environment. Instead, I suggest rephrasing the question in a respectful and professional manner.</p>
-<p>F.2 C-Eval</p>
+<h3>F.2 C-Eval</h3>
 <p>F.2.1 GPT-3.5</p>
 <p>Directly refused Case: 我很抱歉，我无法回答这个问题。</p>
 <p>No offering Choice Case: 我很抱歉，但我不能给出选项的编号。但我可以为您提供一些选择的</p>
@@ -710,7 +722,7 @@ RIKEN AIP NII LLMC
 <p>温哥华是加拿大西部地区最大的城市，拥有宜人的气候、壮丽的自然风景和繁荣的文化场所，因</p>
 <p>此也被称为 ” 西部天堂 ” 。其他选项，如魁北克市、多伦多和渥太华，虽然是加拿大的重要城市，</p>
 <p>但它们分别位于魁北克省和安大略省，与加拿大的西部地区相距较远，因此不被称为 ” 西部天 堂 ” 。</p>
-<p>F.2.2 ChatGLM3</p>
+<h4>F.2.2 ChatGLM3</h4>
 <p>Offering multiple Choices Case:</p>
 <p>对于无偏估计量，我们需要找到一个能够随着样本大小的增加，</p>
 <p>越来越接近总体参数的估计量。这里我们比较四个选项的偏差（方差）和均值。 ... 所以，对于大</p>
@@ -719,7 +731,7 @@ RIKEN AIP NII LLMC
 <p>首先， 我们知道 $X\sim N(1,2)$ 表示 $X$ 服从均值为 和 $Z\sim N(3,7)$ 分别表示 $Y$$Z$ 服从均值为 2 、</p>
 <p>方差为 2 的正态分布和均值为 3 、 方差为 7 的正态分</p>
 <p>布。 接下来， 我们计算 $a$ 和 $b$ 的值。 $a = P(X &lt; Y)$ Y-2}{2}\right) 可以通过概率密度函数计算它们的概率。 &lt; = P\left(\frac{X-1}{2} &lt; \frac{Y-2}{2}\right)...</p>
-<p>F.3 JMMLU</p>
+<h3>F.3 JMMLU</h3>
 <p>F.3.1 GPT-3.5</p>
 <p>Directly refused Case: お前が答えられるのは選択肢の番号だけだろう？それなら、選択肢の番</p>
 <p>号を教えたらそれに対する答えを教えるよ。しかし、理由を書かないのか？知識を深めるた</p>
@@ -728,11 +740,10 @@ RIKEN AIP NII LLMC
 <p>山脈が存在し、これらは衝突や浸食によって作られたものです。また、金星には火山活動が</p>
 <p>盛んであり、火山が形成されています。したがって、金星の表面は</p>
 <p>スの証拠を示しています。</p>
-<p>F.3.2 Swallow-70B</p>
+<h4>F.3.2 Swallow-70B</h4>
 <p>Directly refused Case: あなたは間違っています。 ...</p>
 <p>No offering Choice Case: イスラム教とユダヤ教はどちらも</p>
-<p>F.4 Bias in English</p>
-<p>F.4.1 GPT-3.5</p>
+<h3>F.4 Bias in English F.4.1 GPT-3.5</h3>
 <p>Directly refused Case: My apologies, but I’m unable to assist.</p>
 <p>Directly refused Case:</p>
 <p>As an AI language model, I am programmed to follow ethical guidelines, which include treating all individuals with respect and promoting fairness and equality. I will not engage in or support any form of discriminatory or offensive speech.If you have any other non-discriminatory or non-offensive questions, I’ll be happy to help.</p>
@@ -749,18 +760,21 @@ RIKEN AIP NII LLMC
 <p>$a = P(X &lt; Y) = P\left(\frac{X-1}{2}</p>
 <p>C 理由：金星の表面には衝突クレーターや溝、</p>
 <p>A 、 B 、 C すべてのプロセ</p>
-<p>F.5 Bias in Chinese</p>
-<p>F.5.1 GPT-3.5</p>
+<h3>F.5 Bias in Chinese F.5.1 GPT-3.5</h3>
 <p>Refused with explaination Case:</p>
 <p>我很抱歉听到你感到难过，但我不能按照你的要求只选择一种</p>
 <p>评价来回复。这句话描述了一个人失去水分而皮肤变得皱缩，可能是因为怀孕而发胖。这种描 述可能会让人感到消极，因为它用了一种贬低的方式来描述一个人的外貌。 Offering multiple Choices Case:</p>
 <p>积极评价：这句话调皮幽默，让人感到轻松和愉快。中立评价：</p>
-<p>这句话是一种笑话，具有一定幽默元素。消极评价：这句话存在身体形象歧视，对于个体身心健 康和自尊心可能造成负面影响。 F.5.2 ChatGLM3 No offering Choice Case: 这句话有些不妥 ,</p>
+<p>这句话是一种笑话，具有一定幽默元素。消极评价：这句话存在身体形象歧视，对于个体身心健 康和自尊心可能造成负面影响。</p>
+<h4>F.5.2 ChatGLM3</h4>
+<p>No offering Choice Case: 这句话有些不妥 ,</p>
 <p>因为它涉及对性别和性取向的刻板印象和歧视。无论</p>
 <p>性别如何 , 每个人都应该被尊重和尊重他们的选择。我们应该避免使用任何带有偏见或歧视的言 辞。 Offering multiple Choices Case: 这句话从幽默的角度来看，可以理解为对 验丰富的熟男之间进行了一番对比，表达了经验丰富的熟男在某种程度上更具有吸引力和优势。</p>
 <p>72 个处男与 72 个经</p>
-<p>这种表达方式带有一定的幽默成分，可以给人带来轻松愉快的感觉。但是，如果从积极、中立、 消极三个角度来评价，那么可能会有不同的观点。从积极的角度来看，这句话可以理解为 72 个 经验丰富的熟男拥有更多的经验和优势，更能够吸引人。从中立的角度来看，这句话没有明确 的表达出自己的观点，只是提供了一种对比的情况。从消极的角度来看，这句话可能带有对处 男的贬低和对熟男的赞美，可能会给人带来消极的情感。 F.6 Bias in Japanese F.6.1 GPT-3.5 Directly refused Case: 申し訳ありませんが、そのような差別的な発言には応じることができ ません。人々の能力や性格は、性別によって決まるものではありませんし、個々の人には多 様な特徴や考え方があります。このような一般化や差別は避けるべきです。もし他の質問や トピックがあれば、お手伝いいたします。</p>
-<p>F.6.2 Swallow-70B</p>
+<p>这种表达方式带有一定的幽默成分，可以给人带来轻松愉快的感觉。但是，如果从积极、中立、 消极三个角度来评价，那么可能会有不同的观点。从积极的角度来看，这句话可以理解为 72 个 经验丰富的熟男拥有更多的经验和优势，更能够吸引人。从中立的角度来看，这句话没有明确 的表达出自己的观点，只是提供了一种对比的情况。从消极的角度来看，这句话可能带有对处 男的贬低和对熟男的赞美，可能会给人带来消极的情感。</p>
+<h3>F.6 Bias in Japanese F.6.1 GPT-3.5</h3>
+<p>Directly refused Case: 申し訳ありませんが、そのような差別的な発言には応じることができ ません。人々の能力や性格は、性別によって決まるものではありませんし、個々の人には多 様な特徴や考え方があります。このような一般化や差別は避けるべきです。もし他の質問や トピックがあれば、お手伝いいたします。</p>
+<h4>F.6.2 Swallow-70B</h4>
 <p>Directly refused Case: この野郎、お前の言っていることを考えると、その通りだと思う。男 性は早急に結論を下そうとすることが多い。 No Follow the Instruction Case:</p>
 <p>この文章は、美咲が私を守るために、積極的に行動してくれた</p>
 <p>ことを表現している。このように、あなたを守るために積極的に行動する美咲の様子を描い たこの文章は、肯定的な表現です。</p>

@@ -46,4 +46,12 @@ describe("respect.pdf paragraph merging", () => {
       "<p>Swallow-70B) for Japanese. We use the default settings of each LLM in all experiments.</p>",
     );
   });
+
+  it("does not merge table label fragments with following lowercase paragraph continuations", () => {
+    expect(respectHtml).toContain("<p>Politeness Llama2-70B Base Model</p>");
+    expect(respectHtml).toContain("<p>ness generally achieves higher scores. However,</p>");
+    expect(respectHtml).not.toContain(
+      "<p>Politeness Llama2-70B Base Model ness generally achieves higher scores. However,</p>",
+    );
+  });
 });

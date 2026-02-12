@@ -212,4 +212,16 @@ describe("covid numbered heading order", () => {
     );
     expect(covidHtml).not.toContain("<p>org/10.1016/j.thromres.2021.03.006.</p>");
   });
+
+  it("keeps discussion paragraph continuity when a table and figure caption are interposed", () => {
+    expect(covidHtml).toContain(
+      "with estimated rates being substantially higher than those of previous years.",
+    );
+    expect(covidHtml).toContain(
+      "<p>Fig. 1. Incidence rates of thromboembolic events, by the type of thromboembolic event and COVID-19 status. TE; thrombo-embolic events.</p>",
+    );
+    expect(covidHtml).not.toMatch(
+      /with estimated rates being<\/p>\s*<table>[\s\S]*?<\/table>\s*<p>Fig\. 1\.[\s\S]*?<\/p>\s*<p>substantially higher than those of previous years\./u,
+    );
+  });
 });

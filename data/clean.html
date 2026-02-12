@@ -95,8 +95,7 @@ squeeze ()
 <li>[7] Siqiao Xue, Caigao Jiang, Wenhui Shi, Fangyin Cheng, Keting Chen, Hongjun Yang, Zhiping Zhang, Jianshan He, Hongyang Zhang, Ganglin Wei, et al . 2023. Db-gpt: Empowering database interactions with private large language models. arXiv preprint arXiv:2312.17449 (2023).</li>
 <li>[8] Shuo Zhang, Zezhou Huang, and Eugene Wu. 2024. Data Cleaning Using Large Language Models. CoRR abs/2410.15547 (2024). https://doi.org/10.48550/ARXIV. 2410.15547 arXiv:2410.15547</li>
 </ol>
-<p>A PROMPTS OF COMPONENT IN</p>
-<p>CLEANAGENT</p>
+<h2>A PROMPTS OF COMPONENT IN CLEANAGENT</h2>
 <p>System Message of Chat Manager</p>
 <p>Use dataprep library to clean the table {path}. Please follow the three steps: (1) Use column annotator to annotate the type of each column within the five types: {candi-date_column_types}.</p>
 <p>(2) Pick up corresponding clean functions and write code to clean the column.</p>
@@ -114,7 +113,8 @@ squeeze ()
 <p>Please only output the code.</p>
 <p>System Message of Python Code Executor</p>
 <p>You are a Python code executor that executes the code written by the engineer and reports the result.</p>
-<p>B DETAILED EXPERIMENT SETTINGS B.2 Detailed GPT Settings B.1 Prompt of GPT-4o Baseline</p>
+<h2>B DETAILED EXPERIMENT SETTINGS B.2 Detailed GPT Settings</h2>
+<h3>B.1 Prompt of GPT-4o Baseline</h3>
 <h2>System Message of Chat Manager</h2>
 <p>For CleanAgent , we use GPT-4o with a temperature of 0, a timeout of 60 seconds, and a cache seed of 42. For Cocoon [ 8 ], we follow the</p>
 <p>You are an expert data standardizer.</p>

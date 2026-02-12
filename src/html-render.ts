@@ -211,6 +211,10 @@ const RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_BRIDGE_MAX_WORD_COUNT = 4;
 const RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_BRIDGE_MAX_CHAR_LENGTH = 40;
 const RENDERED_PARAGRAPH_DANGLING_PARENTHETICAL_CLOSING_START_PATTERN =
   /^["'“‘]?[^\s)]+\)/u;
+const TABLE_INTERPOSED_LABEL_ARTIFACT_MIN_WORDS = 2;
+const TABLE_INTERPOSED_LABEL_ARTIFACT_MAX_WORDS = 7;
+const TABLE_INTERPOSED_LABEL_ARTIFACT_TOKEN_PATTERN =
+  /^[\p{Lu}][\p{L}\p{N}'’.-]*$/u;
 const RENDERED_TRAILING_URL_PREFIX_PATTERN =
   /^(.*?)(https?:\/\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]*[./-])$/iu;
 const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
@@ -747,18 +751,28 @@ function mergeTableSeparatedParagraphFragments(renderedLines: string[]): string[
       continue;
     }
 
-    const continuationText = extractRenderedParagraphText(merged[tableEndIndex + 1]);
-    if (continuationText === undefined) {
+    const continuation = findTableSeparatedParagraphContinuation(
+      merged,
+      tableEndIndex + 1,
+    );
+    if (continuation === undefined) {
       index = tableEndIndex + 1;
       continue;
     }
 
+    const { index: continuationIndex, text: continuationText } = continuation;
+    const mergeAwareFirstText =
+      stripTrailingFootnoteReferencesFromRenderedText(firstText);
+    if (isLikelyTableInterposedLabelArtifactLead(mergeAwareFirstText)) {
+      index = continuationIndex;
+      continue;
+    }
     const mergeAwareContinuationText =
       stripLeadingInlineMathArtifactsFromRenderedContinuation(continuationText);
     if (
       !shouldMergeSplitRenderedParagraphPair(firstText, mergeAwareContinuationText)
     ) {
-      index = tableEndIndex + 1;
+      index = continuationIndex;
       continue;
     }
 
@@ -767,10 +781,50 @@ function mergeTableSeparatedParagraphFragments(renderedLines: string[]): string[
       mergeAwareContinuationText,
     );
     merged[index] = `<p>${mergedText}</p>`;
-    merged.splice(tableEndIndex + 1, 1);
+    merged.splice(continuationIndex, 1);
     index = tableEndIndex;
   }
   return merged;
+}
+
+function findTableSeparatedParagraphContinuation(
+  renderedLines: string[],
+  startIndex: number,
+): { index: number; text: string } | undefined {
+  for (let index = startIndex; index < renderedLines.length; index += 1) {
+    const text = extractRenderedParagraphText(renderedLines[index]);
+    if (text === undefined) return undefined;
+    if (CAPTION_START_PATTERN.test(text) || STANDALONE_CAPTION_LABEL_PATTERN.test(text)) {
+      continue;
+    }
+    return { index, text };
+  }
+  return undefined;
+}
+
+function isLikelyTableInterposedLabelArtifactLead(text: string): boolean {
+  const normalized = normalizeSpacing(text.trim());
+  if (normalized.length === 0) return false;
+  if (
+    RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN.test(normalized) ||
+    RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(normalized)
+  ) {
+    return false;
+  }
+  const words = splitWords(normalized);
+  if (
+    words.length < TABLE_INTERPOSED_LABEL_ARTIFACT_MIN_WORDS ||
+    words.length > TABLE_INTERPOSED_LABEL_ARTIFACT_MAX_WORDS
+  ) {
+    return false;
+  }
+
+  return words.every((word) => {
+    const trimmedWord = word.replaceAll(/^[("“‘'\[]+|[)"”’'\].,:;!?]+$/gu, "");
+    if (trimmedWord.length === 0) return false;
+    if (!/\p{L}/u.test(trimmedWord)) return true;
+    return TABLE_INTERPOSED_LABEL_ARTIFACT_TOKEN_PATTERN.test(trimmedWord);
+  });
 }
 
 function mergeRenderedParagraphPairText(
