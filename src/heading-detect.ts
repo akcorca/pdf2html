@@ -108,16 +108,24 @@ interface ParsedNumberedHeading {
 }
 
 function parseNumberedHeading(text: string): ParsedNumberedHeading | undefined {
-  const match = /^(\d+(?:\.\d+){0,4}\.?)\s+(.+)$/u.exec(text);
+  const match = /^([A-Z0-9](?:\.[A-Z0-9]+)*\.?)\s+(.+)$/u.exec(text);
   if (!match) return undefined;
+
   const sectionNumber = match[1].replace(/\.$/, "");
+  const headingText = match[2].trim();
   const sectionParts = sectionNumber.split(".");
-  const topLevelSectionNumber = Number.parseInt(sectionParts[0], 10);
-  if (!isValidTopLevelSectionNumber(topLevelSectionNumber)) return undefined;
+  const firstPart = sectionParts[0];
+  const isAppendixSection = /[A-Z]/u.test(firstPart);
+  if (!isAppendixSection) {
+    const topLevelSectionNumber = Number.parseInt(firstPart, 10);
+    if (!isValidTopLevelSectionNumber(topLevelSectionNumber)) return undefined;
+  }
+
+  const depth = sectionParts.length;
   return {
-    depth: sectionParts.length,
-    isTopLevelSection: sectionParts.length === 1,
-    headingText: match[2].trim(),
+    depth,
+    isTopLevelSection: depth === 1,
+    headingText,
   };
 }
 
