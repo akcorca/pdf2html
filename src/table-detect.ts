@@ -3,6 +3,7 @@ import type { ExtractedDocument, ExtractedFragment, TextLine } from "./pdf-types
 import { LINE_Y_BUCKET_SIZE } from "./pdf-types.ts";
 
 const TABLE_CAPTION_PATTERN = /^Table\s+\d+[A-Za-z]?\s*[:.]?/iu;
+const TABLE_CAPTION_MAX_FONT_DELTA = 1.5;
 
 /** Minimum data rows (excluding header) to confirm a table. */
 const MIN_TABLE_DATA_ROWS = 2;
@@ -324,7 +325,6 @@ function normalizeColumnCount(rows: string[][]): void {
   }
 }
 
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: caption/body boundary needs layered geometric guards.
 function collectCaptionLines(
   lines: TextLine[],
   startIndex: number,
@@ -333,40 +333,69 @@ function collectCaptionLines(
   fragments: ExtractedFragment[],
 ): { captionText: string; captionLineIndexes: number[]; nextBodyIndex: number } {
   const captionLineIndexes: number[] = [startIndex];
-  let captionText = firstLine.text;
+  const captionParts: string[] = [firstLine.text];
   let nextIdx = startIndex + 1;
   const captionBounds = firstLine.column !== undefined ? getCaptionBounds(firstLine) : undefined;
 
   while (nextIdx < lines.length) {
     const line = lines[nextIdx];
-    if (line.pageIndex !== captionPage) break;
-
-    const prevLine = lines[nextIdx - 1];
-    const vertGap = Math.abs(prevLine.y - line.y) / firstLine.fontSize;
-    if (vertGap > TABLE_CAPTION_TO_BODY_MAX_GAP_FONT_RATIO) break;
-    if (firstLine.column !== undefined && line.column === firstLine.column) {
-      const leftOffset = Math.abs(line.x - firstLine.x);
-      if (leftOffset > Math.max(firstLine.fontSize * 3, 24)) break;
-    }
-
-    const rowFragGroups = getFragmentGroupsForRow(
-      fragments,
-      line.y,
-      line.fontSize,
-      captionBounds,
-    );
-    if (rowFragGroups.length >= 2) break;
-
-    if (Math.abs(line.fontSize - firstLine.fontSize) < 1.5) {
-      captionLineIndexes.push(nextIdx);
-      captionText += ` ${line.text}`;
-      nextIdx++;
-    } else {
+    const previousLine = lines[nextIdx - 1];
+    if (
+      !isCaptionContinuationLine({
+        line,
+        previousLine,
+        captionPage,
+        firstLine,
+        fragments,
+        captionBounds,
+      })
+    ) {
       break;
     }
+
+    captionLineIndexes.push(nextIdx);
+    captionParts.push(line.text);
+    nextIdx += 1;
   }
 
-  return { captionText, captionLineIndexes, nextBodyIndex: nextIdx };
+  return {
+    captionText: captionParts.join(" "),
+    captionLineIndexes,
+    nextBodyIndex: nextIdx,
+  };
+}
+
+function isCaptionContinuationLine(input: {
+  line: TextLine;
+  previousLine: TextLine;
+  captionPage: number;
+  firstLine: TextLine;
+  fragments: ExtractedFragment[];
+  captionBounds: HorizontalBounds | undefined;
+}): boolean {
+  const { line, previousLine, captionPage, firstLine, fragments, captionBounds } = input;
+
+  if (line.pageIndex !== captionPage) return false;
+
+  const verticalGap = Math.abs(previousLine.y - line.y) / firstLine.fontSize;
+  if (verticalGap > TABLE_CAPTION_TO_BODY_MAX_GAP_FONT_RATIO) return false;
+  if (!isCaptionLineHorizontallyAligned(firstLine, line)) return false;
+
+  const fragmentGroups = getFragmentGroupsForRow(
+    fragments,
+    line.y,
+    line.fontSize,
+    captionBounds,
+  );
+  if (fragmentGroups.length >= 2) return false;
+
+  return Math.abs(line.fontSize - firstLine.fontSize) < TABLE_CAPTION_MAX_FONT_DELTA;
+}
+
+function isCaptionLineHorizontallyAligned(firstLine: TextLine, line: TextLine): boolean {
+  if (firstLine.column === undefined || line.column !== firstLine.column) return true;
+  const leftOffset = Math.abs(line.x - firstLine.x);
+  return leftOffset <= Math.max(firstLine.fontSize * 3, 24);
 }
 
 // --- Table body collection ---
