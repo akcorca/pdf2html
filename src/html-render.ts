@@ -219,6 +219,8 @@ const TABLE_INTERPOSED_LABEL_ARTIFACT_TOKEN_PATTERN =
   /^[\p{Lu}][\p{L}\p{N}'’.-]*$/u;
 const RENDERED_TRAILING_URL_PREFIX_PATTERN =
   /^(.*?)(https?:\/\/[A-Za-z0-9._~:/?#[\]@!$&'()*+,;=%-]*[./-])$/iu;
+const RENDERED_STANDALONE_LINK_ONLY_PATTERN =
+  /^<a\s+href="([^"]+)">([^<]+)<\/a>([.,;:!?])?$/iu;
 const CAPTION_CONTINUATION_MAX_VERTICAL_GAP_RATIO = 2.0;
 const CAPTION_CONTINUATION_MAX_FONT_DELTA = 0.8;
 const CAPTION_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.05;
@@ -926,6 +928,13 @@ function mergeSplitRenderedParagraphContinuations(
       merged.splice(index + 1, 1);
       continue;
     }
+    const mergedStandaloneLinkParagraph =
+      mergeSplitRenderedStandaloneLinkParagraph(firstText, continuationText);
+    if (mergedStandaloneLinkParagraph !== undefined) {
+      merged[index] = `<p>${mergedStandaloneLinkParagraph}</p>`;
+      merged.splice(index + 1, 1);
+      continue;
+    }
     const nextContinuationText =
       index + 2 < merged.length
         ? extractRenderedParagraphText(merged[index + 2])
@@ -1086,6 +1095,37 @@ function mergeSplitRenderedUrlParagraph(
 
   const escapedUrl = escapeHtml(mergedUrl);
   return `${trailingUrlPrefix.leadingText}<a href="${escapedUrl}">${escapedUrl}</a>${escapeHtml(continuation.trailingPunctuation)}`;
+}
+
+function mergeSplitRenderedStandaloneLinkParagraph(
+  firstText: string,
+  continuationText: string,
+): string | undefined {
+  const standaloneLink = parseRenderedStandaloneLinkOnly(continuationText);
+  if (standaloneLink === undefined) return undefined;
+
+  const mergeAwareFirstText =
+    stripTrailingFootnoteReferencesFromRenderedText(firstText);
+  if (!isValidRenderedParagraphMergeLeadText(mergeAwareFirstText))
+    return undefined;
+  if (!isLikelySplitParagraphEnd(mergeAwareFirstText)) return undefined;
+  if (hasBlockedRenderedParagraphMergeContext(firstText)) return undefined;
+
+  const escapedUrl = escapeHtml(standaloneLink.url);
+  const escapedLabel = escapeHtml(standaloneLink.label);
+  return `${firstText.trimEnd()} <a href="${escapedUrl}">${escapedLabel}</a>${escapeHtml(standaloneLink.trailingPunctuation)}`;
+}
+
+function parseRenderedStandaloneLinkOnly(
+  text: string,
+): { url: string; label: string; trailingPunctuation: string } | undefined {
+  const normalized = text.trim();
+  const match = RENDERED_STANDALONE_LINK_ONLY_PATTERN.exec(normalized);
+  if (!match) return undefined;
+  const url = match[1];
+  const label = match[2];
+  if (!isValidHttpUrl(url) || label !== url) return undefined;
+  return { url, label, trailingPunctuation: match[3] ?? "" };
 }
 
 function extractTrailingRenderedUrlPrefix(

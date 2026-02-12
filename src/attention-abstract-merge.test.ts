@@ -89,6 +89,15 @@ describe("attention abstract same-row merge", () => {
     );
   });
 
+  it("keeps trailing repository links inline with the sentence that introduces them", () => {
+    expect(attentionHtml).toContain(
+      'available at <a href="https://github.com/tensorflow/tensor2tensor">https://github.com/tensorflow/tensor2tensor</a>.',
+    );
+    expect(attentionHtml).not.toMatch(
+      /available at<\/p>\s*<p><a href="https:\/\/github\.com\/tensorflow\/tensor2tensor">/u,
+    );
+  });
+
   it("merges same-row wide-gap continuation lines in section 6.3 into one paragraph", () => {
     expect(attentionHtml).toMatch(
       /increased the maximum output length to input length \+\s+300 \. We used a beam size of 21[^<]*for both WSJ only and the semi-supervised setting\./,
