@@ -109,11 +109,20 @@ function detectTableWithTrailingCaption(
 ): DetectedTable | undefined {
   if (isLikelySectionHeading(firstLine.text)) return undefined;
 
-  const firstRowGroups = getFragmentGroupsForRow(fragments, firstLine.y, firstLine.fontSize);
+  const firstRowGroups = getFragmentGroupsForRow(
+    fragments,
+    firstLine.y,
+    firstLine.fontSize,
+  );
   if (firstRowGroups.length < 2) return undefined;
 
-  const { bodyEntries, nextIndex: captionStartIndex } =
-    collectTableBodyLines(lines, startIndex, captionPage, firstLine, fragments);
+  const { bodyEntries, nextIndex: captionStartIndex } = collectTableBodyLines(
+    lines,
+    startIndex,
+    captionPage,
+    firstLine,
+    fragments,
+  );
   if (bodyEntries.length < MIN_TABLE_DATA_ROWS) return undefined;
 
   const captionLine = lines[captionStartIndex];
@@ -122,11 +131,17 @@ function detectTableWithTrailingCaption(
 
   const lastBodyLine = bodyEntries[bodyEntries.length - 1]?.line;
   if (!lastBodyLine) return undefined;
-  const captionGap = Math.abs(lastBodyLine.y - captionLine.y) / Math.max(lastBodyLine.fontSize, 1);
+  const captionGap =
+    Math.abs(lastBodyLine.y - captionLine.y) / Math.max(lastBodyLine.fontSize, 1);
   if (captionGap > TABLE_CAPTION_TO_BODY_MAX_GAP_FONT_RATIO) return undefined;
 
-  const { captionText, captionLineIndexes, nextBodyIndex } =
-    collectCaptionLines(lines, captionStartIndex, captionPage, captionLine, fragments);
+  const { captionText, captionLineIndexes, nextBodyIndex } = collectCaptionLines(
+    lines,
+    captionStartIndex,
+    captionPage,
+    captionLine,
+    fragments,
+  );
 
   return finalizeDetectedTable({
     startIndex,
@@ -148,8 +163,15 @@ function finalizeDetectedTable(input: {
   bodyFontSize: number;
   fragments: ExtractedFragment[];
 }): DetectedTable | undefined {
-  const { startIndex, captionText, captionLineIndexes, bodyEntries, nextIndex, bodyFontSize, fragments } =
-    input;
+  const {
+    startIndex,
+    captionText,
+    captionLineIndexes,
+    bodyEntries,
+    nextIndex,
+    bodyFontSize,
+    fragments,
+  } = input;
   if (bodyEntries.length < MIN_TABLE_DATA_ROWS) return undefined;
 
   const dedupeFontSize = bodyEntries[0]?.line.fontSize ?? bodyFontSize;
@@ -193,7 +215,6 @@ function splitHeaderAndDataRows(
 ): { headerRows: string[][]; dataRows: string[][] } {
   const headerRows: string[][] = [sanitizeHeaderCells(headerRow)];
   let firstDataRowIndex = 0;
-
   while (firstDataRowIndex + 1 < parsedRows.length) {
     const candidateHeaderRow = parsedRows[firstDataRowIndex];
     const nextRow = parsedRows[firstDataRowIndex + 1];
@@ -201,7 +222,6 @@ function splitHeaderAndDataRows(
     headerRows.push(sanitizeHeaderCells(candidateHeaderRow));
     firstDataRowIndex += 1;
   }
-
   const dataRows = parsedRows.slice(firstDataRowIndex);
   const normalizedHeaderRows = collapseComplementaryHeaderRows(headerRows);
   const headerRowKeys = new Set(normalizedHeaderRows.map(buildComparableRowKey));
@@ -210,8 +230,96 @@ function splitHeaderAndDataRows(
       isLikelyNumericDataRow(row) ||
       !headerRowKeys.has(buildComparableRowKey(sanitizeHeaderCells(row))),
   );
+  return promoteWrappedLeadingDataRowsIntoHeader(
+    normalizedHeaderRows,
+    filteredDataRows,
+  );
+}
 
-  return { headerRows: normalizedHeaderRows, dataRows: filteredDataRows };
+function promoteWrappedLeadingDataRowsIntoHeader(
+  headerRows: string[][],
+  dataRows: string[][],
+): { headerRows: string[][]; dataRows: string[][] } {
+  if (!shouldPromoteWrappedLeadingDataRows(headerRows, dataRows)) {
+    return { headerRows, dataRows };
+  }
+
+  const leadingHeader =
+    getSingleNonEmptyHeaderCellText(headerRows[0] ?? []) ?? "";
+  const mergedWrappedHeaderRow = mergeWrappedHeaderRows(dataRows[0], dataRows[1]);
+  const promotedHeaderRow = sanitizeHeaderCells([
+    leadingHeader,
+    ...mergedWrappedHeaderRow,
+  ]);
+  const alignedDataRows = dataRows.slice(2).map((row) => ["", ...row]);
+  return { headerRows: [promotedHeaderRow], dataRows: alignedDataRows };
+}
+
+function shouldPromoteWrappedLeadingDataRows(
+  headerRows: string[][],
+  dataRows: string[][],
+): boolean {
+  if (headerRows.length !== 1 || dataRows.length < 3) return false;
+
+  const baseHeaderRow = headerRows[0] ?? [];
+  const headerLead = getSingleNonEmptyHeaderCellText(baseHeaderRow);
+  if (headerLead === undefined) return false;
+
+  const wrappedHeaderRow = dataRows[0];
+  const wrappedContinuationRow = dataRows[1];
+  const firstBodyRow = dataRows[2];
+  if (!wrappedHeaderRow || !wrappedContinuationRow || !firstBodyRow) return false;
+  if (wrappedHeaderRow.length < 4) return false;
+  if (wrappedHeaderRow.length !== wrappedContinuationRow.length) return false;
+
+  if (normalizeTableCell(wrappedHeaderRow[0] ?? "").length > 0) return false;
+  if (normalizeTableCell(wrappedContinuationRow[0] ?? "").length > 0)
+    return false;
+
+  if (wrappedHeaderRow.slice(1).some(isNumericLikeDataCell)) return false;
+  if (wrappedContinuationRow.slice(1).some(isNumericLikeDataCell)) return false;
+
+  return hasMostlyNumericBodyCells(firstBodyRow.slice(1));
+}
+
+function getSingleNonEmptyHeaderCellText(row: string[]): string | undefined {
+  const nonEmptyCells = row
+    .map((cell) => normalizeTableCell(cell))
+    .filter((cell) => cell.length > 0);
+  if (nonEmptyCells.length !== 1) return undefined;
+  return nonEmptyCells[0];
+}
+
+function hasMostlyNumericBodyCells(cells: string[]): boolean {
+  const nonEmptyCells = cells.filter((cell) => cell.trim().length > 0);
+  if (nonEmptyCells.length < 3) return false;
+
+  const numericLikeCellCount = nonEmptyCells.filter(isNumericLikeDataCell).length;
+  return numericLikeCellCount >= Math.max(2, nonEmptyCells.length - 1);
+}
+
+function mergeWrappedHeaderRows(firstRow: string[], secondRow: string[]): string[] {
+  const merged: string[] = [];
+  const maxColumnCount = Math.max(firstRow.length, secondRow.length);
+
+  for (let index = 0; index < maxColumnCount; index += 1) {
+    const topCell = normalizeTableCell(firstRow[index] ?? "");
+    const bottomCell = normalizeTableCell(secondRow[index] ?? "");
+    merged.push(mergeWrappedHeaderCellPair(topCell, bottomCell));
+  }
+
+  return merged;
+}
+
+function mergeWrappedHeaderCellPair(topCell: string, bottomCell: string): string {
+  if (topCell.length === 0) return bottomCell;
+  if (bottomCell.length === 0) return topCell;
+  if (topCell.endsWith("-")) return `${topCell}${bottomCell}`;
+  return `${topCell} ${bottomCell}`;
+}
+
+function normalizeTableCell(value: string): string {
+  return value.trim().replace(/\s+/g, " ");
 }
 
 function collapseComplementaryHeaderRows(headerRows: string[][]): string[][] {
@@ -311,7 +419,7 @@ function isHeaderTextLikeCell(value: string): boolean {
 }
 
 function isNumericLikeDataCell(value: string): boolean {
-  return /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)%?$/u.test(value.trim());
+  return /^[+-]?(?:\d{1,3}(?:,\d{3})*|\d+)(?:\.\d+)?%?$/u.test(value.trim());
 }
 
 function buildComparableRowKey(row: string[]): string {
@@ -989,7 +1097,7 @@ export function renderTableHtml(table: DetectedTable): string[] {
   if (table.headerRows.length > 0) {
     out.push("<thead>");
     for (const row of table.headerRows) {
-      out.push(`<tr>${row.map((c) => (c.trim() ? `<th>${esc(c)}</th>` : "")).join("")}</tr>`);
+      out.push(`<tr>${row.map((c) => `<th>${esc(c)}</th>`).join("")}</tr>`);
     }
     out.push("</thead>");
   }
