@@ -24,10 +24,10 @@ describe("tft-reading-order", () => {
     expect(tftHtml).not.toContain("<p>various semiconductors, sputter-deposited</p>");
     expect(tftHtml).not.toContain("<p>amorphous indium–gallium–zinc oxide</p>");
     expect(tftHtml).not.toContain("<p>displays and high current-driven organic</p>");
-    // The merged paragraph should span from the first sentence fragment
-    // to the final sentence in a single <p> block.
+    // The merged paragraph should span from the left-column lead
+    // through the right-column continuation in a single <p> block.
     expect(tftHtml).toMatch(
-      /<p>various semiconductors, sputter-deposited[\s\S]*?conventional a-Si-based TFTs\.<\/p>/u,
+      /<p>Increasing demands for next-generation, large-area electronics[\s\S]*?various semiconductors, sputter-deposited[\s\S]*?conventional a-Si-based TFTs\.<\/p>/u,
     );
   });
 
@@ -133,7 +133,24 @@ describe("tft-reading-order", () => {
 
     // The main body text should start after all affiliation blocks.
     expect(tftHtml).toMatch(
-      /45 Yongso-ro, Namgu Pusan 48513, Republic of Korea<\/p>\s*<p>various semiconductors, sputter-deposited/u,
+      /45 Yongso-ro, Namgu Pusan 48513, Republic of Korea<\/p>\s*<p>Increasing demands for next-generation, large-area electronics/u,
+    );
+  });
+
+  it("keeps first-page column continuation contiguous without affiliation block interleaving", () => {
+    const leftTail =
+      "electronics, and optoelectronics applications. Among the";
+    const rightLead = "various semiconductors, sputter-deposited";
+
+    const leftTailIndex = tftHtml.indexOf(leftTail);
+    const rightLeadIndex = tftHtml.indexOf(rightLead);
+    expect(leftTailIndex).toBeGreaterThanOrEqual(0);
+    expect(rightLeadIndex).toBeGreaterThan(leftTailIndex);
+
+    const between = tftHtml.slice(leftTailIndex, rightLeadIndex);
+    expect(between).not.toContain("Department of Chemical and");
+    expect(between).not.toContain(
+      "Department of Electrical and Computer Engineering",
     );
   });
 });

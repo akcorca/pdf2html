@@ -332,6 +332,7 @@ const AFFILIATION_ENTRY_MAX_WORDS = 10;
 const AFFILIATION_ENTRY_MAX_WIDTH_RATIO = 0.65;
 const AFFILIATION_ENTRY_MAX_LEFT_OFFSET_RATIO = 0.05;
 const AFFILIATION_ENTRY_MAX_VERTICAL_GAP_RATIO = 2.4;
+const AFFILIATION_BLOCK_MAX_INTERNAL_GAP_LINES = 3;
 const INLINE_MATH_BRIDGE_MAX_LOOKAHEAD = 4;
 const INLINE_MATH_BRIDGE_MAX_TEXT_LENGTH = 24;
 const INLINE_MATH_BRIDGE_MAX_TOKEN_COUNT = 8;
@@ -450,6 +451,7 @@ interface AuthorRow {
   cells: Array<{ x: number; text: string }>;
 }
 
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: title-page affiliation reordering requires sequential layout guards.
 function reorderInterleavedTitlePageAffiliationLines(
   lines: TextLine[],
   titleLine: TextLine | undefined,
@@ -470,24 +472,42 @@ function reorderInterleavedTitlePageAffiliationLines(
     pageEndIndex += 1;
   }
 
-  let firstRightBodyIndex: number | undefined;
+  let firstColumnBodyIndex: number | undefined;
   for (let index = pageStartIndex; index < pageEndIndex; index += 1) {
+    const line = lines[index];
+    if (line.column === undefined) continue;
+    const normalized = normalizeSpacing(line.text);
+    if (!isLikelyTitlePageBodyLine(line, normalized)) continue;
+    firstColumnBodyIndex = index;
+    break;
+  }
+  if (firstColumnBodyIndex === undefined) return lines;
+
+  let hasRightColumnBodyLine = false;
+  for (
+    let index = firstColumnBodyIndex;
+    index < pageEndIndex;
+    index += 1
+  ) {
     const line = lines[index];
     if (line.column !== "right") continue;
     const normalized = normalizeSpacing(line.text);
-    if (!isLikelyTitlePageRightBodyLine(line, normalized)) continue;
-    firstRightBodyIndex = index;
+    if (!isLikelyTitlePageBodyLine(line, normalized)) continue;
+    hasRightColumnBodyLine = true;
     break;
   }
-  if (firstRightBodyIndex === undefined) return lines;
+  if (!hasRightColumnBodyLine) return lines;
 
-  const affiliationIndexes: number[] = [];
-  for (let index = firstRightBodyIndex + 1; index < pageEndIndex; index += 1) {
+  const affiliationAnchorIndexes: number[] = [];
+  for (let index = firstColumnBodyIndex + 1; index < pageEndIndex; index += 1) {
     const line = lines[index];
     const normalized = normalizeSpacing(line.text);
     if (!isLikelyAffiliationTopMatterLine(line, normalized)) continue;
-    affiliationIndexes.push(index);
+    affiliationAnchorIndexes.push(index);
   }
+  const affiliationIndexes = expandAffiliationLineIndexes(
+    affiliationAnchorIndexes,
+  );
   if (affiliationIndexes.length === 0) return lines;
 
   const reordered = [...lines];
@@ -495,8 +515,27 @@ function reorderInterleavedTitlePageAffiliationLines(
   for (let index = affiliationIndexes.length - 1; index >= 0; index -= 1) {
     reordered.splice(affiliationIndexes[index], 1);
   }
-  reordered.splice(firstRightBodyIndex, 0, ...movedLines);
+  reordered.splice(firstColumnBodyIndex, 0, ...movedLines);
   return reordered;
+}
+
+function expandAffiliationLineIndexes(indexes: number[]): number[] {
+  if (indexes.length === 0) return [];
+  const sorted = [...indexes].sort((left, right) => left - right);
+  const expanded = new Set<number>(sorted);
+
+  for (let index = 1; index < sorted.length; index += 1) {
+    const previous = sorted[index - 1];
+    const current = sorted[index];
+    if (current - previous > AFFILIATION_BLOCK_MAX_INTERNAL_GAP_LINES) {
+      continue;
+    }
+    for (let fill = previous + 1; fill < current; fill += 1) {
+      expanded.add(fill);
+    }
+  }
+
+  return [...expanded].sort((left, right) => left - right);
 }
 
 function isLikelyAffiliationTopMatterLine(
@@ -511,7 +550,7 @@ function isLikelyAffiliationTopMatterLine(
   );
 }
 
-function isLikelyTitlePageRightBodyLine(
+function isLikelyTitlePageBodyLine(
   line: TextLine,
   normalized: string,
 ): boolean {
