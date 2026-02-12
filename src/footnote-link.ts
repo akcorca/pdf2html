@@ -51,9 +51,11 @@ function getReferenceBodyFont(
   fragments: ExtractedFragment[],
   normalizedTexts: string[],
 ): number | undefined {
-  const nonMarkerFonts = fragments
-    .filter((_, index) => !isSuperscriptNumericMarkerText(normalizedTexts[index] ?? ""))
-    .map((fragment) => fragment.fontSize);
+  const nonMarkerFonts: number[] = [];
+  for (let index = 0; index < fragments.length; index += 1) {
+    if (isSuperscriptNumericMarkerText(normalizedTexts[index] ?? "")) continue;
+    nonMarkerFonts.push(fragments[index].fontSize);
+  }
   return medianOrUndefined(nonMarkerFonts);
 }
 
@@ -68,19 +70,14 @@ function rewriteFragmentsWithFootnoteAnchors(
 
   for (let index = 0; index < fragments.length; index += 1) {
     const fragment = fragments[index];
-    const markerNumber = Number.parseInt(fragment.text.trim(), 10);
-    const isMarker =
-      !Number.isNaN(markerNumber) &&
-      footnoteMap.has(markerNumber) &&
-      isSuperscriptNumericMarkerFragment(
-        fragments,
-        normalizedTexts,
-        index,
-        referenceFont,
-        normalizeSpacing,
-      );
-
-    if (!isMarker) {
+    const markerNumber = getLinkedFootnoteMarkerNumber(
+      fragments,
+      normalizedTexts,
+      footnoteMap,
+      index,
+      referenceFont,
+    );
+    if (markerNumber === undefined) {
       rewrittenFragments.push(fragment.text);
       continue;
     }
@@ -93,6 +90,33 @@ function rewriteFragmentsWithFootnoteAnchors(
 
   if (!hasMarker) return undefined;
   return normalizeSpacing(rewrittenFragments.join(" "));
+}
+
+function getLinkedFootnoteMarkerNumber(
+  fragments: ExtractedFragment[],
+  normalizedTexts: string[],
+  footnoteMap: Set<number>,
+  markerIndex: number,
+  referenceFont: number,
+): number | undefined {
+  const markerText = normalizedTexts[markerIndex] ?? "";
+  if (!isSuperscriptNumericMarkerText(markerText)) return undefined;
+
+  const markerNumber = Number.parseInt(markerText, 10);
+  if (!Number.isFinite(markerNumber) || !footnoteMap.has(markerNumber)) return undefined;
+  if (
+    !isSuperscriptNumericMarkerFragment(
+      fragments,
+      normalizedTexts,
+      markerIndex,
+      referenceFont,
+      normalizeSpacing,
+    )
+  ) {
+    return undefined;
+  }
+
+  return markerNumber;
 }
 
 function medianOrUndefined(values: number[]): number | undefined {

@@ -59,24 +59,19 @@ function hasWordLikeNeighborNearMarker(
   markerIndex: number,
   marker: ExtractedFragment,
 ): boolean {
-  const previousQualified = isQualifiedWordLikeMarkerNeighbor(
-    fragments,
-    normalizedTexts,
-    markerIndex,
-    marker,
-    -1,
+  const requiredNeighborDirections: Array<-1 | 1> = [];
+  if (markerIndex > 0) requiredNeighborDirections.push(-1);
+  if (markerIndex + 1 < fragments.length) requiredNeighborDirections.push(1);
+  if (requiredNeighborDirections.length === 0) return false;
+  return requiredNeighborDirections.every((direction) =>
+    isQualifiedWordLikeMarkerNeighbor(
+      fragments,
+      normalizedTexts,
+      markerIndex,
+      marker,
+      direction,
+    ),
   );
-  const nextQualified = isQualifiedWordLikeMarkerNeighbor(
-    fragments,
-    normalizedTexts,
-    markerIndex,
-    marker,
-    1,
-  );
-  const hasPrevious = markerIndex > 0;
-  const hasNext = markerIndex + 1 < fragments.length;
-  if (hasPrevious && hasNext) return previousQualified && nextQualified;
-  return previousQualified || nextQualified;
 }
 
 function isQualifiedWordLikeMarkerNeighbor(
