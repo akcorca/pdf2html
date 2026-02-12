@@ -184,16 +184,30 @@ function isDetachedTinyMathContinuationLine(
 }
 
 function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
-  if (lines.length === 0) return lines;
   const explicitMarkers = collectExplicitNumericMarkers(lines);
-  if (explicitMarkers.length < 2) return lines;
+  if (lines.length === 0 || explicitMarkers.length < 2) return lines;
+
   const resolvedLines = [...lines];
 
-  for (let index = 0; index < explicitMarkers.length - 1; index += 1) {
-    const currentMarker = explicitMarkers[index];
-    const nextMarker = explicitMarkers[index + 1];
-    if (nextMarker.marker <= currentMarker.marker + 1) continue;
-    inferMissingNumericMarkersWithinRange(lines, resolvedLines, currentMarker, nextMarker);
+  for (let markerIndex = 1; markerIndex < explicitMarkers.length; markerIndex += 1) {
+    const previousMarker = explicitMarkers[markerIndex - 1];
+    const nextMarker = explicitMarkers[markerIndex];
+    if (nextMarker.marker <= previousMarker.marker + 1) continue;
+
+    let inferredMarker = previousMarker.marker;
+    for (
+      let lineIndex = previousMarker.index + 1;
+      lineIndex < nextMarker.index && inferredMarker + 1 < nextMarker.marker;
+      lineIndex += 1
+    ) {
+      const text = normalizeSpacing(resolvedLines[lineIndex].text);
+      if (!FOOTNOTE_URL_START_PATTERN.test(text)) continue;
+      inferredMarker += 1;
+      resolvedLines[lineIndex] = {
+        ...resolvedLines[lineIndex],
+        text: `${inferredMarker} ${text}`,
+      };
+    }
   }
 
   return resolvedLines;
@@ -202,25 +216,6 @@ function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
 interface ExplicitNumericMarker {
   marker: number;
   index: number;
-}
-
-function inferMissingNumericMarkersWithinRange(
-  lines: TextLine[],
-  resolvedLines: TextLine[],
-  currentMarker: ExplicitNumericMarker,
-  nextMarker: ExplicitNumericMarker,
-): void {
-  let inferredMarker = currentMarker.marker;
-  for (
-    let lineIndex = currentMarker.index + 1;
-    lineIndex < nextMarker.index && inferredMarker + 1 < nextMarker.marker;
-    lineIndex += 1
-  ) {
-    const text = normalizeSpacing(lines[lineIndex].text);
-    if (!FOOTNOTE_URL_START_PATTERN.test(text)) continue;
-    inferredMarker += 1;
-    resolvedLines[lineIndex] = { ...lines[lineIndex], text: `${inferredMarker} ${text}` };
-  }
 }
 
 function collectExplicitNumericMarkers(lines: TextLine[]): ExplicitNumericMarker[] {
