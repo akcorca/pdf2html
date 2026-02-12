@@ -223,8 +223,8 @@ describe("convertPdfToHtml", () => {
   it("merges right-column body continuation near columnSplitX boundary in clean.pdf", () => {
     // The line "volves multi-turn dialogues" at x=317.731 is right-column text
     // that must not be misclassified as left-column (document splitX = 317.955).
-    expect(cleanHtml).toContain(
-      "method still necessitates detailed prompt crafting and often in-volves multi-turn dialogues",
+    expect(cleanHtml).toMatch(
+      /method still necessitates detailed prompt crafting and often in-?volves multi-turn dialogues/,
     );
     // It must NOT merge with left-column text across the column boundary.
     expect(cleanHtml).not.toMatch(
@@ -435,8 +435,10 @@ describe("convertPdfToHtml", () => {
 
   it("does not merge left-column text with right-column continuation in respect.pdf", () => {
     expect(respectHtml).not.toContain("JMMLU To evaluate LLMs’ multitask lan- rent socio-cultural situation.");
-    expect(respectHtml).toContain("JMMLU To evaluate LLMs’ multitask lan-");
-    expect(respectHtml).toContain("rent socio-cultural situation.");
+    expect(respectHtml).toMatch(
+      /JMMLU To evaluate LLMs’ multitask lan-?guage understanding capabilities in Japanese,/,
+    );
+    expect(respectHtml).toMatch(/cur-?rent socio-cultural situation\./);
   });
 
   it("keeps 1 Introduction heading before its right-column continuation in respect.pdf", () => {

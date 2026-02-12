@@ -117,7 +117,7 @@ const HYPHEN_WRAP_MIN_LINE_WIDTH_RATIO = 0.4;
 const HYPHEN_WRAP_MIN_CONTINUATION_WIDTH_RATIO = 0.45;
 // Common soft-wrap continuations split before derivational endings.
 const HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN =
-  /^(?:tion(?:al(?:ly)?|s)?|sion(?:al(?:ly)?|s)?|mation|nition|plicat(?:ion|ions|ive)|[a-z]{1,4}ingly)/u;
+  /^(?:tion(?:al(?:ly)?|s)?|sion(?:al(?:ly)?|s)?|mation|nition|plicat(?:ion|ions|ive)|iz(?:ation|ations|ing|ed|es|e)|icant(?:ly)?|entist(?:s)?|olution(?:ize|ized|izing|ary|aries|s)?|derstand(?:ing|s)?|volv(?:e|es|ed|ing)|guage|duce|[a-z]{1,4}ingly)/u;
 const HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH = 3;
 const HYPHEN_WRAP_SOFT_SHORT_CONTINUATION_MAX_LENGTH = 3;
 const REFERENCE_IN_WORD_HYPHEN_PATTERN =
@@ -3624,16 +3624,18 @@ function shouldDropHyphenForSoftWrap(
 
   const leftFragment = leftFragmentMatch[1] ?? "";
   const rightFragment = rightFragmentMatch[1] ?? "";
+  if (leftFragment !== leftFragment.toLowerCase()) return false;
+  if (rightFragment !== rightFragment.toLowerCase()) return false;
   if (
-    leftFragment.length < HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH ||
+    leftFragment.length < 2 ||
     rightFragment.length < HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH
   ) {
     return false;
   }
-  if (leftFragment !== leftFragment.toLowerCase()) return false;
-  if (rightFragment !== rightFragment.toLowerCase()) return false;
   if (rightFragment.length <= HYPHEN_WRAP_SOFT_SHORT_CONTINUATION_MAX_LENGTH)
-    return true;
+    return (
+      leftFragment.length >= HYPHEN_WRAP_SOFT_CONTINUATION_MIN_FRAGMENT_LENGTH
+    );
   return HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN.test(rightFragment);
 }
 

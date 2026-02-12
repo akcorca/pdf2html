@@ -108,4 +108,30 @@ describe("clean.pdf paragraph merging", () => {
       "To solve these challenges, our key idea is to propose a Python library with declarative, unified APIs"
     );
   });
+
+  it("removes soft-wrap hyphens from short left-fragment splits", () => {
+    expect(cleanHtml).toContain(
+      "Recently, the emerging LLMs have shown the potential to revolutionize this process."
+    );
+    expect(cleanHtml).toContain(
+      "For standardizing “Admission Date” and “Address”, data scientists need to write"
+    );
+    expect(cleanHtml).not.toContain("rev-olutionize");
+    expect(cleanHtml).not.toContain("sci-entists");
+  });
+
+  it("removes hyphens from words like un-derstanding and signif-icantly", () => {
+    expect(cleanHtml).toContain(
+      "natural language understanding and code generation"
+    );
+    expect(cleanHtml).toContain(
+      "these models could significantly aid data scientists"
+    );
+    expect(cleanHtml).toContain(
+      "convert natural language (NL) instructions"
+    );
+    expect(cleanHtml).toContain(
+      "effectively reduce the intricacies involved"
+    );
+  });
 });
