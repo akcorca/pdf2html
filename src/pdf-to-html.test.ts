@@ -202,7 +202,7 @@ describe("convertPdfToHtml", () => {
   it("does not interleave left and right column text in same paragraph for clean.pdf section 2 intro", () => {
     // Left-column text "The pursuit of simplicity, however, introduces two primary chal-
     // lenges." and right-column text "In this section, we first describe the common steps
-    // of data stan-dardization." must NOT be merged into the same <p> tag.
+    // of data standardization." must NOT be merged into the same <p> tag.
     // They belong to different columns and should appear as separate paragraphs.
     expect(cleanHtml).not.toMatch(
       /chal(?:-\s*)?lenges[^<]*In this section, we first describe/,
@@ -215,8 +215,8 @@ describe("convertPdfToHtml", () => {
       "The pursuit of simplicity, however, introduces two primary challenges.",
     );
     // The right-column paragraph should be a separate coherent paragraph
-    expect(cleanHtml).toContain(
-      "In this section, we first describe the common steps of data stan-dardization.",
+    expect(cleanHtml).toMatch(
+      /In this section, we first describe the common steps of data stan-?dardization\./,
     );
   });
 
@@ -322,6 +322,9 @@ describe("convertPdfToHtml", () => {
       "pandemic from 1090 to 1590",
     );
     expect(covidHtml).toContain(
+      "adjusted relative risk [ARR] 1.43",
+    );
+    expect(covidHtml).not.toContain(
       "adjusted rela-tive risk [ARR] 1.43",
     );
   });

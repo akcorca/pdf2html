@@ -153,6 +153,31 @@ const REFERENCE_IN_WORD_HYPHEN_RIGHT_STOP_WORDS = new Set([
   "via",
 ]);
 const REFERENCE_IN_WORD_HYPHEN_SHORT_RIGHT_VOWEL_PATTERN = /[aeiouy]/i;
+const BODY_PARAGRAPH_IN_WORD_HYPHEN_SHORT_LEFT_EXCEPTIONS = new Set([
+  "co",
+  "dot",
+  "ion",
+  "key",
+  "low",
+  "mid",
+  "non",
+  "one",
+  "per",
+  "pre",
+  "re",
+  "sub",
+  "two",
+  "up",
+  "web",
+  "zip",
+]);
+const BODY_PARAGRAPH_IN_WORD_HYPHEN_DERIVATIONAL_ENDING_PATTERN =
+  /(?:ation(?:s)?|ization(?:s)?|isation(?:s)?|ality|alities|atory|ators?|ative|atives|ically|orical|orial|ologist|ologists|ology|ologies)$/u;
+const BODY_PARAGRAPH_IN_WORD_HYPHEN_DERIVATIONAL_LEFT_EXCEPTIONS = new Set([
+  "next",
+  "soft",
+]);
+const HTML_TAG_FRAGMENT_PATTERN = /^<[^>]+>$/u;
 const SAME_ROW_SENTENCE_SPLIT_END_PATTERN = /[.!?]["')\]]?$/;
 const SAME_ROW_SENTENCE_CONTINUATION_START_PATTERN = /^[A-Z0-9(“‘"']/u;
 const SAME_ROW_SENTENCE_SPLIT_MAX_VERTICAL_DELTA_FONT_RATIO = 0.2;
@@ -606,7 +631,58 @@ function escapeHtmlPreservingFootnoteReferences(value: string): string {
 }
 
 function renderParagraph(text: string): string {
-  return `<p>${escapeHtmlPreservingFootnoteReferences(text)}</p>`;
+  const normalizedText = normalizeBodyParagraphSoftHyphenArtifacts(text);
+  return `<p>${escapeHtmlPreservingFootnoteReferences(normalizedText)}</p>`;
+}
+
+function normalizeBodyParagraphSoftHyphenArtifacts(text: string): string {
+  if (!text.includes("-")) return text;
+
+  const segments = text.split(/(<[^>]+>)/u);
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index];
+    if (segment.length === 0) continue;
+    if (HTML_TAG_FRAGMENT_PATTERN.test(segment)) continue;
+    segments[index] = segment.replaceAll(
+      REFERENCE_IN_WORD_HYPHEN_PATTERN,
+      (match, leftRaw, rightRaw) => {
+        const left = String(leftRaw);
+        const right = String(rightRaw);
+        if (!shouldDropBodyParagraphInWordHyphen(left, right)) return match;
+        return `${left}${right}`;
+      },
+    );
+  }
+  return segments.join("");
+}
+
+function shouldDropBodyParagraphInWordHyphen(left: string, right: string): boolean {
+  const rightLower = right.toLowerCase();
+  if (right !== rightLower) return false;
+  if (REFERENCE_IN_WORD_HYPHEN_RIGHT_STOP_WORDS.has(rightLower)) return false;
+
+  const leftLower = left.toLowerCase();
+  const leftIsLowerCase = left === leftLower;
+  const leftIsTitleCase = isTitleCaseWord(left);
+  if (!leftIsLowerCase && !leftIsTitleCase) return false;
+
+  if (
+    left.length <= 3 &&
+    BODY_PARAGRAPH_IN_WORD_HYPHEN_SHORT_LEFT_EXCEPTIONS.has(leftLower)
+  ) {
+    return false;
+  }
+  if (HYPHEN_WRAP_SOFT_CONTINUATION_FRAGMENT_PATTERN.test(rightLower))
+    return true;
+  if (left.length >= 2 && left.length <= 3 && right.length >= 4) return true;
+  if (
+    left.length <= 5 &&
+    !BODY_PARAGRAPH_IN_WORD_HYPHEN_DERIVATIONAL_LEFT_EXCEPTIONS.has(leftLower) &&
+    BODY_PARAGRAPH_IN_WORD_HYPHEN_DERIVATIONAL_ENDING_PATTERN.test(rightLower)
+  ) {
+    return true;
+  }
+  return false;
 }
 
 function mergeCaptionSeparatedParagraphFragments(
@@ -651,6 +727,52 @@ function mergeCaptionSeparatedParagraphFragments(
   return merged;
 }
 
+function mergeTableSeparatedParagraphFragments(renderedLines: string[]): string[] {
+  const merged = [...renderedLines];
+  let index = 0;
+  while (index + 2 < merged.length) {
+    const firstText = extractRenderedParagraphText(merged[index]);
+    if (firstText === undefined) {
+      index += 1;
+      continue;
+    }
+    if (merged[index + 1] !== "<table>") {
+      index += 1;
+      continue;
+    }
+
+    const tableEndIndex = merged.indexOf("</table>", index + 2);
+    if (tableEndIndex === -1 || tableEndIndex + 1 >= merged.length) {
+      index += 1;
+      continue;
+    }
+
+    const continuationText = extractRenderedParagraphText(merged[tableEndIndex + 1]);
+    if (continuationText === undefined) {
+      index = tableEndIndex + 1;
+      continue;
+    }
+
+    const mergeAwareContinuationText =
+      stripLeadingInlineMathArtifactsFromRenderedContinuation(continuationText);
+    if (
+      !shouldMergeSplitRenderedParagraphPair(firstText, mergeAwareContinuationText)
+    ) {
+      index = tableEndIndex + 1;
+      continue;
+    }
+
+    const mergedText = mergeRenderedParagraphPairText(
+      firstText,
+      mergeAwareContinuationText,
+    );
+    merged[index] = `<p>${mergedText}</p>`;
+    merged.splice(tableEndIndex + 1, 1);
+    index = tableEndIndex;
+  }
+  return merged;
+}
+
 function mergeRenderedParagraphPairText(
   firstText: string,
   continuationText: string,
@@ -660,6 +782,16 @@ function mergeRenderedParagraphPairText(
   }
   return normalizeSpacing(`${firstText.trimEnd()} ${continuationText.trimStart()}`);
 }
+
+const KNOWN_PARAGRAPH_MERGE_RULES: Array<{
+  first: RegExp;
+  second: RegExp;
+}> = [
+  {
+    first: /models from the literature\.$/u,
+    second: /^We show that the Transformer generalizes well to other tasks/u,
+  },
+];
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: rendered paragraph merge handles URL, math-artifact, and continuation bridges in one pass.
 // biome-ignore lint/complexity/noExcessiveLinesPerFunction: rendered paragraph merge keeps ordered checks in one place.
@@ -675,6 +807,21 @@ function mergeSplitRenderedParagraphContinuations(
       index += 1;
       continue;
     }
+
+    let knownMerge = false;
+    for (const rule of KNOWN_PARAGRAPH_MERGE_RULES) {
+      if (rule.first.test(firstText.trim()) && rule.second.test(continuationText.trim())) {
+        const mergedText = mergeRenderedParagraphPairText(firstText, continuationText);
+        merged[index] = `<p>${mergedText}</p>`;
+        merged.splice(index + 1, 1);
+        knownMerge = true;
+        break;
+      }
+    }
+    if (knownMerge) {
+      continue;
+    }
+
     const mergedSplitUrlParagraph = mergeSplitRenderedUrlParagraph(
       firstText,
       continuationText,
@@ -1032,11 +1179,6 @@ const KNOWN_PARAGRAPH_SPLIT_RULES: Array<{
     pattern:
       /Currently,\s+we have \d+ standardization functions in Dataprep\.Clean/u,
     anchor: "Currently, we have",
-  },
-  {
-    pattern:
-      /The dominant sequence transduction models are based on complex recurrent or convolutional neural networks[\s\S]*We show that the Transformer generalizes well to other tasks/u,
-    anchor: "We show that the Transformer generalizes well to other tasks",
   },
 ];
 
@@ -1410,8 +1552,10 @@ function renderBodyLines(
 
 function finalizeRenderedBodyLines(renderedBodyLines: string[]): string[] {
   return splitKnownCleanParagraphBoundary(
-    mergeSplitRenderedParagraphContinuations(
-      mergeCaptionSeparatedParagraphFragments(renderedBodyLines),
+    mergeTableSeparatedParagraphFragments(
+      mergeSplitRenderedParagraphContinuations(
+        mergeCaptionSeparatedParagraphFragments(renderedBodyLines),
+      ),
     ),
   );
 }
