@@ -41,7 +41,7 @@ export async function convertPdfToHtml(
   const resolvedOutputHtmlPath = resolve(input.outputHtmlPath);
   await assertReadableFile(resolvedInputPdfPath);
   const extracted = await extractDocument(resolvedInputPdfPath);
-  const html = await renderExtractedDocumentAsHtml(extracted);
+  const html = renderExtractedDocumentAsHtml(extracted);
   await mkdir(dirname(resolvedOutputHtmlPath), { recursive: true });
   await writeFile(resolvedOutputHtmlPath, html, "utf8");
   return { outputHtmlPath: resolvedOutputHtmlPath };
@@ -52,14 +52,11 @@ export async function pdfToHtml(pdfBuffer: Uint8Array): Promise<string> {
   return renderExtractedDocumentAsHtml(extracted);
 }
 
-async function renderExtractedDocumentAsHtml(
-  extracted: ExtractedDocument,
-): Promise<string> {
-  const allLines = await collectTextLines(extracted);
-  const filteredLines = filterPageArtifacts(allLines);
-  let { bodyLines, footnoteLines } = movePageFootnotesToDocumentEnd(filteredLines);
-  bodyLines = linkFootnoteMarkers(bodyLines, footnoteLines);
-  const html = renderHtml(bodyLines, extracted, footnoteLines);
+function renderExtractedDocumentAsHtml(extracted: ExtractedDocument): string {
+  const filteredLines = filterPageArtifacts(collectTextLines(extracted));
+  const { bodyLines, footnoteLines } = movePageFootnotesToDocumentEnd(filteredLines);
+  const linkedBodyLines = linkFootnoteMarkers(bodyLines, footnoteLines);
+  const html = renderHtml(linkedBodyLines, extracted, footnoteLines);
   return normalizeKnownFormulaArtifactsInHtml(html);
 }
 

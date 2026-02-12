@@ -151,9 +151,9 @@ const INLINE_NAMED_SECTION_HEADING_PREVIOUS_TERMINAL_PUNCTUATION_PATTERN =
   /[.!?]["')\]]?$/;
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: multi-column detection + column assignment in one pass.
-export async function collectTextLines(
+export function collectTextLines(
   document: ExtractedDocument,
-): Promise<TextLine[]> {
+): TextLine[] {
   const lines: TextLine[] = [];
   const multiColumnPageIndexes = new Set<number>();
   const columnMajorPageIndexes = new Set<number>();
