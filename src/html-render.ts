@@ -191,13 +191,15 @@ const CAPTION_START_PATTERN = /^(?:Figure|Fig\.?)\s+\d+[A-Za-z]?\s*[.:]\s+\S/iu;
 const RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN = /[:;]["')\]]?$/u;
 const RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN = /[.!?]["')\]]?$/u;
 const RENDERED_PARAGRAPH_SOFT_CONNECTOR_END_PATTERN =
-  /\b(?:and|or|of|to|in|on|for|with|by|from|as|at|into|onto|via|than|that|which|whose|where|when|while|if|because)\s*$/iu;
+  /\b(?:and|or|of|to|in|on|for|with|by|from|as|at|into|onto|via|using|than|that|which|whose|where|when|while|if|because)\s*$/iu;
 const RENDERED_PARAGRAPH_SOFT_DETERMINER_PHRASE_END_PATTERN =
   /\b(?:the|a|an)\s+\p{L}{2,}\s*$/iu;
 const RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN =
   /^(?:and|or|with|without|to|for|from|in|on|at|by|of|as|that|which|whose|where|when|while|if)\b/iu;
 const RENDERED_PARAGRAPH_ACRONYM_CONTINUATION_START_PATTERN =
   /^[("“‘'\[]?[A-Z]{2,}[A-Z0-9]*(?:[-/][A-Z0-9]+)*(?:['’]s|s)?\b/u;
+const RENDERED_PARAGRAPH_TITLE_CASE_CONTINUATION_START_PATTERN =
+  /^[("“‘'\[]?(?:[A-Z][a-z][A-Za-z0-9'’-]*|[A-Z][a-z]*\d[A-Za-z0-9'’-]*)\b/u;
 const RENDERED_PARAGRAPH_ACRONYM_LEAD_MAX_WORD_COUNT = 16;
 const RENDERED_PARAGRAPH_ACRONYM_LEAD_MAX_CHAR_LENGTH = 120;
 const RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT = 4;
@@ -1184,8 +1186,27 @@ function isValidSplitRenderedParagraphContinuationText(
   const startsAsPageWrapContinuation =
     BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN.test(continuationText);
   if (!startsAsPageWrapContinuation) {
-    if (!startsWithRenderedAcronymContinuation(continuationText)) return false;
-    if (!firstLooksLikeSplitEnd && !isShortRenderedAcronymLead(firstText)) {
+    const startsAsAcronymContinuation =
+      startsWithRenderedAcronymContinuation(continuationText);
+    const startsAsTitleCaseContinuation =
+      startsWithRenderedTitleCaseContinuation(continuationText);
+    if (
+      startsAsTitleCaseContinuation &&
+      isLikelyTableInterposedLabelArtifactLead(continuationText)
+    ) {
+      return false;
+    }
+    if (
+      !startsAsAcronymContinuation &&
+      !(firstLooksLikeSplitEnd && startsAsTitleCaseContinuation)
+    ) {
+      return false;
+    }
+    if (
+      startsAsAcronymContinuation &&
+      !firstLooksLikeSplitEnd &&
+      !isShortRenderedAcronymLead(firstText)
+    ) {
       return false;
     }
   }
@@ -1200,6 +1221,12 @@ function startsWithRenderedAcronymContinuation(text: string): boolean {
   const trimmed = text.trimStart();
   if (trimmed.length === 0) return false;
   return RENDERED_PARAGRAPH_ACRONYM_CONTINUATION_START_PATTERN.test(trimmed);
+}
+
+function startsWithRenderedTitleCaseContinuation(text: string): boolean {
+  const trimmed = text.trimStart();
+  if (trimmed.length === 0) return false;
+  return RENDERED_PARAGRAPH_TITLE_CASE_CONTINUATION_START_PATTERN.test(trimmed);
 }
 
 function isShortRenderedAcronymLead(text: string): boolean {

@@ -47,6 +47,15 @@ describe("respect.pdf paragraph merging", () => {
     );
   });
 
+  it("merges connector-ended lines with title-cased continuation lines", () => {
+    expect(respectHtml).toContain(
+      "<p>Color intensity corresponds to the magnitude of ln p of tile . Its calculation method is shown in Appendix E.</p>",
+    );
+    expect(respectHtml).not.toContain(
+      "<p>Color intensity corresponds to the magnitude of ln p of tile . Its calculation method is shown in</p>\n<p>Appendix E.</p>",
+    );
+  });
+
   it("does not merge table label fragments with following lowercase paragraph continuations", () => {
     expect(respectHtml).toContain("<p>Politeness Llama2-70B Base Model</p>");
     expect(respectHtml).toContain("<p>ness generally achieves higher scores. However,</p>");

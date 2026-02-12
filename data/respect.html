@@ -51,8 +51,7 @@ RIKEN AIP NII LLMC
 <p>LLMs may refuse to respond to highly disre-spectful, impolite prompts or datasets’ sentences. Consequently, model outputs are classified into four categories: positive, neutral, negative, or re-fusal to answer. The data includes positive and negative items without clear categorization, so switching bias-specific vocabulary in strongly biased sentences may alter the model’s assessment. This renders traditional statistical methods unsuit-able. Hence, we adopted a different approach. If the model provides different evaluations for the two sentences in a pair, we consider it a bias towards this pair. Thus, the model’s bias is measured by the following formula: Number of Different Pairs BI = × 100 . (1) Total Number of Pairs For English bias evaluation, we use CrowS-Pairs (Nangia et al., 2020), which focuses on gender, nationality, race, and socioeconomic biases. We use CHBias (Zhao et al., 2023) for Chinese evaluation, which covers sex, age, appearance, and orientation biases. We employ the Japanese subset from Kaneko et al. (2022) to evaluate gender bias in Japanese.</p>
 <h3>4.3 Influence of RLHF and SFT</h3>
 <p>Furthermore, we consider the roles of Supervised Fine-Tuning (SFT) and Reinforcement Learning from Human Feedback (RLHF). SFT involves re-fining a pre-trained model using a specific dataset to enhance its performance in target tasks. RLHF is a process where the model is further trained based on feedback from human interactions, aiming to align its outputs more closely with human values and preferences. To explore in depth the impact of SFT and RLHF on the hypotheses of this study, we set up additional experiments to compare the influence of politeness levels on model perfor-mance under conditions with and without the pres-ence of SFT and RLHF.</p>
-<p>Therefore, we investigate this issue using</p>
-<p>Llama2-70B and its base model without SFT and RLHF. We conduct the same experiment as before to evaluate the impact of RLHF. However, we modify the prompt content while keeping the prompt template and meaning unchanged to ensure that llama2-70B could generate the required content. In addition, since the base model has yet to be fine-tuned, it will continue to output content in the summarization task until it reaches the generation length limit. Therefore, we do not carry out this evaluation on summarization.</p>
+<p>Therefore, we investigate this issue using Llama2-70B and its base model without SFT and RLHF. We conduct the same experiment as before to evaluate the impact of RLHF. However, we modify the prompt content while keeping the prompt template and meaning unchanged to ensure that llama2-70B could generate the required content. In addition, since the base model has yet to be fine-tuned, it will continue to output content in the summarization task until it reaches the generation length limit. Therefore, we do not carry out this evaluation on summarization.</p>
 <p>Figure 2: Summarization performance across politeness levels. The x-axis shows politeness levels (1 = impolite, 8 = very polite), and the y-axis represents metrics like ROUGE-L, BERTScore, and summary length. The lines show how different LLMs, including GPT-3.5 and GPT-4, respond to varying politeness levels.</p>
 <h2>5 Results</h2>
 <h3>5.1 Summarization</h3>
@@ -84,8 +83,7 @@ RIKEN AIP NII LLMC
 </table>
 <h3>5.2 Language Understanding Benchmarking</h3>
 <p>We show the average scores on the three language understanding benchmarks in Table 1. To investi-gate the statistical significance, we also calculate the p-values of the t-test. The heatmap shown in Figure 3, derived from the t-test results offers an interpretation of these statistical comparisons. Color of tiles indicates statistically significantly better or worse performance for the politeness level on the y-axis than that on the x-axis, with green indicating better performance and red indi-cating worse performance.</p>
-<p>Color intensity corresponds to the magnitude of ln p of tile . Its calculation method is shown in</p>
-<p>Appendix E.</p>
+<p>Color intensity corresponds to the magnitude of ln p of tile . Its calculation method is shown in Appendix E.</p>
 <h4>5.2.1 English</h4>
 <p>According to Table 1, GPT-3.5 achieved its highest score of 60.02 at politeness level 8. As shown in the upper section of Figure 3, level 8 significantly outperforms all levels except level 3. While scores gradually decrease with lower politeness levels, the differences between neighboring levels are not significant. At level 3, a commendable score of 59.44 is maintained, surpassing all levels except level 8. For the lowest politeness level 1, the score drops to 51.93, which is significantly lower than the other levels.</p>
 <p>GPT-4’s scores are variable but relatively stable.</p>
@@ -149,22 +147,18 @@ RIKEN AIP NII LLMC
 <p>In this acknowledgment, we express our gratitude to the RIKEN for their support in the translation of MMLU. We also acknowledge the contributions from Step Corporation, who provided materials on Japanese and World History, and from New Style Cram School VIST, who supplied resources on idioms, civics, and Japanese geography.</p>
 <h2>References</h2>
 <p>Cultural Affairs. 2007. 敬語の指針 . 平成 19 年 , 2.</p>
-<p>Erica R. Bailey, Sandra C. Matz, Wu Youyou, and</p>
-<p>Sheena S. Iyengar. 2020. Authentic self-expression on social media is associated with greater subjective well-being. Nature Communications , 11(1):4889.</p>
+<p>Erica R. Bailey, Sandra C. Matz, Wu Youyou, and Sheena S. Iyengar. 2020. Authentic self-expression on social media is associated with greater subjective well-being. Nature Communications , 11(1):4889.</p>
 <p>Yong Cao, Li Zhou, Seolhwa Lee, Laura Cabello, Min</p>
 <p>Chen, and Daniel Hershcovich. 2023. Assessing cross-cultural alignment between ChatGPT and hu-man societies: An empirical study. In Proceedings of the First Workshop on Cross-Cultural Consider-ations in NLP (C3NLP) , pages 53–67, Dubrovnik,</p>
 <p>Croatia. Association for Computational Linguistics.</p>
-<p>Paul F Christiano, Jan Leike, Tom Brown, Miljan Mar-tic, Shane Legg, and Dario Amodei. 2017. Deep reinforcement learning from human preferences. In</p>
-<p>Advances in Neural Information Processing Systems ,</p>
+<p>Paul F Christiano, Jan Leike, Tom Brown, Miljan Mar-tic, Shane Legg, and Dario Amodei. 2017. Deep reinforcement learning from human preferences. In Advances in Neural Information Processing Systems ,</p>
 <p>volume 30. Curran Associates, Inc.</p>
-<p>Pieter Delobelle, Ewoenam Tokpo, Toon Calders, and</p>
-<p>Bettina Berendt. 2022. Measuring fairness with bi-ased rulers: A comparative study on bias metrics for pre-trained language models. In Proceedings of the 2022 Conference of the North American Chap-ter of the Association for Computational Linguis-tics: Human Language Technologies</p>
+<p>Pieter Delobelle, Ewoenam Tokpo, Toon Calders, and Bettina Berendt. 2022. Measuring fairness with bi-ased rulers: A comparative study on bias metrics for pre-trained language models. In Proceedings of the 2022 Conference of the North American Chap-ter of the Association for Computational Linguis-tics: Human Language Technologies</p>
 <p>, pages 1693–</p>
 <p>1706, Seattle, United States. Association for Com-</p>
 <p>putational Linguistics.</p>
 <p>Jwala Dhamala, Tony Sun, Varun Kumar, Satyapriya</p>
-<p>Krishna, Yada Pruksachatkun, Kai-Wei Chang, and</p>
-<p>Rahul Gupta. 2021. Bold: Dataset and metrics for measuring biases in open-ended language generation.</p>
+<p>Krishna, Yada Pruksachatkun, Kai-Wei Chang, and Rahul Gupta. 2021. Bold: Dataset and metrics for measuring biases in open-ended language generation.</p>
 <p>In Proceedings of the 2021 ACM conference on fair-ness, accountability, and transparency , pages 862–</p>
 <p>872.</p>
 <p>Robin S Dillon. 2003. Respect.</p>
@@ -179,8 +173,7 @@ RIKEN AIP NII LLMC
 <p>Special Issue on &amp;lsquo;Politeness&amp;rsquo;.</p>
 <p>Tahmid Hasan, Abhik Bhattacharjee, Md. Saiful Islam,</p>
 <p>Kazi Mubasshir, Yuan-Fang Li, Yong-Bin Kang,</p>
-<p>M. Sohel Rahman, and Rifat Shahriyar. 2021. XL-sum: Large-scale multilingual abstractive summarization for 44 languages. In Findings of the Associ-ation for Computational Linguistics: ACL-IJCNLP 2021 , pages 4693–4703, Online. Association for</p>
-<p>Computational Linguistics.</p>
+<p>M. Sohel Rahman, and Rifat Shahriyar. 2021. XL-sum: Large-scale multilingual abstractive summarization for 44 languages. In Findings of the Associ-ation for Computational Linguistics: ACL-IJCNLP 2021 , pages 4693–4703, Online. Association for Computational Linguistics.</p>
 <p>Dan Hendrycks, Collin Burns, Steven Basart, Andy</p>
 <p>Zou, Mantas Mazeika, Dawn Song, and Jacob Stein-hardt. 2021. Measuring massive multitask language</p>
 <p>understanding.</p>
@@ -193,9 +186,7 @@ RIKEN AIP NII LLMC
 <p>Jean Kaddour, Joshua Harris, Maximilian Mozes, Her-bie Bradley, Roberta Raileanu, and Robert McHardy.</p>
 <p>2023. Challenges and applications of large language</p>
 <p>models.</p>
-<p>Masahiro Kaneko, Aizhan Imankulova, Danushka Bol-legala, and Naoaki Okazaki. 2022. Gender bias in masked language models for multiple languages. In</p>
-<p>Proceedings of the 2022 Conference of the North</p>
-<p>American Chapter of the Association for Computa-tional Linguistics: Human Language Technologies ,</p>
+<p>Masahiro Kaneko, Aizhan Imankulova, Danushka Bol-legala, and Naoaki Okazaki. 2022. Gender bias in masked language models for multiple languages. In Proceedings of the 2022 Conference of the North American Chapter of the Association for Computa-tional Linguistics: Human Language Technologies ,</p>
 <p>pages 2740–2750, Seattle, United States. Associa-</p>
 <p>tion for Computational Linguistics.</p>
 <p>Kenji Kitao. 1987. Differences between polite-ness strategies used in requests by americans and</p>
@@ -226,8 +217,7 @@ RIKEN AIP NII LLMC
 <p>巻敬語史」大修館書店 .</p>
 <p>David A. Morand. 1996. Politeness as a universal vari-able in cross￿cultural managerial communication.</p>
 <p>The International Journal of Organizational Analy-sis , 4(1):52–74.</p>
-<p>Nikita Nangia, Clara Vania, Rasika Bhalerao, and</p>
-<p>Samuel R. Bowman. 2020. CrowS-pairs: A chal-lenge dataset for measuring social biases in masked language models. In Proceedings of the 2020 Con-ference on Empirical Methods in Natural Language</p>
+<p>Nikita Nangia, Clara Vania, Rasika Bhalerao, and Samuel R. Bowman. 2020. CrowS-pairs: A chal-lenge dataset for measuring social biases in masked language models. In Proceedings of the 2020 Con-ference on Empirical Methods in Natural Language</p>
 <p>Processing (EMNLP) , pages 1953–1967, Online. As-sociation for Computational Linguistics.</p>
 <p>Roberto Navigli, Simone Conia, and Björn Ross. 2023.</p>
 <p>Biases in large language models: Origins, inventory, and discussion. J. Data and Information Quality ,</p>
@@ -367,8 +357,7 @@ RIKEN AIP NII LLMC
 <p>のように健康を促進するか。 C. 両方とも正しい。 D. どちらの選択肢も正しくない。</p>
 <p>The translator thinks the A and B options are ambiguous if simply translated.</p>
 <h2>B Appendix: Prompts Questionnaire</h2>
-<p>The English prompts questionnaire interface is shown in Figure 7, the Chinese interface is shown in</p>
-<p>Figure 8, and the Japanese interface is shown in Figure 9.</p>
+<p>The English prompts questionnaire interface is shown in Figure 7, the Chinese interface is shown in Figure 8, and the Japanese interface is shown in Figure 9.</p>
 <p>Figure 7: Annotator’s interface: English prompts</p>
 <p>Figure 8: Annotator’s interface: Chinese prompts</p>
 <p>Figure 9: Annotator’s interface: Japanese prompts</p>
