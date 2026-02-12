@@ -895,6 +895,18 @@ describe("convertPdfToHtml", () => {
     expect(cleanHtml).toMatch(/<li>.*\[1\]/);
   });
 
+  it("renders dash-prefixed instruction bullets as an unordered list in clean.pdf appendix", () => {
+    expect(cleanHtml).toContain("<ul>");
+    expect(cleanHtml).toContain("<li>reads raw.csv</li>");
+    expect(cleanHtml).toContain(
+      "<li>standardizes every column WITHOUT USING ANY Python libraries</li>",
+    );
+    expect(cleanHtml).not.toContain("<p>- reads raw.csv</p>");
+    expect(cleanHtml).not.toContain(
+      "<p>- standardizes every column WITHOUT USING ANY</p>",
+    );
+  });
+
   it("renders reference entries as an ordered list in covid.pdf", () => {
     expect(covidHtml).toContain("<ol>");
     expect(covidHtml).toContain("</ol>");

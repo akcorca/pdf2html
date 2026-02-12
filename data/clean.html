@@ -120,25 +120,16 @@ squeeze ()
 <p>You are an expert data standardizer.</p>
 <p>default setting and set the temperature to 1. For the GPT-4o baseline, the temperature is also set to 0 for consistency with CleanAgent</p>
 <p>Task: Given a CSV file **raw.csv** in the current working directory, do two things: 1. Column typing Inspect the data and output one best-fit type for each column, line by line in the form: columnName: class 2. Generate Python script After a blank line, provide a single Python script (inside “‘python fences) that:</p>
-<p>- reads raw.csv</p>
-<p>- standardizes every column WITHOUT USING ANY</p>
-<p>Python libraries</p>
-<p>- no additional explanations.</p>
-<p>- please notice the python code, **please not using any libraries** such as**datetime, parse, colorsys, pandas**. Only the original way and regex can be used.</p>
-<p>- if a cell cannot be recognized according to the column’s target format, return ‘NaN‘.</p>
-<p>- formatting rules for column types:</p>
-<p>(1) date → yyyy-mm-dd hh:mm:ss (2) address → Apt apartment_number, house_number,</p>
-<p>street_name, city, state_abbreviation, country, zip-code (skip any missing part silently) (3) phone_number → E.164 format (4) location → (lat,lon) (5) ip → plain IP without subnet mask (6) url → JSON object with keys:</p>
-<p>{</p>
-<p>’scheme’: ’http’,</p>
-<p>’host’: ’www.example.com’,</p>
-<p>’url_clean’: ’http://www.example.com/path’,</p>
-<p>’queries’: {</p>
-<p>’key1’: ’value1’,</p>
-<p>’key2’: ’value2’</p>
-<p>} }</p>
-<p>(7) duration → hh:mm:ss (8) temperatures → Celsius format, e.g., 23 ℃</p>
-<p>(9) colors → hexadecimal, e.g., #a1b2c3 (10) names → "firstname lastname" - If format is "last-name, firstname", convert it - If already "firstname lastname", keep it unchanged Writes cleaned_data.csv in the same directory The script must be runnable with ‘python script.py‘ in a standard Python environment (pandas &amp; common pip packages installed) Return only the column typing and script. No additional explanations.</p>
+<ul>
+<li>reads raw.csv</li>
+<li>standardizes every column WITHOUT USING ANY Python libraries</li>
+<li>no additional explanations.</li>
+<li>please notice the python code, **please not using any libraries** such as**datetime, parse, colorsys, pandas**. Only the original way and regex can be used.</li>
+<li>if a cell cannot be recognized according to the column’s target format, return ‘NaN‘.</li>
+<li>formatting rules for column types: (1) date → yyyy-mm-dd hh:mm:ss (2) address → Apt apartment_number, house_number, street_name, city, state_abbreviation, country, zip-code (skip any missing part silently) (3) phone_number → E.164 format (4) location → (lat,lon) (5) ip → plain IP without subnet mask (6) url → JSON object with keys: { ’scheme’: ’http’, ’host’: ’www.example.com’, ’url_clean’: ’http://www.example.com/path’, ’queries’: { ’key1’: ’value1’, ’key2’: ’value2’ } } (7) duration → hh:mm:ss (8) temperatures → Celsius format, e.g., 23 ℃ (9) colors → hexadecimal, e.g., #a1b2c3 (10) names → "firstname lastname" - If format is "last-name, firstname", convert it - If already "firstname lastname", keep it unchanged</li>
+</ul>
+<p>Writes cleaned_data.csv in the same directory</p>
+<p>The script must be runnable with ‘python script.py‘ in a standard Python environment (pandas &amp; common pip packages installed) Return only the column typing and script. No additional explanations.</p>
 <p>Sample rows of the given table is shown as follows: {df}</p>
 <div class="footnotes">
 <p id="fn1">1 https://colab.research.google.com/github/Cocoon-Data-Transformation/cocoon/ blob/main/demo/Cocoon_Stage_Demo.ipynb</p>

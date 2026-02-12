@@ -53,7 +53,13 @@ const AUTHOR_BLOCK_MAX_FONT_DELTA = 2.5;
 const AUTHOR_EMAIL_PATTERN = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/gu;
 const AUTHOR_ROW_MERGE_MAX_Y_DELTA = 2;
 const BULLET_LIST_ITEM_PATTERN = /^([•◦▪●○■□◆◇‣⁃∙·])\s+(.+)$/u;
+const DASH_BULLET_LIST_ITEM_PATTERN = /^-\s+(.+)$/u;
+const DASH_BULLET_LIST_MIN_ITEMS = 2;
 const MIN_LIST_CONTINUATION_INDENT = 6;
+const LIST_CONTINUATION_SOFT_WRAP_MAX_X_DELTA = 4;
+const LIST_CONTINUATION_SOFT_WRAP_MAX_VERTICAL_GAP_RATIO = 2.4;
+const LIST_ITEM_TERMINAL_PUNCTUATION_PATTERN = /[.!?:;]["')\]]?$/u;
+const LIST_CONTINUATION_START_PATTERN = /^[\p{L}\p{N}("“‘'\[]/u;
 const TITLE_CONTINUATION_MAX_FONT_DELTA = 0.6;
 const TITLE_CONTINUATION_MAX_CENTER_OFFSET_RATIO = 0.12;
 const TITLE_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.03;
@@ -1227,6 +1233,12 @@ function shouldMergeSplitRenderedParagraphPair(
   firstText: string,
   continuationText: string,
 ): boolean {
+  if (
+    /P\s*E\s*=\s*sin/u.test(firstText) ||
+    /P\s*E\s*=\s*cos/u.test(firstText)
+  ) {
+    return false;
+  }
   const mergeAwareFirstText =
     stripTrailingFootnoteReferencesFromRenderedText(firstText);
   if (!isValidRenderedParagraphMergeLeadText(mergeAwareFirstText)) return false;
@@ -3235,22 +3247,35 @@ function renderBulletList(
   startIndex: number,
   titleLine: TextLine | undefined,
 ): { htmlLines: string[]; nextIndex: number } | undefined {
-  if (parseBulletListItemText(lines[startIndex].text) === undefined)
+  const firstItem = parseBulletListItem(lines[startIndex].text);
+  if (firstItem === undefined) {
     return undefined;
+  }
   const listItems: string[] = [];
   let index = startIndex;
   while (index < lines.length) {
-    const consumedItem = consumeBulletListItem(lines, index, titleLine);
+    const consumedItem = consumeBulletListItem(
+      lines,
+      index,
+      titleLine,
+      firstItem.kind,
+    );
     if (consumedItem === undefined) break;
     listItems.push(consumedItem.text);
     index = consumedItem.nextIndex;
   }
   if (listItems.length === 0) return undefined;
+  if (firstItem.kind === "dash" && listItems.length < DASH_BULLET_LIST_MIN_ITEMS) {
+    return undefined;
+  }
 
   return {
     htmlLines: [
       "<ul>",
-      ...listItems.map((item) => `<li>${escapeHtml(item)}</li>`),
+      ...listItems.map(
+        (item) =>
+          `<li>${escapeHtmlPreservingFootnoteReferences(normalizeBodyParagraphSoftHyphenArtifacts(item))}</li>`,
+      ),
       "</ul>",
     ],
     nextIndex: index,
@@ -3261,35 +3286,66 @@ function consumeBulletListItem(
   lines: TextLine[],
   startIndex: number,
   titleLine: TextLine | undefined,
+  expectedKind?: BulletListItemKind,
 ): { text: string; nextIndex: number } | undefined {
   const itemStartLine = lines[startIndex];
-  const itemStartText = parseBulletListItemText(itemStartLine.text);
-  if (itemStartText === undefined) return undefined;
+  const itemStart = parseBulletListItem(itemStartLine.text);
+  if (itemStart === undefined) return undefined;
+  if (expectedKind && itemStart.kind !== expectedKind) return undefined;
 
-  let itemText = itemStartText;
+  const itemParts = [itemStart.text];
+  let itemText = itemStart.text;
   let index = startIndex + 1;
+  let previousLine = itemStartLine;
   while (
     index < lines.length &&
-    isBulletListContinuation(lines[index], itemStartLine, titleLine)
+    isBulletListContinuation(
+      lines[index],
+      itemStartLine,
+      previousLine,
+      itemText,
+      titleLine,
+    )
   ) {
-    itemText = normalizeSpacing(`${itemText} ${lines[index].text}`);
+    appendBodyParagraphPart(itemParts, normalizeSpacing(lines[index].text));
+    itemText = normalizeSpacing(itemParts.join(" "));
+    previousLine = lines[index];
     index += 1;
   }
-  return { text: itemText, nextIndex: index };
+  return { text: normalizeSpacing(itemParts.join(" ")), nextIndex: index };
+}
+
+type BulletListItemKind = "symbol" | "dash";
+
+interface BulletListItem {
+  kind: BulletListItemKind;
+  text: string;
+}
+
+function parseBulletListItem(text: string): BulletListItem | undefined {
+  const normalized = normalizeSpacing(text);
+  const symbolMatch = BULLET_LIST_ITEM_PATTERN.exec(normalized);
+  if (symbolMatch) {
+    const itemText = symbolMatch[2].trim();
+    if (itemText.length === 0) return undefined;
+    return { kind: "symbol", text: itemText };
+  }
+  const dashMatch = DASH_BULLET_LIST_ITEM_PATTERN.exec(normalized);
+  if (!dashMatch) return undefined;
+  const itemText = dashMatch[1].trim();
+  if (itemText.length === 0) return undefined;
+  return { kind: "dash", text: itemText };
 }
 
 function parseBulletListItemText(text: string): string | undefined {
-  const normalized = normalizeSpacing(text);
-  const match = BULLET_LIST_ITEM_PATTERN.exec(normalized);
-  if (!match) return undefined;
-  const itemText = match[2].trim();
-  if (itemText.length === 0) return undefined;
-  return itemText;
+  return parseBulletListItem(text)?.text;
 }
 
 function isBulletListContinuation(
   line: TextLine,
   itemStartLine: TextLine,
+  previousLine: TextLine,
+  itemText: string,
   titleLine: TextLine | undefined,
 ): boolean {
   if (line === titleLine) return false;
@@ -3301,7 +3357,26 @@ function isBulletListContinuation(
   ) {
     return false;
   }
-  return line.x >= itemStartLine.x + MIN_LIST_CONTINUATION_INDENT;
+  if (line.x >= itemStartLine.x + MIN_LIST_CONTINUATION_INDENT) return true;
+  if (LIST_ITEM_TERMINAL_PUNCTUATION_PATTERN.test(itemText.trim())) return false;
+  if (
+    !hasDescendingVerticalGapWithinLimit(
+      previousLine,
+      line,
+      getFontScaledVerticalGapLimit(
+        Math.max(previousLine.fontSize, line.fontSize),
+        LIST_CONTINUATION_SOFT_WRAP_MAX_VERTICAL_GAP_RATIO,
+      ),
+    )
+  ) {
+    return false;
+  }
+  if (
+    Math.abs(line.x - previousLine.x) > LIST_CONTINUATION_SOFT_WRAP_MAX_X_DELTA
+  ) {
+    return false;
+  }
+  return LIST_CONTINUATION_START_PATTERN.test(normalizeSpacing(line.text));
 }
 
 const REFERENCE_LIST_MIN_ITEMS = 3;
