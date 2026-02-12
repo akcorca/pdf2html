@@ -171,6 +171,10 @@ const RENDERED_PARAGRAPH_SOFT_DETERMINER_PHRASE_END_PATTERN =
   /\b(?:the|a|an)\s+\p{L}{2,}\s*$/iu;
 const RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN =
   /^(?:and|or|with|without|to|for|from|in|on|at|by|of|as|that|which|whose|where|when|while|if)\b/iu;
+const RENDERED_PARAGRAPH_ACRONYM_CONTINUATION_START_PATTERN =
+  /^[("“‘'\[]?[A-Z]{2,}[A-Z0-9]*(?:[-/][A-Z0-9]+)*(?:['’]s|s)?\b/u;
+const RENDERED_PARAGRAPH_ACRONYM_LEAD_MAX_WORD_COUNT = 16;
+const RENDERED_PARAGRAPH_ACRONYM_LEAD_MAX_CHAR_LENGTH = 120;
 const RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT = 4;
 const RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT = 2;
 const RENDERED_PARAGRAPH_INLINE_MATH_ARTIFACT_TOKEN_PATTERN = /^[A-Z]{1,3}$/;
@@ -767,11 +771,7 @@ function shouldMergeSplitRenderedParentheticalBridge(
   }
   const mergeAwareFirstText =
     stripTrailingFootnoteReferencesFromRenderedText(firstText);
-  if (mergeAwareFirstText.length === 0) return false;
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(mergeAwareFirstText))
-    return false;
-  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(mergeAwareFirstText))
-    return false;
+  if (!isValidRenderedParagraphMergeLeadText(mergeAwareFirstText)) return false;
   if (
     !isLikelySplitParagraphEnd(mergeAwareFirstText) &&
     !isLikelySentenceWrappedSplitParagraphEnd(mergeAwareFirstText)
@@ -779,30 +779,11 @@ function shouldMergeSplitRenderedParentheticalBridge(
     return false;
   }
   if (
-    containsDocumentMetadata(firstText) ||
-    containsDocumentMetadata(bridgeText) ||
-    containsDocumentMetadata(continuationText)
-  ) {
-    return false;
-  }
-  if (
-    CAPTION_START_PATTERN.test(firstText) ||
-    CAPTION_START_PATTERN.test(bridgeText) ||
-    CAPTION_START_PATTERN.test(continuationText)
-  ) {
-    return false;
-  }
-  if (
-    STANDALONE_CAPTION_LABEL_PATTERN.test(firstText) ||
-    STANDALONE_CAPTION_LABEL_PATTERN.test(bridgeText) ||
-    STANDALONE_CAPTION_LABEL_PATTERN.test(continuationText)
-  ) {
-    return false;
-  }
-  if (isLikelyAffiliationAddressLine(mergeAwareFirstText)) return false;
-  if (
-    splitWords(mergeAwareFirstText).length <
-    RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT
+    hasBlockedRenderedParagraphMergeContext(
+      firstText,
+      bridgeText,
+      continuationText,
+    )
   ) {
     return false;
   }
@@ -941,67 +922,96 @@ function isStandaloneRenderedInlineMathArtifactText(text: string): boolean {
   return hasSingleCharacterToken || hasRepeatedToken;
 }
 
+function hasBlockedRenderedParagraphMergeContext(...texts: string[]): boolean {
+  return texts.some(
+    (text) =>
+      containsDocumentMetadata(text) ||
+      CAPTION_START_PATTERN.test(text) ||
+      STANDALONE_CAPTION_LABEL_PATTERN.test(text),
+  );
+}
+
+function isValidRenderedParagraphMergeLeadText(text: string): boolean {
+  if (text.length === 0) return false;
+  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(text)) return false;
+  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(text)) return false;
+  if (isLikelyAffiliationAddressLine(text)) return false;
+  return (
+    splitWords(text).length >= RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT
+  );
+}
+
 function shouldMergeSplitRenderedParagraphPair(
   firstText: string,
   continuationText: string,
 ): boolean {
   const mergeAwareFirstText =
     stripTrailingFootnoteReferencesFromRenderedText(firstText);
-  if (mergeAwareFirstText.length === 0) return false;
-  if (INLINE_MATH_BRIDGE_PREVIOUS_LINE_END_PATTERN.test(mergeAwareFirstText))
-    return false;
-  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(mergeAwareFirstText))
-    return false;
+  if (!isValidRenderedParagraphMergeLeadText(mergeAwareFirstText)) return false;
+  const firstLooksLikeSplitEnd = isLikelySplitParagraphEnd(mergeAwareFirstText);
   const startsWithConnector =
     RENDERED_PARAGRAPH_CONTINUATION_CONNECTOR_START_PATTERN.test(
       continuationText,
     );
   if (
-    !isLikelySplitParagraphEnd(mergeAwareFirstText) &&
+    !firstLooksLikeSplitEnd &&
     !startsWithConnector &&
     !isLikelySentenceWrappedSplitParagraphEnd(mergeAwareFirstText)
   ) {
     return false;
   }
-  if (
-    containsDocumentMetadata(firstText) ||
-    containsDocumentMetadata(continuationText)
-  )
+  if (hasBlockedRenderedParagraphMergeContext(firstText, continuationText))
     return false;
   if (
-    CAPTION_START_PATTERN.test(firstText) ||
-    CAPTION_START_PATTERN.test(continuationText)
-  )
-    return false;
-  if (
-    STANDALONE_CAPTION_LABEL_PATTERN.test(firstText) ||
-    STANDALONE_CAPTION_LABEL_PATTERN.test(continuationText)
-  )
-    return false;
-  if (isLikelyAffiliationAddressLine(mergeAwareFirstText)) return false;
-  if (!isValidSplitRenderedParagraphContinuationText(continuationText))
-    return false;
-  if (
-    splitWords(mergeAwareFirstText).length <
-    RENDERED_PARAGRAPH_MERGE_MIN_PREVIOUS_WORD_COUNT
+    !isValidSplitRenderedParagraphContinuationText(
+      mergeAwareFirstText,
+      continuationText,
+      firstLooksLikeSplitEnd,
+    )
   )
     return false;
   return true;
 }
 
 function isValidSplitRenderedParagraphContinuationText(
+  firstText: string,
   continuationText: string,
+  firstLooksLikeSplitEnd = isLikelySplitParagraphEnd(firstText),
 ): boolean {
   if (BODY_PARAGRAPH_REFERENCE_ENTRY_PATTERN.test(continuationText))
     return false;
-  if (
-    !BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN.test(continuationText)
-  )
-    return false;
+  const startsAsPageWrapContinuation =
+    BODY_PARAGRAPH_PAGE_WRAP_CONTINUATION_START_PATTERN.test(continuationText);
+  if (!startsAsPageWrapContinuation) {
+    if (!startsWithRenderedAcronymContinuation(continuationText)) return false;
+    if (!firstLooksLikeSplitEnd && !isShortRenderedAcronymLead(firstText)) {
+      return false;
+    }
+  }
   if (parseBulletListItemText(continuationText) !== undefined) return false;
   return (
     splitWords(continuationText).length >=
     RENDERED_PARAGRAPH_MERGE_MIN_CONTINUATION_WORD_COUNT
+  );
+}
+
+function startsWithRenderedAcronymContinuation(text: string): boolean {
+  const trimmed = text.trimStart();
+  if (trimmed.length === 0) return false;
+  return RENDERED_PARAGRAPH_ACRONYM_CONTINUATION_START_PATTERN.test(trimmed);
+}
+
+function isShortRenderedAcronymLead(text: string): boolean {
+  const normalized = normalizeSpacing(text.trim());
+  if (normalized.length === 0) return false;
+  if (normalized.length > RENDERED_PARAGRAPH_ACRONYM_LEAD_MAX_CHAR_LENGTH) {
+    return false;
+  }
+  if (RENDERED_PARAGRAPH_TERMINAL_PUNCTUATION_END_PATTERN.test(normalized))
+    return false;
+  if (RENDERED_PARAGRAPH_HARD_BREAK_END_PATTERN.test(normalized)) return false;
+  return (
+    splitWords(normalized).length <= RENDERED_PARAGRAPH_ACRONYM_LEAD_MAX_WORD_COUNT
   );
 }
 
