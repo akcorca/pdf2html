@@ -48,21 +48,6 @@ const FOOTNOTE_START_MARKER_RULES = [
   },
 ] as const;
 
-interface FootnoteDetectionContext {
-  pageLines: TextLine[];
-  startIndex: number;
-  bodyFontSize: number;
-  pageBodyFontSize: number;
-}
-
-type FootnoteRangeDetector = (context: FootnoteDetectionContext) => number | undefined;
-
-const FOOTNOTE_RANGE_DETECTORS: readonly FootnoteRangeDetector[] = [
-  findPublicationMetadataFootnoteRangeEndIndex,
-  findFootnoteRangeEndIndex,
-  findUnmarkedFootnoteRangeEndIndex,
-];
-
 export function movePageFootnotesToDocumentEnd(
   lines: TextLine[],
 ): { bodyLines: TextLine[]; footnoteLines: TextLine[] } {
@@ -97,12 +82,12 @@ function collectFootnoteLines(lines: TextLine[], bodyFontSize: number): Set<Text
   for (const pageLines of groupLinesByPage(lines).values()) {
     const pageBodyFontSize = estimateBodyFontSize(pageLines);
     for (let index = 0; index < pageLines.length - 1; ) {
-      const endIndex = findFirstFootnoteRangeEndIndex({
+      const endIndex = findFirstFootnoteRangeEndIndex(
         pageLines,
-        startIndex: index,
+        index,
         bodyFontSize,
         pageBodyFontSize,
-      });
+      );
       if (endIndex === undefined) {
         index += 1;
         continue;
@@ -125,18 +110,30 @@ function addLineRangeToSet(
   }
 }
 
-function findFirstFootnoteRangeEndIndex(context: FootnoteDetectionContext): number | undefined {
-  for (const detector of FOOTNOTE_RANGE_DETECTORS) {
-    const endIndex = detector(context);
-    if (endIndex !== undefined) return endIndex;
-  }
-  return undefined;
+function findFirstFootnoteRangeEndIndex(
+  pageLines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+  pageBodyFontSize: number,
+): number | undefined {
+  return (
+    findPublicationMetadataFootnoteRangeEndIndex(
+      pageLines,
+      startIndex,
+      bodyFontSize,
+      pageBodyFontSize,
+    ) ??
+    findFootnoteRangeEndIndex(pageLines, startIndex, bodyFontSize) ??
+    findUnmarkedFootnoteRangeEndIndex(pageLines, startIndex, bodyFontSize, pageBodyFontSize)
+  );
 }
 
 function findPublicationMetadataFootnoteRangeEndIndex(
-  context: FootnoteDetectionContext,
+  pageLines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+  pageBodyFontSize: number,
 ): number | undefined {
-  const { pageLines, startIndex, bodyFontSize, pageBodyFontSize } = context;
   const startLine = pageLines[startIndex];
   if (!isPublicationMetadataStartLine(startLine, bodyFontSize, pageBodyFontSize)) return undefined;
 
@@ -148,9 +145,11 @@ function findPublicationMetadataFootnoteRangeEndIndex(
 }
 
 function findUnmarkedFootnoteRangeEndIndex(
-  context: FootnoteDetectionContext,
+  pageLines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
+  pageBodyFontSize: number,
 ): number | undefined {
-  const { pageLines, startIndex, bodyFontSize, pageBodyFontSize } = context;
   const startLine = pageLines[startIndex];
   if (!isUnmarkedFootnoteStartLine(startLine, bodyFontSize, pageBodyFontSize)) return undefined;
 
@@ -163,9 +162,10 @@ function findUnmarkedFootnoteRangeEndIndex(
 }
 
 function findFootnoteRangeEndIndex(
-  context: FootnoteDetectionContext,
+  pageLines: TextLine[],
+  startIndex: number,
+  bodyFontSize: number,
 ): number | undefined {
-  const { pageLines, startIndex, bodyFontSize } = context;
   const markerLine = pageLines[startIndex];
   if (!isFootnoteStartMarkerLine(markerLine, bodyFontSize)) return undefined;
   return findFootnoteContinuationRangeEndIndex(pageLines, startIndex + 1, bodyFontSize);
