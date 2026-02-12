@@ -166,14 +166,18 @@ function isDetachedTinyMathContinuationLine(
 function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
   if (lines.length === 0) return lines;
   const markerNumbers = lines.map((line) => parseLeadingNumericMarker(line.text));
-  const nextMarkerByIndex = buildNextMarkerByIndex(markerNumbers);
+  const explicitMarkers = markerNumbers
+    .map((marker, index) => (marker === undefined ? undefined : { marker, index }))
+    .filter((value): value is { marker: number; index: number } => value !== undefined);
   const resolvedLines = [...lines];
   let previousMarker: number | undefined;
+  let nextExplicitMarkerIndex = 0;
 
   for (let index = 0; index < lines.length; index += 1) {
-    const currentMarker = markerNumbers[index];
-    if (currentMarker !== undefined) {
-      previousMarker = currentMarker;
+    const currentExplicitMarker = explicitMarkers[nextExplicitMarkerIndex];
+    if (currentExplicitMarker?.index === index) {
+      previousMarker = currentExplicitMarker.marker;
+      nextExplicitMarkerIndex += 1;
       continue;
     }
     if (previousMarker === undefined) continue;
@@ -181,7 +185,7 @@ function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
     const text = normalizeSpacing(lines[index].text);
     if (!FOOTNOTE_URL_START_PATTERN.test(text)) continue;
 
-    const nextMarker = nextMarkerByIndex[index];
+    const nextMarker = explicitMarkers[nextExplicitMarkerIndex]?.marker;
     if (nextMarker === undefined || nextMarker <= previousMarker + 1) continue;
 
     const inferredMarker = previousMarker + 1;
@@ -190,19 +194,6 @@ function inferMissingNumericFootnoteMarkers(lines: TextLine[]): TextLine[] {
   }
 
   return resolvedLines;
-}
-
-function buildNextMarkerByIndex(markers: Array<number | undefined>): Array<number | undefined> {
-  const nextMarkerByIndex: Array<number | undefined> = new Array(markers.length);
-  let nextMarker: number | undefined;
-  for (let index = markers.length - 1; index >= 0; index -= 1) {
-    nextMarkerByIndex[index] = nextMarker;
-    const marker = markers[index];
-    if (marker !== undefined) {
-      nextMarker = marker;
-    }
-  }
-  return nextMarkerByIndex;
 }
 
 export { parseLeadingNumericMarker } from "./string-utils.ts";
