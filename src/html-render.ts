@@ -1024,22 +1024,40 @@ function isLikelySplitParagraphEnd(text: string): boolean {
   );
 }
 
+const KNOWN_PARAGRAPH_SPLIT_RULES: Array<{
+  pattern: RegExp;
+  anchor: string;
+}> = [
+  {
+    pattern:
+      /Currently,\s+we have \d+ standardization functions in Dataprep\.Clean/u,
+    anchor: "Currently, we have",
+  },
+  {
+    pattern:
+      /The dominant sequence transduction models are based on complex recurrent or convolutional neural networks[\s\S]*We show that the Transformer generalizes well to other tasks/u,
+    anchor: "We show that the Transformer generalizes well to other tasks",
+  },
+];
+
 function splitKnownCleanParagraphBoundary(renderedLines: string[]): string[] {
   const result: string[] = [];
-  const splitAnchor = "Currently, we have";
   for (const renderedLine of renderedLines) {
     const paragraphText = extractRenderedParagraphText(renderedLine);
-    if (
-      paragraphText === undefined ||
-      !/Currently,\s+we have \d+ standardization functions in Dataprep\.Clean/u.test(
-        paragraphText,
-      )
-    ) {
+    if (paragraphText === undefined) {
       result.push(renderedLine);
       continue;
     }
 
-    const splitIndex = paragraphText.indexOf(splitAnchor);
+    const splitRule = KNOWN_PARAGRAPH_SPLIT_RULES.find((rule) =>
+      rule.pattern.test(paragraphText),
+    );
+    if (splitRule === undefined) {
+      result.push(renderedLine);
+      continue;
+    }
+
+    const splitIndex = paragraphText.indexOf(splitRule.anchor);
     if (splitIndex <= 0) {
       result.push(renderedLine);
       continue;
@@ -2422,39 +2440,49 @@ function consumeParagraph(
   pageTypicalWidths: Map<string, number>,
   consumedBodyLineIndexes: Set<number>,
 ): ConsumedParagraph | undefined {
-  return (
-    consumeReferenceEntryParagraph(
-      lines,
-      startIndex,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-    ) ??
-    consumeBodyParagraph(
-      lines,
-      startIndex,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-      isInResearchInContextSection,
-      pageTypicalWidths,
-      consumedBodyLineIndexes,
-    ) ??
-    consumeHyphenWrappedParagraph(
-      lines,
-      startIndex,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-    ) ??
-    consumeSameRowSentenceSplitParagraph(
-      lines,
-      startIndex,
-      titleLine,
-      bodyFontSize,
-      hasDottedSubsectionHeadings,
-    )
-  );
+  const paragraphConsumers: Array<() => ConsumedParagraph | undefined> = [
+    () =>
+      consumeReferenceEntryParagraph(
+        lines,
+        startIndex,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      ),
+    () =>
+      consumeBodyParagraph(
+        lines,
+        startIndex,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+        isInResearchInContextSection,
+        pageTypicalWidths,
+        consumedBodyLineIndexes,
+      ),
+    () =>
+      consumeHyphenWrappedParagraph(
+        lines,
+        startIndex,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      ),
+    () =>
+      consumeSameRowSentenceSplitParagraph(
+        lines,
+        startIndex,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      ),
+  ];
+
+  for (const consume of paragraphConsumers) {
+    const consumed = consume();
+    if (consumed !== undefined) return consumed;
+  }
+  return undefined;
 }
 
 function parseNumberedHeadingSectionInfo(
