@@ -52,7 +52,7 @@ const BACK_MATTER_APPENDIX_SECTION_HEADING_PATTERN =
   /^appendix(?:es)?(?:\s+[A-Z0-9]+(?:\.[A-Z0-9]+)?)?(?:[.:]\s+(?:supplementary|additional|online)\s+(?:data|material|materials|information))?$/iu;
 const REFERENCES_HEADING_TEXT = "references";
 const POST_REFERENCES_UNNUMBERED_HEADING_LEVEL = 2;
-const POST_REFERENCES_UNNUMBERED_HEADING_MIN_FONT_RATIO = 1.08;
+const POST_REFERENCES_UNNUMBERED_HEADING_MIN_FONT_RATIO = 0.98;
 const POST_REFERENCES_UNNUMBERED_HEADING_MAX_FONT_RATIO = 1.45;
 const POST_REFERENCES_UNNUMBERED_HEADING_MIN_TOP_RATIO = 0.78;
 const POST_REFERENCES_UNNUMBERED_HEADING_MAX_WIDTH_RATIO = 0.62;
@@ -221,6 +221,21 @@ const REFERENCE_ENTRY_CONTINUATION_MAX_LEFT_OFFSET_RATIO = 0.08;
 const REFERENCE_ENTRY_CONTINUATION_MAX_CENTER_OFFSET_RATIO = 0.12;
 const BODY_PARAGRAPH_CITATION_CONTINUATION_PATTERN =
   /^\[\d+(?:\s*,\s*\d+)*\]\s*[,;:]\s+[A-Za-z(“‘"']/u;
+const RESEARCH_IN_CONTEXT_HEADING_TEXT = "research in context";
+const RESEARCH_CONTEXT_SUBHEADING_MIN_WORDS = 3;
+const RESEARCH_CONTEXT_SUBHEADING_MAX_WORDS = 10;
+const RESEARCH_CONTEXT_SUBHEADING_MIN_ALPHA_WORDS = 3;
+const RESEARCH_CONTEXT_SUBHEADING_MAX_WIDTH_RATIO = 0.72;
+const RESEARCH_CONTEXT_SUBHEADING_MIN_NEXT_WIDTH_RATIO = 0.72;
+const RESEARCH_CONTEXT_SUBHEADING_MIN_NEXT_WORDS = 8;
+const RESEARCH_CONTEXT_SUBHEADING_MAX_FONT_DELTA = 0.45;
+const RESEARCH_CONTEXT_SUBHEADING_MAX_LEFT_OFFSET_RATIO = 0.03;
+const RESEARCH_CONTEXT_SUBHEADING_MAX_VERTICAL_GAP_RATIO = 2.6;
+const RESEARCH_CONTEXT_SUBHEADING_TERMINAL_PUNCTUATION_PATTERN =
+  /[.!?;:]["')\]]?$/u;
+const RESEARCH_CONTEXT_SUBHEADING_DISALLOWED_CHARACTER_PATTERN =
+  /[,:[\]{}<>]/u;
+const RESEARCH_CONTEXT_SUBHEADING_PREVIOUS_END_PATTERN = /[.!?]["')\]]?$/u;
 const BODY_PARAGRAPH_INDENT_LEAD_START_PATTERN = /^[A-Z(“‘"']/u;
 const BODY_PARAGRAPH_INDENT_LEAD_MIN_WIDTH_RATIO = 0.5;
 const BODY_PARAGRAPH_INDENT_LEAD_MIN_WORD_COUNT = 4;
@@ -807,6 +822,7 @@ function renderBodyLines(
     : undefined;
   const consumedBodyLineIndexes = new Set<number>();
   let hasSeenReferencesHeading = false;
+  let isInResearchInContextSection = false;
   let index = consumedTitle?.startIndex ?? 0;
   while (index < lines.length) {
     if (consumedTitle && index === consumedTitle.startIndex) {
@@ -891,6 +907,10 @@ function renderBodyLines(
       bodyLines.push(
         `<h${heading.level}>${escapeHtml(headingText)}</h${heading.level}>`,
       );
+      if (heading.level <= 2) {
+        isInResearchInContextSection =
+          isResearchInContextHeadingText(headingText);
+      }
       if (isReferencesHeadingText(headingText)) {
         hasSeenReferencesHeading = true;
       }
@@ -931,21 +951,55 @@ function renderBodyLines(
       bodyLines.push(
         `<h${postReferencesHeading.level}>${escapeHtml(postReferencesHeading.text)}</h${postReferencesHeading.level}>`,
       );
+      if (postReferencesHeading.level <= 2) {
+        isInResearchInContextSection = false;
+      }
       index += 1;
       continue;
     }
 
     const inlineHeading = parseInlineHeadingParagraph(currentLine.text);
     if (inlineHeading !== undefined) {
+      const isResearchHeading = isResearchInContextHeadingText(
+        inlineHeading.heading,
+      );
       bodyLines.push(
         `<h${inlineHeading.level}>${escapeHtml(inlineHeading.heading)}</h${inlineHeading.level}>`,
       );
-      bodyLines.push(renderParagraph(inlineHeading.body));
+      if (inlineHeading.level <= 2) {
+        isInResearchInContextSection = isResearchHeading;
+      }
+      if (
+        isResearchHeading &&
+        isLikelyResearchContextSubheadingText(inlineHeading.body)
+      ) {
+        bodyLines.push(`<h3>${escapeHtml(inlineHeading.body)}</h3>`);
+      } else {
+        bodyLines.push(renderParagraph(inlineHeading.body));
+      }
       if (isReferencesHeadingText(inlineHeading.heading)) {
         hasSeenReferencesHeading = true;
       }
       index += 1;
       continue;
+    }
+
+    if (isInResearchInContextSection) {
+      const typicalWidth =
+        getTypicalWidth(pageTypicalWidths, currentLine) ?? currentLine.pageWidth;
+      const researchSubheading = consumeResearchContextSubheading(
+        lines,
+        index,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+        typicalWidth,
+      );
+      if (researchSubheading !== undefined) {
+        bodyLines.push(`<h3>${escapeHtml(researchSubheading.text)}</h3>`);
+        index = researchSubheading.nextIndex;
+        continue;
+      }
     }
 
     const renderedList = renderBulletList(lines, index, titleLine);
@@ -1041,6 +1095,7 @@ function renderBodyLines(
       titleLine,
       bodyFontSize,
       hasDottedSubsectionHeadings,
+      isInResearchInContextSection,
       pageTypicalWidths,
       consumedBodyLineIndexes,
     );
@@ -1793,7 +1848,7 @@ function isNearFigureCaptionBand(line: TextLine, captionLine: TextLine): boolean
 }
 
 function hasStrongTitleCaseSignal(words: string[]): boolean {
-  const { alphaWordCount, titleCaseWordCount } = countTitleCaseWords(words);
+  const { alphaWordCount, titleCaseWordCount } = countWordShapeStats(words);
   if (alphaWordCount < FIGURE_PANEL_LABEL_MIN_ALPHA_WORDS) return false;
   return (
     titleCaseWordCount / alphaWordCount >=
@@ -1801,22 +1856,32 @@ function hasStrongTitleCaseSignal(words: string[]): boolean {
   );
 }
 
-function countTitleCaseWords(words: string[]): {
+function stripWordBoundaryPunctuation(rawWord: string): string {
+  return rawWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
+}
+
+function countWordShapeStats(words: string[]): {
   alphaWordCount: number;
   titleCaseWordCount: number;
+  meaningfulWordCount: number;
 } {
   let alphaWordCount = 0;
   let titleCaseWordCount = 0;
+  let meaningfulWordCount = 0;
 
   for (const rawWord of words) {
-    const word = rawWord.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "");
-    if (!/[\p{L}]/u.test(word)) continue;
+    const word = stripWordBoundaryPunctuation(rawWord);
+    const alphaOnly = word.replace(/[^\p{L}]/gu, "");
+    if (alphaOnly.length === 0) continue;
     alphaWordCount += 1;
     if (/^\p{Lu}/u.test(word)) {
       titleCaseWordCount += 1;
     }
+    if (alphaOnly.length >= 4) {
+      meaningfulWordCount += 1;
+    }
   }
-  return { alphaWordCount, titleCaseWordCount };
+  return { alphaWordCount, titleCaseWordCount, meaningfulWordCount };
 }
 
 function findNearbyFigureCaptionStartIndex(
@@ -2084,6 +2149,7 @@ function consumeParagraph(
   titleLine: TextLine | undefined,
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
+  isInResearchInContextSection: boolean,
   pageTypicalWidths: Map<string, number>,
   consumedBodyLineIndexes: Set<number>,
 ): ConsumedParagraph | undefined {
@@ -2101,6 +2167,7 @@ function consumeParagraph(
       titleLine,
       bodyFontSize,
       hasDottedSubsectionHeadings,
+      isInResearchInContextSection,
       pageTypicalWidths,
       consumedBodyLineIndexes,
     ) ??
@@ -2270,7 +2337,8 @@ function detectPostReferencesUnnumberedHeading(
   ) {
     return undefined;
   }
-  const { alphaWordCount, titleCaseWordCount } = countTitleCaseWords(words);
+  const { alphaWordCount, titleCaseWordCount, meaningfulWordCount } =
+    countWordShapeStats(words);
   if (alphaWordCount < POST_REFERENCES_UNNUMBERED_HEADING_MIN_ALPHA_WORDS)
     return undefined;
   if (
@@ -2287,13 +2355,7 @@ function detectPostReferencesUnnumberedHeading(
   ) {
     return undefined;
   }
-  const hasMeaningfulWord = words.some(
-    (word) =>
-      word
-        .replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, "")
-        .replace(/[^\p{L}]/gu, "").length >= 4,
-  );
-  if (!hasMeaningfulWord) return undefined;
+  if (meaningfulWordCount === 0) return undefined;
 
   return { level: POST_REFERENCES_UNNUMBERED_HEADING_LEVEL, text: normalized };
 }
@@ -2944,6 +3006,122 @@ function parseInlineHeadingParagraph(
     parseInlineAcknowledgementsHeading(text) ??
     parseInlineNamedSectionHeading(text)
   );
+}
+
+function isResearchInContextHeadingText(text: string): boolean {
+  return (
+    normalizeSpacing(text).toLowerCase() === RESEARCH_IN_CONTEXT_HEADING_TEXT
+  );
+}
+
+function isLikelyResearchContextSubheadingText(text: string): boolean {
+  const normalized = normalizeSpacing(text);
+  if (normalized.length < 12 || normalized.length > 100) return false;
+  if (RESEARCH_CONTEXT_SUBHEADING_DISALLOWED_CHARACTER_PATTERN.test(normalized))
+    return false;
+  if (RESEARCH_CONTEXT_SUBHEADING_TERMINAL_PUNCTUATION_PATTERN.test(normalized))
+    return false;
+  if (/\d/.test(normalized)) return false;
+
+  const words = splitWords(normalized);
+  if (
+    words.length < RESEARCH_CONTEXT_SUBHEADING_MIN_WORDS ||
+    words.length > RESEARCH_CONTEXT_SUBHEADING_MAX_WORDS
+  ) {
+    return false;
+  }
+  const firstWord = stripWordBoundaryPunctuation(words[0] ?? "");
+  if (!firstWord || !/^\p{Lu}/u.test(firstWord)) return false;
+
+  const { alphaWordCount, meaningfulWordCount } = countWordShapeStats(words);
+
+  if (alphaWordCount < RESEARCH_CONTEXT_SUBHEADING_MIN_ALPHA_WORDS)
+    return false;
+  return meaningfulWordCount >= 2;
+}
+
+// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: subheading detection uses geometric and textual guards together.
+function consumeResearchContextSubheading(
+  lines: TextLine[],
+  lineIndex: number,
+  titleLine: TextLine | undefined,
+  bodyFontSize: number,
+  hasDottedSubsectionHeadings: boolean,
+  typicalWidth: number,
+): { text: string; nextIndex: number } | undefined {
+  const line = lines[lineIndex];
+  if (!line) return undefined;
+  const normalized = parseParagraphMergeCandidateText(line, {
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  });
+  if (normalized === undefined) return undefined;
+  if (!isLikelyResearchContextSubheadingText(normalized)) return undefined;
+  if (
+    line.estimatedWidth >
+    typicalWidth * RESEARCH_CONTEXT_SUBHEADING_MAX_WIDTH_RATIO
+  ) {
+    return undefined;
+  }
+
+  const previousLine = lines[lineIndex - 1];
+  if (previousLine && previousLine.pageIndex === line.pageIndex) {
+    const previousNormalized = normalizeSpacing(previousLine.text);
+    const previousIsHeading =
+      detectHeadingCandidate(
+        previousLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+      ) !== undefined ||
+      parseInlineHeadingParagraph(previousNormalized) !== undefined;
+    if (
+      !previousIsHeading &&
+      !RESEARCH_CONTEXT_SUBHEADING_PREVIOUS_END_PATTERN.test(previousNormalized)
+    ) {
+      return undefined;
+    }
+  }
+
+  const nextLine = lines[lineIndex + 1];
+  if (!nextLine || nextLine.pageIndex !== line.pageIndex) return undefined;
+  if (isCrossColumnPair(line, nextLine)) return undefined;
+  if (
+    Math.abs(nextLine.fontSize - line.fontSize) >
+    RESEARCH_CONTEXT_SUBHEADING_MAX_FONT_DELTA
+  ) {
+    return undefined;
+  }
+  const maxVerticalGap = getFontScaledVerticalGapLimit(
+    Math.max(line.fontSize, nextLine.fontSize),
+    RESEARCH_CONTEXT_SUBHEADING_MAX_VERTICAL_GAP_RATIO,
+  );
+  if (!hasDescendingVerticalGapWithinLimit(line, nextLine, maxVerticalGap))
+    return undefined;
+  if (
+    Math.abs(nextLine.x - line.x) >
+    line.pageWidth * RESEARCH_CONTEXT_SUBHEADING_MAX_LEFT_OFFSET_RATIO
+  ) {
+    return undefined;
+  }
+
+  const nextNormalized = parseParagraphMergeCandidateText(nextLine, {
+    samePageAs: line,
+    titleLine,
+    bodyFontSize,
+    hasDottedSubsectionHeadings,
+  });
+  if (nextNormalized === undefined) return undefined;
+  if (
+    nextLine.estimatedWidth <
+    typicalWidth * RESEARCH_CONTEXT_SUBHEADING_MIN_NEXT_WIDTH_RATIO
+  ) {
+    return undefined;
+  }
+  if (splitWords(nextNormalized).length < RESEARCH_CONTEXT_SUBHEADING_MIN_NEXT_WORDS)
+    return undefined;
+
+  return { text: normalized, nextIndex: lineIndex + 1 };
 }
 
 function hasInlineHeadingBodyText(text: string, minLength: number): boolean {
@@ -3978,6 +4156,7 @@ function consumeBodyParagraph(
   titleLine: TextLine | undefined,
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
+  isInResearchInContextSection: boolean,
   pageTypicalWidths: Map<string, number>,
   consumedBodyLineIndexes: Set<number>,
 ): { text: string; nextIndex: number } | undefined {
@@ -4041,6 +4220,7 @@ function consumeBodyParagraph(
     titleLine,
     bodyFontSize,
     hasDottedSubsectionHeadings,
+    isInResearchInContextSection,
     typicalWidth,
     parts,
     consumedBodyLineIndexes,
@@ -4183,6 +4363,7 @@ function consumeBodyParagraphContinuationParts(
   titleLine: TextLine | undefined,
   bodyFontSize: number,
   hasDottedSubsectionHeadings: boolean,
+  isInResearchInContextSection: boolean,
   typicalWidth: number,
   parts: string[],
   consumedBodyLineIndexes: Set<number>,
@@ -4199,6 +4380,19 @@ function consumeBodyParagraphContinuationParts(
     }
     const candidate = lines[nextIndex];
     if (!candidate) break;
+    if (
+      isInResearchInContextSection &&
+      consumeResearchContextSubheading(
+        lines,
+        nextIndex,
+        titleLine,
+        bodyFontSize,
+        hasDottedSubsectionHeadings,
+        typicalWidth,
+      ) !== undefined
+    ) {
+      break;
+    }
     if (
       shouldSkipDetachedNumericFootnoteMarkerContinuationLine(
         lines,

@@ -101,7 +101,7 @@ squeeze ()
 <p>Use dataprep library to clean the table {path}. Please follow the three steps: (1) Use column annotator to annotate the type of each column within the five types: {candi-date_column_types}.</p>
 <p>(2) Pick up corresponding clean functions and write code to clean the column.</p>
 <p>(3) store the cleaned dataframe as csv file named as "cleaned_data.csv"</p>
-<p>System Message of Column Annotator</p>
+<h2>System Message of Column Annotator</h2>
 <p>You are an expert column type annotator.</p>
 <p>Please solve the column type annotation task following the instruction. Please ALWAYS show the column annotation result!!! Please ONLY return the column annotation result adding a sentence "Please using corresponding clean functions and write code to clean the column"!!! Classify the columns of a given table with only one of the following classes that are seperated with comma: {candi-date_column_types}.</p>
 <p>(1) Look at the input given to you and make a table out of it.</p>
@@ -115,7 +115,7 @@ squeeze ()
 <p>System Message of Python Code Executor</p>
 <p>You are a Python code executor that executes the code written by the engineer and reports the result.</p>
 <p>B DETAILED EXPERIMENT SETTINGS B.2 Detailed GPT Settings B.1 Prompt of GPT-4o Baseline</p>
-<p>System Message of Chat Manager</p>
+<h2>System Message of Chat Manager</h2>
 <p>For CleanAgent , we use GPT-4o with a temperature of 0, a timeout of 60 seconds, and a cache seed of 42. For Cocoon [ 8 ], we follow the</p>
 <p>You are an expert data standardizer.</p>
 <p>default setting and set the temperature to 1. For the GPT-4o baseline, the temperature is also set to 0 for consistency with CleanAgent</p>

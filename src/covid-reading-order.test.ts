@@ -63,15 +63,27 @@ describe("covid numbered heading order", () => {
     );
   });
 
-  it("renders inline research-in-context labels as semantic headings with body text", () => {
+  it("renders research-in-context subheadings as semantic headings", () => {
     const inlineMergedLine = "<p>Research in context: Evidence before this study</p>";
     const heading = "<h2>Research in context</h2>";
-    const body = "<p>Evidence before this study</p>";
+    const evidenceSubheading = "<h3>Evidence before this study</h3>";
+    const addedValueSubheading = "<h3>Added value of this study</h3>";
+    const implicationSubheading = "<h3>Implications of all the available evidence</h3>";
 
     expect(covidHtml).not.toContain(inlineMergedLine);
     expect(covidHtml).toContain(heading);
-    expect(covidHtml).toContain(body);
-    expect(covidHtml.indexOf(heading)).toBeLessThan(covidHtml.indexOf(body));
+    expect(covidHtml).toContain(evidenceSubheading);
+    expect(covidHtml).toContain(addedValueSubheading);
+    expect(covidHtml).toContain(implicationSubheading);
+    expect(covidHtml.indexOf(heading)).toBeLessThan(covidHtml.indexOf(evidenceSubheading));
+    expect(covidHtml.indexOf(evidenceSubheading)).toBeLessThan(covidHtml.indexOf(addedValueSubheading));
+    expect(covidHtml.indexOf(addedValueSubheading)).toBeLessThan(covidHtml.indexOf(implicationSubheading));
+    expect(covidHtml).not.toContain(
+      "No published studies have used nationwide data to investigate TE during the pandemic or the effect of the pandemic on outcomes of patients with TE but without Covid-19. Added value of this study",
+    );
+    expect(covidHtml).not.toContain(
+      "worse outcomes related to TE. Implications of all the available evidence",
+    );
   });
 
   it("keeps the abstract Interpretation continuation before the Research in context heading", () => {
