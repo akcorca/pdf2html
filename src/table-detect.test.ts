@@ -92,6 +92,21 @@ describe("table detection in attention.pdf", () => {
     expect(tableContent).toMatch(/<th[^>]*>Sequential Operations<\/th>/);
     expect(tableContent).toMatch(/<th[^>]*>Maximum Path Length<\/th>/);
   });
+
+  it("aligns Table 1 body cells to header columns without an empty spacer column", () => {
+    const table1Match = attentionHtml.match(
+      /<caption>Table 1[\s\S]*?<\/caption>([\s\S]*?)<\/table>/,
+    );
+    expect(table1Match).toBeTruthy();
+    const tableContent = table1Match?.[1] ?? "";
+
+    expect(tableContent).toContain(
+      "<tr><td>Self-Attention</td><td>O ( n 2 · d )</td><td>O (1)</td><td>O (1)</td></tr>",
+    );
+    expect(tableContent).not.toContain(
+      "<tr><td>Self-Attention</td><td></td><td>O ( n 2 · d )</td><td>O (1)</td><td>O (1)</td></tr>",
+    );
+  });
 });
 
 describe("table detection in clean.pdf", () => {

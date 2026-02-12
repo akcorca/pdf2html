@@ -167,14 +167,22 @@ function finalizeDetectedTable(input: {
   const { headerRows, dataRows } = splitHeaderAndDataRows(headerRow, parsedRows);
   if (dataRows.length === 0) return undefined;
 
-  normalizeColumnCount([...headerRows, ...dataRows]);
+  realignSingleHeaderGapColumns(headerRows, dataRows);
+
+  const compactedRows = removeCompletelyEmptyColumns([...headerRows, ...dataRows]);
+  const headerRowCount = headerRows.length;
+  const normalizedHeaderRows = compactedRows.slice(0, headerRowCount);
+  const normalizedDataRows = compactedRows.slice(headerRowCount);
+  if (normalizedDataRows.length === 0) return undefined;
+
+  normalizeColumnCount([...normalizedHeaderRows, ...normalizedDataRows]);
 
   return {
     captionStartIndex: startIndex,
     captionText: captionText.trim(),
     captionLineIndexes,
-    headerRows,
-    dataRows,
+    headerRows: normalizedHeaderRows,
+    dataRows: normalizedDataRows,
     nextIndex,
   };
 }
@@ -316,6 +324,89 @@ function sanitizeHeaderCells(row: string[]): string[] {
     if (!/[A-Za-z]/u.test(trimmed)) return trimmed;
     return trimmed.replace(/(?:\s+\d{1,2})+$/u, "");
   });
+}
+
+function realignSingleHeaderGapColumns(
+  headerRows: string[][],
+  dataRows: string[][],
+): void {
+  if (headerRows.length !== 1 || dataRows.length < MIN_TABLE_DATA_ROWS) return;
+
+  const mergedRows = [...headerRows, ...dataRows];
+  normalizeColumnCount(mergedRows);
+  const headerRow = headerRows[0];
+  const columnCount = headerRow.length;
+  if (columnCount < 4) return;
+
+  const sparseThreshold = Math.max(1, Math.floor(dataRows.length * 0.15));
+  const denseThreshold = Math.max(2, Math.ceil(dataRows.length * 0.6));
+
+  for (let columnIndex = 1; columnIndex <= columnCount - 3; columnIndex += 1) {
+    if (!isSingleGapHeaderShiftCandidate(headerRow, columnIndex)) continue;
+    if (
+      !hasShiftedDataDensityPattern(
+        dataRows,
+        columnIndex,
+        sparseThreshold,
+        denseThreshold,
+      )
+    ) {
+      continue;
+    }
+    moveHeaderCellRight(headerRow, columnIndex);
+  }
+}
+
+function countNonEmptyCellsInColumn(rows: string[][], columnIndex: number): number {
+  let count = 0;
+  for (const row of rows) {
+    if ((row[columnIndex]?.trim().length ?? 0) > 0) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function isSingleGapHeaderShiftCandidate(
+  headerRow: string[],
+  columnIndex: number,
+): boolean {
+  const previousHeader = headerRow[columnIndex - 1]?.trim() ?? "";
+  const headerCell = headerRow[columnIndex]?.trim() ?? "";
+  const nextHeader = headerRow[columnIndex + 1]?.trim() ?? "";
+  const afterNextHeader = headerRow[columnIndex + 2]?.trim() ?? "";
+
+  return (
+    previousHeader.length > 0 &&
+    headerCell.length > 0 &&
+    nextHeader.length === 0 &&
+    afterNextHeader.length > 0 &&
+    isHeaderTextLikeCell(headerCell)
+  );
+}
+
+function hasShiftedDataDensityPattern(
+  dataRows: string[][],
+  columnIndex: number,
+  sparseThreshold: number,
+  denseThreshold: number,
+): boolean {
+  const currentColumnFill = countNonEmptyCellsInColumn(dataRows, columnIndex);
+  const nextColumnFill = countNonEmptyCellsInColumn(dataRows, columnIndex + 1);
+  const afterNextColumnFill = countNonEmptyCellsInColumn(dataRows, columnIndex + 2);
+
+  return (
+    currentColumnFill <= sparseThreshold &&
+    nextColumnFill >= denseThreshold &&
+    afterNextColumnFill >= denseThreshold
+  );
+}
+
+function moveHeaderCellRight(headerRow: string[], columnIndex: number): void {
+  const headerCell = headerRow[columnIndex]?.trim() ?? "";
+  if (headerCell.length === 0) return;
+  headerRow[columnIndex] = "";
+  headerRow[columnIndex + 1] = headerCell;
 }
 
 function normalizeColumnCount(rows: string[][]): void {
